@@ -3,23 +3,26 @@
 {% block title %}{{ content.title }} - China Blog Dashboard{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-file-text"></i> Content Details</h1>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-file-text me-2"></i>Content Details</h1>
+        <p class="text-muted mb-0">{{ content.title|truncatewords:10 }}</p>
+    </div>
     <div class="btn-group">
         <a href="{% url 'sources:content_edit' content.pk %}" class="btn btn-primary">
-            <i class="bi bi-pencil"></i> Edit
+            <i class="bi bi-pencil me-1"></i> Edit
         </a>
         <a href="{% url 'sources:content_list' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Back to Contents
+            <i class="bi bi-arrow-left me-1"></i> Back
         </a>
     </div>
 </div>
 
 <div class="row">
     <div class="col-md-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">{{ content.title }}</h5>
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold">{{ content.title }}</h5>
             </div>
             <div class="card-body">
                 <dl class="row">
@@ -49,18 +52,26 @@
                     <dt class="col-sm-3">Has Content:</dt>
                     <dd class="col-sm-9">
                         {% if content.has_content %}
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Yes</span>
+                            <span class="badge bg-success-subtle text-success-emphasis">
+                                <i class="bi bi-check-circle-fill me-1"></i>Yes
+                            </span>
                         {% else %}
-                            <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> No</span>
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis">
+                                <i class="bi bi-x-circle me-1"></i>No
+                            </span>
                         {% endif %}
                     </dd>
                     
                     <dt class="col-sm-3">Processed:</dt>
                     <dd class="col-sm-9">
                         {% if content.processed %}
-                            <span class="badge bg-success">Processed</span>
+                            <span class="badge bg-success-subtle text-success-emphasis">
+                                <i class="bi bi-check2-all me-1"></i>Processed
+                            </span>
                         {% else %}
-                            <span class="badge bg-warning">Not Processed</span>
+                            <span class="badge bg-warning-subtle text-warning-emphasis">
+                                <i class="bi bi-clock me-1"></i>Pending
+                            </span>
                         {% endif %}
                     </dd>
                     
@@ -74,28 +85,28 @@
         </div>
         
         {% if content.content %}
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Content Text</h5>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Content Text</h5>
             </div>
             <div class="card-body">
-                <pre class="bg-light p-3 rounded" style="white-space: pre-wrap; max-height: 500px; overflow-y: auto;">{{ content.content }}</pre>
+                <pre class="bg-light p-4 rounded border" style="white-space: pre-wrap; max-height: 500px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;">{{ content.content }}</pre>
             </div>
         </div>
         {% else %}
-        <div class="card">
-            <div class="card-body text-center text-muted">
-                <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
-                <p class="mt-3">No content text available</p>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center text-muted empty-state">
+                <i class="bi bi-file-earmark"></i>
+                <p class="mt-3 mb-0">No content text available</p>
             </div>
         </div>
         {% endif %}
     </div>
     
     <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Actions</h5>
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-lightning-charge me-2"></i>Actions</h5>
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
@@ -116,9 +127,9 @@
             </div>
         </div>
         
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5 class="mb-0">Source Information</h5>
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Source Information</h5>
             </div>
             <div class="card-body">
                 <p><strong>Name:</strong> {{ content.source.name }}</p>

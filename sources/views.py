@@ -77,20 +77,20 @@ def content_list(request):
     contents = Content.objects.select_related('source').all()
     
     # Filtering
-    source_filter = request.GET.get('source')
-    content_type_filter = request.GET.get('content_type')
-    has_content_filter = request.GET.get('has_content')
-    processed_filter = request.GET.get('processed')
-    search_query = request.GET.get('search')
+    source_filter = request.GET.get('source', '').strip()
+    content_type_filter = request.GET.get('content_type', '').strip()
+    has_content_filter = request.GET.get('has_content', '').strip()
+    processed_filter = request.GET.get('processed', '').strip()
+    search_query = request.GET.get('search', '').strip()
     
     if source_filter:
         contents = contents.filter(source_id=source_filter)
     if content_type_filter:
         contents = contents.filter(content_type=content_type_filter)
-    if has_content_filter is not None:
-        contents = contents.filter(has_content=has_content_filter == 'true')
-    if processed_filter is not None:
-        contents = contents.filter(processed=processed_filter == 'true')
+    if has_content_filter:
+        contents = contents.filter(has_content=(has_content_filter == 'true'))
+    if processed_filter:
+        contents = contents.filter(processed=(processed_filter == 'true'))
     if search_query:
         contents = contents.filter(
             title__icontains=search_query
