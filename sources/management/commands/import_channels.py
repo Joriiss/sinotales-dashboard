@@ -30,13 +30,30 @@ class Command(BaseCommand):
         
         # Resolve file path
         if not os.path.isabs(csv_file):
-            # Try relative to project root
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-            csv_file = os.path.join(base_dir, '..', 'china-blog-data', 'videos', csv_file)
-            csv_file = os.path.abspath(csv_file)
+            # First, try as-is relative to current working directory
+            csv_file_abs = os.path.abspath(csv_file)
+            
+            # If not found, try relative to project root (where manage.py is)
+            if not os.path.exists(csv_file_abs):
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+                csv_file_from_root = os.path.join(project_root, csv_file)
+                if os.path.exists(csv_file_from_root):
+                    csv_file_abs = os.path.abspath(csv_file_from_root)
+                else:
+                    # Try with common relative path from dashboard to data folder
+                    common_path = os.path.join(project_root, '..', 'china-blog-data', 'videos', os.path.basename(csv_file))
+                    common_path = os.path.normpath(common_path)
+                    if os.path.exists(common_path):
+                        csv_file_abs = os.path.abspath(common_path)
+            
+            csv_file = csv_file_abs
         
         if not os.path.exists(csv_file):
-            raise CommandError(f'CSV file not found: {csv_file}')
+            raise CommandError(
+                f'CSV file not found: {csv_file}\n'
+                f'Please provide an absolute path or a path relative to the current directory.\n'
+                f'Example: python manage.py import_channels "C:\\Users\\Joris\\Desktop\\china-blog\\china-blog-data\\videos\\channels.csv"'
+            )
         
         self.stdout.write(f'Reading channels from: {csv_file}')
         

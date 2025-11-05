@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Source
+from .models import Source, Content
 
 
 @admin.register(Source)
@@ -29,4 +29,30 @@ class SourceAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
     )
+
+
+@admin.register(Content)
+class ContentAdmin(admin.ModelAdmin):
+    list_display = ['title', 'source', 'content_type', 'date', 'processed', 'created_at']
+    list_filter = ['content_type', 'processed', 'date', 'created_at', 'source']
+    search_fields = ['title', 'external_id', 'link', 'content']
+    readonly_fields = ['created_at', 'updated_at']
+    raw_id_fields = ['source']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('source', 'title', 'link', 'external_id', 'content_type', 'date')
+        }),
+        ('Content', {
+            'fields': ('content',),
+        }),
+        ('Status', {
+            'fields': ('processed',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
 

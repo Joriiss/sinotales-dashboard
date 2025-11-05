@@ -62,3 +62,4 @@ def source_delete(request, pk):
     messages.success(request, f'Source "{source_name}" deleted successfully!')
     return redirect('sources:source_list')
 
+

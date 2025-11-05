@@ -49,3 +49,4 @@ class SourceForm(forms.ModelForm):
                 self.fields['channel_id'].widget.attrs['disabled'] = True
                 self.fields['include_shorts'].widget.attrs['disabled'] = True
 
+

@@ -5,6 +5,14 @@ Django settings for china-blog-dashboard project.
 from pathlib import Path
 import os
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not installed, skip loading .env file
+    pass
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -73,8 +81,15 @@ DATABASES = {
         'NAME': os.environ.get('DB_NAME', 'china_blog'),
         'USER': os.environ.get('DB_USER', 'postgres'),
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),  # VPS IP address or domain
         'PORT': os.environ.get('DB_PORT', '5432'),
+        'OPTIONS': {
+            # SSL connection options (recommended for remote connections)
+            'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),  # Options: disable, allow, prefer, require, verify-ca, verify-full
+        },
+        # Connection timeout settings
+        'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
@@ -114,10 +129,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # For production, where collectstatic will gather files
+
+# Only add STATICFILES_DIRS if the directory exists
+static_dir = BASE_DIR / 'static'
+if static_dir.exists():
+    STATICFILES_DIRS = [static_dir]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 

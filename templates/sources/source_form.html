@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-{{ action|lower == 'add'|yesno:'plus-circle,pencil' }}"></i> {{ action }} Source</h1>
+    <h1><i class="bi bi-{% if action|lower == 'add' %}plus-circle{% else %}pencil{% endif %}"></i> {{ action }} Source</h1>
     <a href="{% url 'sources:source_list' %}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Back to Sources
     </a>
@@ -97,4 +97,5 @@
     </div>
 </div>
 {% endblock %}
+
 

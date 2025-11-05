@@ -103,3 +103,81 @@ class Source(models.Model):
             if self.include_shorts:
                 self.include_shorts = False
 
+
+class Content(models.Model):
+    """
+    Represents content collected from sources (videos, blog posts, ebooks, etc.)
+    """
+    
+    CONTENT_TYPE_CHOICES = [
+        ('video', 'Video'),
+        ('blog_post', 'Blog Post'),
+        ('ebook', 'Ebook'),
+    ]
+    
+    # Foreign key to source
+    source = models.ForeignKey(
+        Source,
+        on_delete=models.CASCADE,
+        related_name='contents',
+        help_text="Source this content came from"
+    )
+    
+    # External identifiers
+    external_id = models.CharField(
+        max_length=255,
+        help_text="External ID (e.g., video_id, blog post slug, etc.)"
+    )
+    title = models.CharField(
+        max_length=500,
+        help_text="Title of the content"
+    )
+    link = models.URLField(
+        max_length=500,
+        validators=[URLValidator()],
+        help_text="URL to the content"
+    )
+    
+    # Content type and date
+    content_type = models.CharField(
+        max_length=20,
+        choices=CONTENT_TYPE_CHOICES,
+        default='video',
+        help_text="Type of content"
+    )
+    date = models.DateField(
+        help_text="Date when content was published/uploaded"
+    )
+    
+    # Content text
+    content = models.TextField(
+        blank=True,
+        help_text="Text content (transcript, article text, etc.)"
+    )
+    
+    # Processing status
+    processed = models.BooleanField(
+        default=False,
+        help_text="Whether content has been processed (embedded, etc.)"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'contents'
+        ordering = ['-date', '-created_at']
+        indexes = [
+            models.Index(fields=['source']),
+            models.Index(fields=['external_id']),
+            models.Index(fields=['content_type']),
+            models.Index(fields=['date']),
+            models.Index(fields=['processed']),
+        ]
+        unique_together = [['source', 'external_id']]
+    
+    def __str__(self):
+        return f"{self.title} ({self.get_content_type_display()})"
+
+
