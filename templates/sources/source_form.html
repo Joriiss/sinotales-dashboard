@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} Source - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-{{ action|lower == 'add'|yesno:'plus-circle,pencil' }}"></i> {{ action }} Source</h1>
+    <a href="{% url 'sources:source_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Sources
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">Name <span class="text-danger">*</span></label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="text-danger small">{{ form.name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label for="{{ form.source_type.id_for_label }}" class="form-label">Source Type <span class="text-danger">*</span></label>
+                    {{ form.source_type }}
+                    {% if form.source_type.errors %}
+                        <div class="text-danger small">{{ form.source_type.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label for="{{ form.link.id_for_label }}" class="form-label">Link <span class="text-danger">*</span></label>
+                    {{ form.link }}
+                    {% if form.link.errors %}
+                        <div class="text-danger small">{{ form.link.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">e.g., https://www.youtube.com/@channelname/</small>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="{{ form.language.id_for_label }}" class="form-label">Language <span class="text-danger">*</span></label>
+                    {{ form.language }}
+                    {% if form.language.errors %}
+                        <div class="text-danger small">{{ form.language.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label for="{{ form.channel_id.id_for_label }}" class="form-label">Channel ID</label>
+                    {{ form.channel_id }}
+                    {% if form.channel_id.errors %}
+                        <div class="text-danger small">{{ form.channel_id.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">YouTube channel ID (optional, for YouTube sources)</small>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-check">
+                        {{ form.include_shorts }}
+                        <label class="form-check-label" for="{{ form.include_shorts.id_for_label }}">
+                            Include YouTube Shorts
+                        </label>
+                    </div>
+                    {% if form.include_shorts.errors %}
+                        <div class="text-danger small">{{ form.include_shorts.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">Only applies to YouTube sources</small>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                            Active
+                        </label>
+                    </div>
+                    {% if form.is_active.errors %}
+                        <div class="text-danger small">{{ form.is_active.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'sources:source_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Source
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
