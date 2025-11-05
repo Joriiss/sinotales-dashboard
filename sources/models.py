@@ -48,7 +48,7 @@ class Source(models.Model):
         max_length=100,
         blank=True,
         null=True,
-        help_text="YouTube channel ID (for YouTube sources)"
+        help_text="YouTube channel ID (required for YouTube sources)"
     )
     include_shorts = models.BooleanField(
         default=False,
@@ -155,7 +155,11 @@ class Content(models.Model):
         help_text="Text content (transcript, article text, etc.)"
     )
     
-    # Processing status
+    # Content status flags
+    has_content = models.BooleanField(
+        default=False,
+        help_text="Whether content text is available (automatically set)"
+    )
     processed = models.BooleanField(
         default=False,
         help_text="Whether content has been processed (embedded, etc.)"
@@ -173,9 +177,15 @@ class Content(models.Model):
             models.Index(fields=['external_id']),
             models.Index(fields=['content_type']),
             models.Index(fields=['date']),
+            models.Index(fields=['has_content']),
             models.Index(fields=['processed']),
         ]
         unique_together = [['source', 'external_id']]
+    
+    def save(self, *args, **kwargs):
+        # Automatically set has_content based on whether content field has text
+        self.has_content = bool(self.content and self.content.strip())
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"{self.title} ({self.get_content_type_display()})"

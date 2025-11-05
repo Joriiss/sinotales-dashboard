@@ -1,13 +1,21 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
-from .models import Source
-from .forms import SourceForm
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
+from .models import Source, Content
+from .forms import SourceForm, ContentForm
 
 
 def source_list(request):
     """Display list of all sources"""
-    sources = Source.objects.all()
+    # Annotate sources with content counts
+    sources = Source.objects.annotate(
+        total_contents=Count('contents'),
+        contents_with_text=Count('contents', filter=Q(contents__has_content=True)),
+        processed_contents=Count('contents', filter=Q(contents__processed=True)),
+    ).all()
+    
     context = {
         'sources': sources,
     }
@@ -61,5 +69,108 @@ def source_delete(request, pk):
     source.delete()
     messages.success(request, f'Source "{source_name}" deleted successfully!')
     return redirect('sources:source_list')
+
+
+# Content Views
+def content_list(request):
+    """Display list of all contents"""
+    contents = Content.objects.select_related('source').all()
+    
+    # Filtering
+    source_filter = request.GET.get('source')
+    content_type_filter = request.GET.get('content_type')
+    has_content_filter = request.GET.get('has_content')
+    processed_filter = request.GET.get('processed')
+    search_query = request.GET.get('search')
+    
+    if source_filter:
+        contents = contents.filter(source_id=source_filter)
+    if content_type_filter:
+        contents = contents.filter(content_type=content_type_filter)
+    if has_content_filter is not None:
+        contents = contents.filter(has_content=has_content_filter == 'true')
+    if processed_filter is not None:
+        contents = contents.filter(processed=processed_filter == 'true')
+    if search_query:
+        contents = contents.filter(
+            title__icontains=search_query
+        ) | contents.filter(
+            external_id__icontains=search_query
+        )
+    
+    # Pagination
+    paginator = Paginator(contents, 25)  # Show 25 contents per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'contents': page_obj,
+        'sources': Source.objects.all(),
+        'source_filter': source_filter,
+        'content_type_filter': content_type_filter,
+        'has_content_filter': has_content_filter,
+        'processed_filter': processed_filter,
+        'search_query': search_query,
+    }
+    return render(request, 'sources/content_list.html', context)
+
+
+def content_add(request):
+    """Add a new content"""
+    if request.method == 'POST':
+        form = ContentForm(request.POST)
+        if form.is_valid():
+            content = form.save()
+            messages.success(request, f'Content "{content.title}" added successfully!')
+            return redirect('sources:content_list')
+    else:
+        form = ContentForm()
+    
+    context = {
+        'form': form,
+        'action': 'Add',
+    }
+    return render(request, 'sources/content_form.html', context)
+
+
+def content_edit(request, pk):
+    """Edit an existing content"""
+    content = get_object_or_404(Content, pk=pk)
+    
+    if request.method == 'POST':
+        form = ContentForm(request.POST, instance=content)
+        if form.is_valid():
+            content = form.save()
+            messages.success(request, f'Content "{content.title}" updated successfully!')
+            return redirect('sources:content_list')
+    else:
+        form = ContentForm(instance=content)
+    
+    context = {
+        'form': form,
+        'content': content,
+        'action': 'Edit',
+    }
+    return render(request, 'sources/content_form.html', context)
+
+
+def content_detail(request, pk):
+    """View content details"""
+    content = get_object_or_404(Content.objects.select_related('source'), pk=pk)
+    context = {
+        'content': content,
+    }
+    return render(request, 'sources/content_detail.html', context)
+
+
+@require_http_methods(["POST"])
+def content_delete(request, pk):
+    """Delete a content"""
+    content = get_object_or_404(Content, pk=pk)
+    content_title = content.title
+    content.delete()
+    messages.success(request, f'Content "{content_title}" deleted successfully!')
+    return redirect('sources:content_list')
 
 

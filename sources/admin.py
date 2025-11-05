@@ -33,10 +33,10 @@ class SourceAdmin(admin.ModelAdmin):
 
 @admin.register(Content)
 class ContentAdmin(admin.ModelAdmin):
-    list_display = ['title', 'source', 'content_type', 'date', 'processed', 'created_at']
-    list_filter = ['content_type', 'processed', 'date', 'created_at', 'source']
+    list_display = ['title', 'source', 'content_type', 'date', 'has_content', 'processed', 'created_at']
+    list_filter = ['content_type', 'has_content', 'processed', 'date', 'created_at', 'source']
     search_fields = ['title', 'external_id', 'link', 'content']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['has_content', 'created_at', 'updated_at']
     raw_id_fields = ['source']
     
     fieldsets = (
@@ -47,7 +47,7 @@ class ContentAdmin(admin.ModelAdmin):
             'fields': ('content',),
         }),
         ('Status', {
-            'fields': ('processed',)
+            'fields': ('has_content', 'processed')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

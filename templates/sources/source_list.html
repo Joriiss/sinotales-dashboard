@@ -20,6 +20,7 @@
                             <th>Name</th>
                             <th>Type</th>
                             <th>Language</th>
+                            <th>Contents</th>
                             <th>Link</th>
                             <th>Status</th>
                             <th>Last Collected</th>
@@ -34,6 +35,21 @@
                                 <span class="badge bg-secondary">{{ source.get_source_type_display }}</span>
                             </td>
                             <td>{{ source.get_language_display }}</td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <div>
+                                        <a href="{% url 'sources:content_list' %}?source={{ source.id }}" class="text-decoration-none">
+                                            <strong>{{ source.total_contents }}</strong> total
+                                        </a>
+                                    </div>
+                                    {% if source.total_contents > 0 %}
+                                    <div class="small text-muted">
+                                        <span class="badge bg-success">{{ source.contents_with_text }}</span> with text
+                                        <span class="badge bg-info ms-1">{{ source.processed_contents }}</span> processed
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
                             <td>
                                 <a href="{{ source.link }}" target="_blank" class="text-decoration-none">
                                     <i class="bi bi-link-45deg"></i> View
