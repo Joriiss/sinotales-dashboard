@@ -4,50 +4,38 @@
 
 ```mermaid
 erDiagram
-    sources {
-        bigserial id PK "Primary Key, Auto-increment"
-        varchar_255 name "Source name (e.g., channel name)"
-        varchar_20 source_type "youtube|blog|ebook|rss"
-        varchar_500 link "URL to source"
-        varchar_20 language "en|fr|zh|es|de|other"
-        varchar_100 channel_id "YouTube channel ID (nullable)"
-        boolean include_shorts "Include YouTube Shorts (default: false)"
-        jsonb metadata "Additional metadata as JSON"
-        boolean is_active "Active status (default: true)"
-        timestamp last_collected "Last collection time (nullable)"
-        timestamp created_at "Creation timestamp (auto)"
-        timestamp updated_at "Update timestamp (auto)"
+
+    SOURCES {
+        BIGSERIAL id PK "Primary Key, Auto-increment"
+        STRING name "Source name (e.g., channel name)"
+        STRING source_type "youtube|blog|ebook|rss"
+        STRING link "URL to source"
+        STRING language "en|fr|zh|es|de|other"
+        STRING channel_id "YouTube channel ID (nullable)"
+        BOOLEAN include_shorts "Include YouTube Shorts (default: false)"
+        JSON metadata "Additional metadata as JSON"
+        BOOLEAN is_active "Active status (default: true)"
+        TIMESTAMP last_collected "Last collection time (nullable)"
+        TIMESTAMP created_at "Creation timestamp (auto)"
+        TIMESTAMP updated_at "Update timestamp (auto)"
     }
-    
-    contents {
-        bigserial id PK "Primary Key, Auto-increment"
-        bigint source_id FK "Foreign Key to sources.id"
-        varchar_255 external_id "video_id, blog link, etc."
-        varchar_500 title "Content title"
-        varchar_500 link "URL to content"
-        varchar_20 content_type "video|blog_post|ebook"
-        date date "Publication/upload date"
-        text content "Text content (transcript, article, etc.)"
-        boolean processed "Whether embedded/processed (default: false)"
-        timestamp created_at "Creation timestamp (auto)"
-        timestamp updated_at "Update timestamp (auto)"
+
+    CONTENTS {
+        BIGSERIAL id PK "Primary Key, Auto-increment"
+        BIGINT source_id FK "Foreign Key to sources.id"
+        STRING external_id "video_id, blog link, etc."
+        STRING title "Content title"
+        STRING link "URL to content"
+        STRING content_type "video|blog_post|ebook"
+        DATE date "Publication/upload date"
+        TEXT content "Text content (transcript, article, etc.)"
+        BOOLEAN has_content "Whether content text is available (auto-set)"
+        BOOLEAN processed "Whether embedded/processed (default: false)"
+        TIMESTAMP created_at "Creation timestamp (auto)"
+        TIMESTAMP updated_at "Update timestamp (auto)"
     }
-    
-    sources ||--o{ contents : "has many"
-    
-    %% Indexes
-    sources ||--o{ "idx_sources_source_type" : "has index on"
-    sources ||--o{ "idx_sources_language" : "has index on"
-    sources ||--o{ "idx_sources_is_active" : "has index on"
-    sources ||--o{ "idx_sources_channel_id" : "has index on (where not null)"
-    sources ||--o{ "idx_sources_link" : "has index on"
-    sources ||--o{ "idx_sources_metadata" : "has GIN index on"
-    
-    contents ||--o{ "idx_contents_source" : "has index on"
-    contents ||--o{ "idx_contents_external_id" : "has index on"
-    contents ||--o{ "idx_contents_content_type" : "has index on"
-    contents ||--o{ "idx_contents_date" : "has index on"
-    contents ||--o{ "idx_contents_processed" : "has index on"
+
+    SOURCES ||--o{ CONTENTS : "has many"
 ```
 
 ## Field Descriptions
@@ -81,6 +69,7 @@ erDiagram
 | content_type | VARCHAR(20) | NOT NULL, CHECK | Values: video, blog_post, ebook |
 | date | DATE | NOT NULL | Publication/upload date |
 | content | TEXT | NULL | Text content (transcript, article) |
+| has_content | BOOLEAN | NOT NULL, DEFAULT false | Whether content text is available (auto-set) |
 | processed | BOOLEAN | NOT NULL, DEFAULT false | Embedding/processing status |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | Auto-set on creation |
 | updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | Auto-update on change |
@@ -100,7 +89,8 @@ erDiagram
 2. **idx_contents_external_id** - Index on `external_id` column
 3. **idx_contents_content_type** - Index on `content_type` column
 4. **idx_contents_date** - Index on `date` column
-5. **idx_contents_processed** - Index on `processed` column
+5. **idx_contents_has_content** - Index on `has_content` column
+6. **idx_contents_processed** - Index on `processed` column
 
 **Unique Constraints:**
 - `contents(source_id, external_id)` - Ensures no duplicate content per source
