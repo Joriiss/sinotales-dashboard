@@ -28,12 +28,11 @@ CREATE DATABASE china_blog;
 Or set environment variables for database connection:
 
 ```bash
-# Windows PowerShell
-$env:DB_NAME="china_blog"
-$env:DB_USER="postgres"
-$env:DB_PASSWORD="your_password"
-$env:DB_HOST="localhost"
-$env:DB_PORT="5432"
+DB_NAME="china_blog"
+DB_USER="postgres"
+DB_PASSWORD=""pwd
+DB_HOST="localhost"
+DB_PORT="5432"
 ```
 
 ### 3. Run Migrations
