@@ -4,11 +4,13 @@ from . import views
 app_name = 'sources'
 
 urlpatterns = [
+    # Dashboard
+    path('', views.dashboard, name='dashboard'),
     # Source URLs
-    path('', views.source_list, name='source_list'),
-    path('add/', views.source_add, name='source_add'),
-    path('<int:pk>/edit/', views.source_edit, name='source_edit'),
-    path('<int:pk>/delete/', views.source_delete, name='source_delete'),
+    path('sources/', views.source_list, name='source_list'),
+    path('sources/add/', views.source_add, name='source_add'),
+    path('sources/<int:pk>/edit/', views.source_edit, name='source_edit'),
+    path('sources/<int:pk>/delete/', views.source_delete, name='source_delete'),
     
     # Content URLs
     path('contents/', views.content_list, name='content_list'),

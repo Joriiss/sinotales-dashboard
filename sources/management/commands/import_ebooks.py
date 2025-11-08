@@ -201,6 +201,41 @@ class Command(BaseCommand):
                 ).first()
                 
                 if existing:
+                    # If existing but no content, try to load it
+                    if not existing.has_content and load_content and txt_dir:
+                        # Try to load content for existing ebook
+                        if txt_file and not txt_file.endswith('.txt'):
+                            txt_file = txt_file + '.txt'
+                        
+                        txt_path = os.path.join(txt_dir, txt_file) if not os.path.isabs(txt_file) else txt_file
+                        if not os.path.exists(txt_path) and txt_dir:
+                            # Try to find file with similar name
+                            possible_files = [f for f in os.listdir(txt_dir) 
+                                            if f.lower().endswith('.txt') and 
+                                            (os.path.splitext(txt_file)[0].lower() in f.lower() or 
+                                             os.path.splitext(f)[0].lower() == os.path.splitext(txt_file)[0].lower())]
+                            if possible_files:
+                                txt_path = os.path.join(txt_dir, possible_files[0])
+                        
+                        if os.path.exists(txt_path):
+                            try:
+                                with open(txt_path, 'r', encoding='utf-8') as tf:
+                                    content_text = tf.read().strip()
+                                
+                                # Update existing ebook with content
+                                existing.content = content_text
+                                existing.save()  # This will auto-update has_content
+                                
+                                self.stdout.write(
+                                    self.style.SUCCESS(f'Updated existing ebook "{title}" with content from "{os.path.basename(txt_path)}"')
+                                )
+                                imported += 1
+                                continue
+                            except Exception as e:
+                                self.stdout.write(
+                                    self.style.WARNING(f'Could not load content for existing ebook "{title}": {str(e)}')
+                                )
+                    
                     if skip_existing:
                         self.stdout.write(
                             self.style.WARNING(f'Skipping existing ebook "{title}"')
@@ -245,6 +280,10 @@ class Command(BaseCommand):
                 # Load content from TXT file
                 content_text = ''
                 if load_content and txt_dir:
+                    # Ensure .txt extension
+                    if txt_file and not txt_file.endswith('.txt'):
+                        txt_file = txt_file + '.txt'
+                    
                     txt_path = os.path.join(txt_dir, txt_file) if not os.path.isabs(txt_file) else txt_file
                     if os.path.exists(txt_path):
                         try:
@@ -256,9 +295,33 @@ class Command(BaseCommand):
                                 self.style.WARNING(f'Could not load content from "{txt_file}": {str(e)}')
                             )
                     else:
-                        self.stdout.write(
-                            self.style.WARNING(f'TXT file not found: "{txt_path}"')
-                        )
+                        # Try to find file without extension or with different case
+                        if txt_dir:
+                            possible_files = [f for f in os.listdir(txt_dir) 
+                                            if f.lower().endswith('.txt') and 
+                                            (os.path.splitext(txt_file)[0].lower() in f.lower() or 
+                                             os.path.splitext(f)[0].lower() == os.path.splitext(txt_file)[0].lower())]
+                            if possible_files:
+                                txt_path = os.path.join(txt_dir, possible_files[0])
+                                try:
+                                    with open(txt_path, 'r', encoding='utf-8') as tf:
+                                        content_text = tf.read().strip()
+                                    content_loaded += 1
+                                    self.stdout.write(
+                                        self.style.SUCCESS(f'Found file with different name: "{possible_files[0]}"')
+                                    )
+                                except Exception as e:
+                                    self.stdout.write(
+                                        self.style.WARNING(f'Could not load content from "{possible_files[0]}": {str(e)}')
+                                    )
+                            else:
+                                self.stdout.write(
+                                    self.style.WARNING(f'TXT file not found: "{txt_path}"')
+                                )
+                        else:
+                            self.stdout.write(
+                                self.style.WARNING(f'TXT file not found: "{txt_path}"')
+                            )
                 
                 # Translate French content to English if needed
                 ebook_language_lower = ebook_language.lower() if ebook_language else ''

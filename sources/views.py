@@ -5,7 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import Length
 from .models import Source, Content
 from .forms import SourceForm, ContentForm
 
@@ -19,6 +20,72 @@ class CustomLoginView(LoginView):
 class CustomLogoutView(LogoutView):
     """Custom logout view"""
     next_page = 'login'
+
+
+@login_required
+def dashboard(request):
+    """Dashboard homepage with statistics"""
+    # Basic counts
+    total_sources = Source.objects.count()
+    total_contents = Content.objects.count()
+    active_sources = Source.objects.filter(is_active=True).count()
+    
+    # Content breakdown by type
+    content_by_type = Content.objects.values('content_type').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    # Source breakdown by type
+    sources_by_type = Source.objects.values('source_type').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    # Content with text
+    contents_with_text = Content.objects.filter(has_content=True).count()
+    contents_processed = Content.objects.filter(processed=True).count()
+    
+    # Calculate total words and data size
+    # Use database aggregation for better performance
+    total_chars_result = Content.objects.filter(has_content=True).aggregate(
+        total_length=Sum(Length('content'))
+    )
+    total_chars = total_chars_result['total_length'] or 0
+    
+    # Estimate: ~5 chars per word on average
+    total_words = total_chars // 5 if total_chars else 0
+    # Estimate: UTF-8 encoding, average 2 bytes per character
+    total_mb = (total_chars * 2) / (1024 * 1024) if total_chars else 0
+    
+    # Language breakdown
+    sources_by_language = Source.objects.values('language').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    # Recent activity
+    recent_contents = Content.objects.select_related('source').order_by('-created_at')[:10]
+    recent_sources = Source.objects.order_by('-created_at')[:5]
+    
+    # Content by source (top sources)
+    top_sources = Source.objects.annotate(
+        content_count=Count('contents')
+    ).filter(content_count__gt=0).order_by('-content_count')[:10]
+    
+    context = {
+        'total_sources': total_sources,
+        'total_contents': total_contents,
+        'active_sources': active_sources,
+        'contents_with_text': contents_with_text,
+        'contents_processed': contents_processed,
+        'content_by_type': content_by_type,
+        'sources_by_type': sources_by_type,
+        'sources_by_language': sources_by_language,
+        'total_words': total_words,
+        'total_mb': total_mb,
+        'recent_contents': recent_contents,
+        'recent_sources': recent_sources,
+        'top_sources': top_sources,
+    }
+    return render(request, 'sources/dashboard.html', context)
 
 
 @login_required
