@@ -1,5 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView, LogoutView
 from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
@@ -7,6 +10,18 @@ from .models import Source, Content
 from .forms import SourceForm, ContentForm
 
 
+class CustomLoginView(LoginView):
+    """Custom login view with redirect to sources list"""
+    template_name = 'registration/login.html'
+    redirect_authenticated_user = True
+
+
+class CustomLogoutView(LogoutView):
+    """Custom logout view"""
+    next_page = 'login'
+
+
+@login_required
 def source_list(request):
     """Display list of all sources"""
     # Annotate sources with content counts
@@ -22,6 +37,7 @@ def source_list(request):
     return render(request, 'sources/source_list.html', context)
 
 
+@login_required
 def source_add(request):
     """Add a new source"""
     if request.method == 'POST':
@@ -40,6 +56,7 @@ def source_add(request):
     return render(request, 'sources/source_form.html', context)
 
 
+@login_required
 def source_edit(request, pk):
     """Edit an existing source"""
     source = get_object_or_404(Source, pk=pk)
@@ -61,6 +78,7 @@ def source_edit(request, pk):
     return render(request, 'sources/source_form.html', context)
 
 
+@login_required
 @require_http_methods(["POST"])
 def source_delete(request, pk):
     """Delete a source"""
@@ -72,6 +90,7 @@ def source_delete(request, pk):
 
 
 # Content Views
+@login_required
 def content_list(request):
     """Display list of all contents"""
     contents = Content.objects.select_related('source').all()
@@ -116,6 +135,7 @@ def content_list(request):
     return render(request, 'sources/content_list.html', context)
 
 
+@login_required
 def content_add(request):
     """Add a new content"""
     if request.method == 'POST':
@@ -134,6 +154,7 @@ def content_add(request):
     return render(request, 'sources/content_form.html', context)
 
 
+@login_required
 def content_edit(request, pk):
     """Edit an existing content"""
     content = get_object_or_404(Content, pk=pk)
@@ -155,6 +176,7 @@ def content_edit(request, pk):
     return render(request, 'sources/content_form.html', context)
 
 
+@login_required
 def content_detail(request, pk):
     """View content details"""
     content = get_object_or_404(Content.objects.select_related('source'), pk=pk)
@@ -164,6 +186,7 @@ def content_detail(request, pk):
     return render(request, 'sources/content_detail.html', context)
 
 
+@login_required
 @require_http_methods(["POST"])
 def content_delete(request, pk):
     """Delete a content"""
@@ -172,5 +195,3 @@ def content_delete(request, pk):
     content.delete()
     messages.success(request, f'Content "{content_title}" deleted successfully!')
     return redirect('sources:content_list')
-
-

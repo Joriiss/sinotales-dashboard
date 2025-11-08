@@ -143,19 +143,23 @@ class Command(BaseCommand):
                                 errors += 1
                                 continue
                         
-                        # Check if post already exists
-                        if skip_existing:
-                            existing = Content.objects.filter(
-                                source=source,
-                                external_id=post_id
-                            ).first()
-                            
-                            if existing:
+                        # Check if post already exists (always check to avoid duplicates)
+                        existing = Content.objects.filter(
+                            source=source,
+                            external_id=post_id
+                        ).first()
+                        
+                        if existing:
+                            if skip_existing:
                                 self.stdout.write(
                                     self.style.WARNING(f'  Row {row_num}: Skipping existing post "{title}"')
                                 )
-                                skipped += 1
-                                continue
+                            else:
+                                self.stdout.write(
+                                    self.style.WARNING(f'  Row {row_num}: Post "{title}" already exists (use --skip-existing to suppress)')
+                                )
+                            skipped += 1
+                            continue
                         
                         # Parse date
                         date_obj = None
