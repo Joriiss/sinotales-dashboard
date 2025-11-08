@@ -24,7 +24,7 @@ class SourceForm(forms.ModelForm):
             }),
             'link': forms.URLInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'https://www.youtube.com/@channelname/'
+                'placeholder': 'https://www.youtube.com/@channelname/ (optional for ebooks)'
             }),
             'language': forms.Select(attrs={
                 'class': 'form-control',
@@ -45,6 +45,9 @@ class SourceForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Make channel_id required for YouTube sources
         source_type = self.data.get('source_type') if self.data else (self.instance.source_type if self.instance.pk else None)
+        
+        # Make link optional (especially for ebooks)
+        self.fields['link'].required = False
         
         if source_type == 'youtube':
             self.fields['channel_id'].required = True
@@ -102,7 +105,7 @@ class ContentForm(forms.ModelForm):
             }),
             'link': forms.URLInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'https://www.youtube.com/watch?v=...'
+                'placeholder': 'https://www.youtube.com/watch?v=... (optional for ebooks)'
             }),
             'content_type': forms.Select(attrs={
                 'class': 'form-control',
@@ -120,5 +123,10 @@ class ContentForm(forms.ModelForm):
                 'class': 'form-check-input',
             }),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make link optional (especially for ebooks)
+        self.fields['link'].required = False
 
 

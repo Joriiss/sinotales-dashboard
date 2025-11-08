@@ -34,6 +34,8 @@ class Source(models.Model):
     link = models.URLField(
         max_length=500,
         validators=[URLValidator()],
+        blank=True,
+        null=True,
         help_text="URL to the source (YouTube channel, blog URL, etc.)"
     )
     language = models.CharField(
@@ -135,6 +137,8 @@ class Content(models.Model):
     link = models.URLField(
         max_length=500,
         validators=[URLValidator()],
+        blank=True,
+        null=True,
         help_text="URL to the content"
     )
     

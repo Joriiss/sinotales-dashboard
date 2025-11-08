@@ -7,7 +7,10 @@ Django-based dashboard for managing content sources and generating blog posts ab
 - **Source Management**: Add and manage YouTube channels, blogs, ebooks, and RSS feeds
 - **PostgreSQL Database**: Robust data storage with proper indexing
 - **Admin Interface**: Django admin for advanced management
-- **CSV Import**: Import existing channels from CSV files
+- **CSV Import**: Import channels, blogs, posts, and ebooks from CSV files
+- **Authentication**: Secure login system to protect the dashboard
+- **Content Translation**: Automatic translation of French content to English for ebooks
+- **Flexible Content Types**: Support for videos, blog posts, and ebooks with optional links
 
 ## Setup Instructions
 
@@ -48,19 +51,49 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 5. Import Existing Channels from CSV
+### 5. Import Content from CSV Files
 
-Import channels from your existing CSV file:
+#### Import YouTube Channels
 
 ```bash
-python manage.py import_channels ../china-blog-data/videos/channels.csv
+python manage.py import_channels channels.csv
 ```
 
 Or with skip-existing flag to avoid duplicates:
 
 ```bash
-python manage.py import_channels ../china-blog-data/videos/channels.csv --skip-existing
+python manage.py import_channels channels.csv --skip-existing
 ```
+
+#### Import Blogs
+
+```bash
+python manage.py import_blogs blogs.csv
+```
+
+#### Import Blog Posts
+
+```bash
+python manage.py import_posts posts.csv --load-content
+```
+
+The `--load-content` flag will load content from files in the `content/` directory.
+
+#### Import Ebooks
+
+```bash
+python manage.py import_ebooks ebooks.csv --load-content
+```
+
+**Ebook Import Features:**
+- Automatically translates French content to English (requires `deep-translator` package)
+- Can scan directory: `python manage.py import_ebooks --scan-dir`
+- Loads content from TXT files in `ebooks/txt/` directory
+- Supports optional links (ebooks don't require URLs)
+
+**Translation Options:**
+- `--no-translate`: Skip translation even for French content
+- Translation is enabled by default for French ebooks
 
 ### 6. Run Development Server
 
@@ -69,7 +102,8 @@ python manage.py runserver
 ```
 
 Then visit:
-- Dashboard: http://127.0.0.1:8000/
+- Dashboard: http://127.0.0.1:8000/ (requires login)
+- Login: http://127.0.0.1:8000/login/
 - Admin: http://127.0.0.1:8000/admin/
 
 ## Project Structure
@@ -88,9 +122,15 @@ china-blog-dashboard/
 │   ├── urls.py            # App URL routing
 │   └── management/
 │       └── commands/
-│           └── import_channels.py  # CSV import command
+│           ├── import_channels.py  # Import YouTube channels from CSV
+│           ├── import_blogs.py     # Import blogs from CSV
+│           ├── import_posts.py    # Import blog posts from CSV
+│           ├── import_ebooks.py   # Import ebooks from CSV (with translation)
+│           └── import_videos.py   # Import videos from CSV
 ├── templates/             # HTML templates
 │   ├── base.html          # Base template with sidebar
+│   ├── registration/      # Authentication templates
+│   │   └── login.html     # Login page
 │   └── sources/           # Source management templates
 ├── manage.py              # Django management script
 └── requirements.txt       # Python dependencies
@@ -110,16 +150,18 @@ The main table is `sources` which stores:
 
 ### Adding a Source via Web Interface
 
-1. Navigate to http://127.0.0.1:8000/
+1. Navigate to http://127.0.0.1:8000/ (login required)
 2. Click "Add New Source"
 3. Fill in the form:
    - Name: Channel or source name
    - Source Type: Select YouTube, Blog, Ebook, or RSS
-   - Link: Full URL to the source
+   - Link: Full URL to the source (optional for ebooks)
    - Language: Primary language of content
-   - Channel ID: (Optional) YouTube channel ID
+   - Channel ID: (Required for YouTube) YouTube channel ID
    - Include Shorts: (YouTube only) Whether to include Shorts
    - Active: Whether source is currently monitored
+
+**Note:** The `link` field is optional for ebook sources since travel books typically don't have URLs.
 
 ### Using Django Admin
 
@@ -128,10 +170,34 @@ The main table is `sources` which stores:
 3. Navigate to "Sources" section
 4. Add, edit, or delete sources
 
+## Authentication
+
+The dashboard is protected by authentication. You need to log in to access any pages.
+
+### Creating a Superuser
+
+```bash
+python manage.py createsuperuser
+```
+
+After creating a superuser, you can:
+- Log in to the dashboard at `/login/`
+- Access the Django admin at `/admin/`
+
 ## Environment Variables
 
-You can configure the database using environment variables:
+You can configure the database using environment variables. Create a `.env` file in the project root:
 
+```env
+DB_NAME=china_blog
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
+DJANGO_SECRET_KEY=your-secret-key-here
+```
+
+Variables:
 - `DB_NAME`: Database name (default: 'china_blog')
 - `DB_USER`: Database user (default: 'postgres')
 - `DB_PASSWORD`: Database password (default: '')
@@ -139,9 +205,43 @@ You can configure the database using environment variables:
 - `DB_PORT`: Database port (default: '5432')
 - `DJANGO_SECRET_KEY`: Django secret key (default: insecure key for dev only)
 
+## CSV File Formats
+
+### Blogs CSV (`blogs.csv`)
+```csv
+name,url,language,rss_feed,sitemaps,filter_china,blog_only
+Wild China,https://wildchina.com/,English,https://wildchina.com/feed/,https://wildchina.com/sitemap.xml,False,True
+```
+
+### Posts CSV (`posts.csv`)
+```csv
+id,title,link,date,tags,source,content_file
+44f55dff5f455836,The Complete Guide to Your Layover in Shanghai,https://www.chinahighlights.com/shanghai/layover-guide.htm,,,China Highlights,china-highlights_44f55dff5f455836.txt
+```
+
+### Ebooks CSV (`ebooks.csv`)
+```csv
+title,author,source,language,date,link,txt_file
+Behind the Wall,Colin Thubron,Travel Books,en,1987,,Behind the Wall - Colin Thubron.txt
+Guide Chine 2025/2026,Petit Futé,Travel Books,fr,2025,,Guide Chine 2025_2026 Petit Fut - Dominique Auzias.txt
+```
+
+**Note:** The `link` field is optional for ebooks. French ebooks (`language=fr`) will be automatically translated to English during import.
+
+## Dependencies
+
+Install additional dependencies for translation:
+
+```bash
+pip install deep-translator
+```
+
 ## Next Steps
 
-- [ ] Add Contents tab for managing collected content
+- [x] Add Contents tab for managing collected content
+- [x] Add authentication system
+- [x] Add CSV import for blogs, posts, and ebooks
+- [x] Add translation support for French content
 - [ ] Add Post Ideas tab for generated article ideas
 - [ ] Add Blog Posts tab for managing generated posts
 - [ ] Set up embedding generation pipeline

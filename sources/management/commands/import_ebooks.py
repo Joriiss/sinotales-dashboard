@@ -170,7 +170,7 @@ class Command(BaseCommand):
                             source = Source.objects.create(
                                 name=source_name,
                                 source_type='ebook',
-                                link=link if link else f'#ebook-{source_name}',
+                                link=link if link else None,
                                 language='en',  # Default, can be updated later
                                 is_active=True,
                             )
@@ -189,7 +189,7 @@ class Command(BaseCommand):
                         source = Source.objects.create(
                             name=source_name,
                             source_type='ebook',
-                            link='#',
+                            link=None,
                             language='en',
                             is_active=True,
                         )
@@ -329,7 +329,7 @@ class Command(BaseCommand):
                         source=source,
                         external_id=external_id,
                         title=full_title,
-                        link=link if link else f'#ebook-{external_id}',
+                        link=link if link else None,
                         content_type='ebook',
                         date=date_obj,
                         content=content_text,
@@ -368,13 +368,25 @@ class Command(BaseCommand):
             reader = csv.DictReader(f)
             
             for row in reader:
-                normalized_row = {k.strip(): v for k, v in row.items()}
+                # Handle None values and different types in CSV cells
+                normalized_row = {}
+                for k, v in row.items():
+                    key = k.strip() if k and isinstance(k, str) else (str(k) if k else '')
+                    if v is None:
+                        value = ''
+                    elif isinstance(v, str):
+                        value = v.strip()
+                    elif isinstance(v, list):
+                        value = ' '.join(str(item) for item in v).strip()
+                    else:
+                        value = str(v).strip() if v else ''
+                    normalized_row[key] = value
                 
                 # Get txt_file path
-                txt_file = normalized_row.get('txt_file', '').strip()
+                txt_file = normalized_row.get('txt_file', '') or ''
                 if not txt_file:
                     # Try to infer from title or filename
-                    title = normalized_row.get('title', '').strip()
+                    title = normalized_row.get('title', '') or ''
                     if title and txt_dir:
                         # Try to find matching file
                         possible_files = [f for f in os.listdir(txt_dir) if title.lower() in f.lower() and f.endswith('.txt')]
@@ -382,12 +394,12 @@ class Command(BaseCommand):
                             txt_file = possible_files[0]
                 
                 ebooks_data.append({
-                    'title': normalized_row.get('title', '').strip(),
-                    'author': normalized_row.get('author', '').strip(),
-                    'source': normalized_row.get('source', '').strip(),
-                    'language': normalized_row.get('language', '').strip(),
-                    'date': normalized_row.get('date', '').strip(),
-                    'link': normalized_row.get('link', '').strip(),
+                    'title': normalized_row.get('title', '') or '',
+                    'author': normalized_row.get('author', '') or '',
+                    'source': normalized_row.get('source', '') or '',
+                    'language': normalized_row.get('language', '') or '',
+                    'date': normalized_row.get('date', '') or '',
+                    'link': normalized_row.get('link', '') or '',
                     'txt_file': txt_file,
                 })
         
