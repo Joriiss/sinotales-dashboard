@@ -2,7 +2,7 @@
 Management command to automatically tag content using LLM (Ollama or OpenAI)
 """
 from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from sources.models import Content, Tag
 from sources.services import TaggingService
 import time
@@ -189,11 +189,22 @@ class Command(BaseCommand):
                     if tag_name in existing_tags:
                         tag_objects.append(existing_tags[tag_name])
                     else:
-                        tag, created = Tag.objects.get_or_create(name=tag_name)
-                        tag_objects.append(tag)
-                        if created:
-                            new_tags_count += 1
+                        try:
+                            tag, created = Tag.objects.get_or_create(name=tag_name)
+                            tag_objects.append(tag)
+                            if created:
+                                new_tags_count += 1
                             existing_tags[tag_name] = tag  # Cache for potential duplicates in same batch
+                        except IntegrityError:
+                            # Race condition: another thread created this tag, just fetch it
+                            try:
+                                tag = Tag.objects.get(name=tag_name)
+                                tag_objects.append(tag)
+                                existing_tags[tag_name] = tag
+                            except Tag.DoesNotExist:
+                                # Very rare: tag was deleted between creation attempt and fetch
+                                # Skip this tag
+                                pass
                 
                 if not dry_run:
                     # Save tags to content
