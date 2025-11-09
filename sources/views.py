@@ -62,7 +62,7 @@ def dashboard(request):
     ).order_by('-count')
     
     # Recent activity
-    recent_contents = Content.objects.select_related('source').order_by('-created_at')[:10]
+    recent_contents = Content.objects.select_related('source').prefetch_related('tags').order_by('-created_at')[:10]
     recent_sources = Source.objects.order_by('-created_at')[:5]
     
     # Content by source (top sources)
@@ -160,7 +160,7 @@ def source_delete(request, pk):
 @login_required
 def content_list(request):
     """Display list of all contents"""
-    contents = Content.objects.select_related('source').all()
+    contents = Content.objects.select_related('source').prefetch_related('tags').all()
     
     # Filtering
     source_filter = request.GET.get('source', '').strip()
@@ -246,7 +246,7 @@ def content_edit(request, pk):
 @login_required
 def content_detail(request, pk):
     """View content details"""
-    content = get_object_or_404(Content.objects.select_related('source'), pk=pk)
+    content = get_object_or_404(Content.objects.select_related('source').prefetch_related('tags'), pk=pk)
     context = {
         'content': content,
     }

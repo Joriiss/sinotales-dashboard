@@ -1,5 +1,43 @@
 from django.db import models
 from django.core.validators import URLValidator
+from django.utils.text import slugify
+
+
+class Tag(models.Model):
+    """
+    Tags for categorizing and retrieving content
+    """
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Tag name (e.g., 'culture', 'history', 'food')"
+    )
+    slug = models.SlugField(
+        max_length=100,
+        unique=True,
+        help_text="URL-friendly version of the tag"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional description of what this tag represents"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'tags'
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['slug']),
+        ]
+    
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
 
 class Source(models.Model):
@@ -167,6 +205,14 @@ class Content(models.Model):
     processed = models.BooleanField(
         default=False,
         help_text="Whether content has been processed (embedded, etc.)"
+    )
+    
+    # Tags
+    tags = models.ManyToManyField(
+        Tag,
+        related_name='contents',
+        blank=True,
+        help_text="Tags for categorizing this content"
     )
     
     # Timestamps

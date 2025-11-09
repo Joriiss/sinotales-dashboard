@@ -230,11 +230,100 @@ Guide Chine 2025/2026,Petit Futé,Travel Books,fr,2025,,Guide Chine 2025_2026 Pe
 
 ## Dependencies
 
-Install additional dependencies for translation:
+Install additional dependencies:
 
+```bash
+pip install -r requirements.txt
+```
+
+For translation support:
 ```bash
 pip install deep-translator
 ```
+
+For OpenAI tagging (optional):
+```bash
+pip install openai
+```
+
+## Automatic Content Tagging
+
+The dashboard includes an AI-powered tagging system that can automatically tag your content using local LLMs (Ollama) or OpenAI.
+
+### Setup Ollama (Recommended - Free & Local)
+
+1. **Install Ollama**: Download from https://ollama.ai
+
+2. **Pull a model** (recommended: llama3.1 for good quality/speed balance):
+   ```bash
+   ollama pull llama3.1
+   ```
+
+3. **Start Ollama** (usually runs automatically):
+   ```bash
+   ollama serve
+   ```
+
+### Tag All Existing Content
+
+Tag all content using Ollama (default):
+```bash
+python manage.py auto_tag_content
+```
+
+Tag only content that has text:
+```bash
+python manage.py auto_tag_content --has-content-only
+```
+
+Tag specific number of items (for testing):
+```bash
+python manage.py auto_tag_content --limit 10
+```
+
+Skip content that already has tags:
+```bash
+python manage.py auto_tag_content --skip-tagged
+```
+
+Dry run (see what would be tagged without saving):
+```bash
+python manage.py auto_tag_content --dry-run
+```
+
+### Using OpenAI Instead
+
+If you prefer OpenAI (requires API key):
+
+1. Set your API key in settings or environment:
+   ```python
+   # settings.py or .env
+   OPENAI_API_KEY = "your-api-key-here"
+   ```
+
+2. Run with OpenAI:
+   ```bash
+   python manage.py auto_tag_content --provider openai --model gpt-3.5-turbo
+   ```
+
+### Tagging Options
+
+- `--provider`: `ollama` (default) or `openai`
+- `--model`: Model name (e.g., `llama3.1`, `mistral`, `gpt-3.5-turbo`)
+- `--limit`: Process only N items
+- `--skip-tagged`: Skip content that already has tags
+- `--has-content-only`: Only tag content with text
+- `--source ID`: Only tag content from specific source
+- `--batch-size N`: Show progress every N items (default: 10)
+- `--dry-run`: Preview without saving
+
+### Cost Comparison
+
+- **Ollama**: Free (runs locally, no API costs)
+- **OpenAI GPT-3.5-turbo**: ~$0.01-0.03 per 1000 items (very affordable)
+- **OpenAI GPT-4**: ~$0.30-0.60 per 1000 items (higher quality but more expensive)
+
+For most use cases, **Ollama with llama3.1** provides excellent quality at zero cost.
 
 ## Next Steps
 

@@ -89,6 +89,7 @@ class ContentForm(forms.ModelForm):
             'content_type',
             'date',
             'content',
+            'tags',
             'processed',
         ]
         widgets = {
@@ -118,6 +119,9 @@ class ContentForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 10,
                 'placeholder': 'Transcript, article text, etc.'
+            }),
+            'tags': forms.SelectMultiple(attrs={
+                'class': 'form-control',
             }),
             'processed': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',

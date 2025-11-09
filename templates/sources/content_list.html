@@ -81,6 +81,7 @@
                             <th>Source</th>
                             <th>Type</th>
                             <th>Date</th>
+                            <th>Tags</th>
                             <th>External ID</th>
                             <th>Has Content</th>
                             <th>Processed</th>
@@ -101,6 +102,17 @@
                                 </span>
                             </td>
                             <td>{{ content.date|date:"M d, Y" }}</td>
+                            <td>
+                                {% if content.tags.all %}
+                                    {% for tag in content.tags.all %}
+                                        <span class="badge bg-info-subtle text-info-emphasis me-1 small">
+                                            {{ tag.name }}
+                                        </span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <code class="small">{{ content.external_id|truncatechars:15 }}</code>
                             </td>

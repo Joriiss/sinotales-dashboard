@@ -1,6 +1,0 @@
-name,url,language,rss_feed,sitemaps,filter_china,blog_only
-Wild China,https://wildchina.com/,English,https://wildchina.com/feed/,https://wildchina.com/sitemap.xml,False,True
-Lonely Planet Blog,https://www.lonelyplanet.com/,English,,https://www.lonelyplanet.com/sitemap.xml,True,False
-China Journey,https://www.thechinajourney.com,English,,https://www.thechinajourney.com/sitemap.xml,False,True
-China Travel,https://www.chinatravel.com/,English,,http://www.chinatravel.com/sitemap.xml,False,True
-China Highlights,https://www.chinahighlights.com/,English,,https://www.chinahighlights.com/sitemap.xml,False,False

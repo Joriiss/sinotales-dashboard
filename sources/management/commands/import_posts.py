@@ -150,16 +150,71 @@ class Command(BaseCommand):
                         ).first()
                         
                         if existing:
-                            if skip_existing:
-                                self.stdout.write(
-                                    self.style.WARNING(f'  Row {row_num}: Skipping existing post "{title}"')
-                                )
+                            # If existing but no content (check both has_content flag and actual content), try to load it
+                            has_actual_content = bool(existing.content and existing.content.strip())
+                            if not has_actual_content and load_content and content_dir:
+                                # Try to find content file
+                                content_file_path = None
+                                
+                                if content_file:
+                                    # Try exact path first
+                                    content_file_path = os.path.join(content_dir, content_file)
+                                    if not os.path.exists(content_file_path):
+                                        # Try to find file with similar name
+                                        possible_files = [f for f in os.listdir(content_dir) 
+                                                        if f.lower().endswith('.txt') and 
+                                                        (content_file.lower() in f.lower() or 
+                                                         post_id.lower() in f.lower() or
+                                                         os.path.splitext(f)[0].lower() == os.path.splitext(content_file)[0].lower())]
+                                        if possible_files:
+                                            content_file_path = os.path.join(content_dir, possible_files[0])
+                                else:
+                                    # Try to find by post_id
+                                    possible_files = [f for f in os.listdir(content_dir) 
+                                                    if f.lower().endswith('.txt') and post_id.lower() in f.lower()]
+                                    if possible_files:
+                                        content_file_path = os.path.join(content_dir, possible_files[0])
+                                
+                                if content_file_path and os.path.exists(content_file_path):
+                                    try:
+                                        with open(content_file_path, 'r', encoding='utf-8') as cf:
+                                            content_text = cf.read().strip()
+                                        
+                                        # Update existing post with content
+                                        existing.content = content_text
+                                        existing.save()  # This will auto-update has_content
+                                        
+                                        self.stdout.write(
+                                            self.style.SUCCESS(f'  Row {row_num}: Updated existing post "{title}" with content from "{os.path.basename(content_file_path)}"')
+                                        )
+                                        imported += 1
+                                        content_loaded += 1
+                                        continue
+                                    except Exception as e:
+                                        self.stdout.write(
+                                            self.style.WARNING(f'  Row {row_num}: Could not load content for existing post "{title}": {str(e)}')
+                                        )
+                                else:
+                                    self.stdout.write(
+                                        self.style.WARNING(f'  Row {row_num}: Content file not found for existing post "{title}" (ID: {post_id})')
+                                    )
+                            
+                            # Only skip if post already has content
+                            if has_actual_content:
+                                if skip_existing:
+                                    self.stdout.write(
+                                        self.style.WARNING(f'  Row {row_num}: Skipping existing post "{title}" (already has content)')
+                                    )
+                                else:
+                                    self.stdout.write(
+                                        self.style.WARNING(f'  Row {row_num}: Post "{title}" already exists with content (use --skip-existing to suppress)')
+                                    )
+                                skipped += 1
+                                continue
                             else:
-                                self.stdout.write(
-                                    self.style.WARNING(f'  Row {row_num}: Post "{title}" already exists (use --skip-existing to suppress)')
-                                )
-                            skipped += 1
-                            continue
+                                # Post exists but no content and we couldn't load it
+                                skipped += 1
+                                continue
                         
                         # Parse date
                         date_obj = None

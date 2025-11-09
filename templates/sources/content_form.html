@@ -84,6 +84,17 @@
 
             <div class="row mb-3">
                 <div class="col-md-12">
+                    <label for="{{ form.tags.id_for_label }}" class="form-label">Tags</label>
+                    {{ form.tags }}
+                    {% if form.tags.errors %}
+                        <div class="text-danger small">{{ form.tags.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">Select tags to categorize this content (hold Ctrl/Cmd to select multiple)</small>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12">
                     <div class="form-check">
                         {{ form.processed }}
                         <label class="form-check-label" for="{{ form.processed.id_for_label }}">
