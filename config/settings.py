@@ -3,7 +3,11 @@ Django settings for china-blog-dashboard project.
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
 import os
+
+env_path = Path('/srv/china_blog_dashboard/.env')
+load_dotenv(env_path)
 
 # Load environment variables from .env file if it exists
 try:
@@ -26,7 +30,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-this-in
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['dashboard.joris-rabilloud.com']
 
 
 # Application definition
@@ -146,5 +150,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'  # Redirects to dashboard
 LOGOUT_REDIRECT_URL = '/login/'
+
+# OpenAI settings for embeddings
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+OPENAI_EMBEDDING_MODEL = os.environ.get('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-large')
+OPENAI_EMBEDDING_DIMENSIONS = int(os.environ.get('OPENAI_EMBEDDING_DIMENSIONS', 3072))
 
 

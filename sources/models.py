@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.validators import URLValidator
 from django.utils.text import slugify
+from pgvector.django import VectorField
+from django.contrib.postgres.indexes import Index
 
 
 class Tag(models.Model):
@@ -239,5 +241,46 @@ class Content(models.Model):
     
     def __str__(self):
         return f"{self.title} ({self.get_content_type_display()})"
+
+
+class ContentChunk(models.Model):
+    """
+    Represents a chunk of content with its vector embedding for semantic search
+    """
+    content = models.ForeignKey(
+        Content,
+        on_delete=models.CASCADE,
+        related_name='chunks',
+        help_text="Content this chunk belongs to"
+    )
+    chunk_index = models.IntegerField(
+        help_text="Order of this chunk within the content (0-based)"
+    )
+    text = models.TextField(
+        help_text="Text content of this chunk"
+    )
+    embedding = VectorField(
+        dimensions=3072,  # text-embedding-3-large dimensions
+        null=True,
+        blank=True,
+        help_text="Vector embedding for semantic search"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'content_chunks'
+        ordering = ['content', 'chunk_index']
+        indexes = [
+            models.Index(fields=['content', 'chunk_index']),
+            Index(
+                name='content_chunks_embedding_idx',
+                fields=['embedding'],
+                opclasses=['vector_cosine_ops'],  # For cosine similarity search
+            ),
+        ]
+        unique_together = [['content', 'chunk_index']]
+    
+    def __str__(self):
+        return f"Chunk {self.chunk_index} of {self.content.title}"
 
 
