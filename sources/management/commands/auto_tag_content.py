@@ -24,7 +24,7 @@ class Command(BaseCommand):
             '--model',
             type=str,
             default=None,
-            help='Model name (e.g., llama3.1 for Ollama, gpt-3.5-turbo for OpenAI)',
+            help='Model name (e.g., 2 for Ollama, gpt-3.5-turbo for OpenAI)',
         )
         parser.add_argument(
             '--limit',

@@ -254,9 +254,9 @@ The dashboard includes an AI-powered tagging system that can automatically tag y
 
 1. **Install Ollama**: Download from https://ollama.ai
 
-2. **Pull a model** (recommended: llama3.1 for good quality/speed balance):
+2. **Pull a model** (recommended: llama3.2 for good quality/speed balance):
    ```bash
-   ollama pull llama3.1
+   ollama pull llama3.2
    ```
 
 3. **Start Ollama** (usually runs automatically):
@@ -309,7 +309,7 @@ If you prefer OpenAI (requires API key):
 ### Tagging Options
 
 - `--provider`: `ollama` (default) or `openai`
-- `--model`: Model name (e.g., `llama3.1`, `mistral`, `gpt-3.5-turbo`)
+- `--model`: Model name (e.g., `llama3.2`, `mistral`, `gpt-3.5-turbo`)
 - `--limit`: Process only N items
 - `--skip-tagged`: Skip content that already has tags
 - `--has-content-only`: Only tag content with text
@@ -323,7 +323,7 @@ If you prefer OpenAI (requires API key):
 - **OpenAI GPT-3.5-turbo**: ~$0.01-0.03 per 1000 items (very affordable)
 - **OpenAI GPT-4**: ~$0.30-0.60 per 1000 items (higher quality but more expensive)
 
-For most use cases, **Ollama with llama3.1** provides excellent quality at zero cost.
+For most use cases, **Ollama with llama3.2** provides excellent quality at zero cost.
 
 ## Next Steps
 

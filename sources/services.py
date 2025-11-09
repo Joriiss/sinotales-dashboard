@@ -17,7 +17,7 @@ class TaggingService:
         
         Args:
             provider: 'ollama' or 'openai'
-            model: Model name (e.g., 'llama3.1' for Ollama, 'gpt-3.5-turbo' for OpenAI)
+            model: Model name (e.g., 'llama3.2' for Ollama, 'gpt-3.5-turbo' for OpenAI)
         """
         self.provider = provider.lower()
         self.model = model or self._get_default_model()
@@ -25,7 +25,7 @@ class TaggingService:
     def _get_default_model(self) -> str:
         """Get default model based on provider"""
         if self.provider == 'ollama':
-            return 'llama3.1'  # Good balance of quality and speed
+            return 'llama3.2:latest'  # Good balance of quality and speed
         elif self.provider == 'openai':
             return 'gpt-3.5-turbo'
         else:
@@ -33,9 +33,9 @@ class TaggingService:
     
     def _create_prompt(self, title: str, content: str, content_type: str) -> str:
         """Create prompt for tag generation"""
-        # Truncate content if too long (keep first 2000 chars for context)
-        content_preview = content[:2000] if content else ""
-        if len(content) > 2000:
+        # Truncate content if too long (keep first 1000 chars for context to avoid API issues)
+        content_preview = content[:1000] if content else ""
+        if len(content) > 1000:
             content_preview += "..."
         
         prompt = f"""Analyze the following {content_type} about China and suggest 3-8 relevant tags.
@@ -78,7 +78,7 @@ Tags:"""
         }
         
         try:
-            response = requests.post(url, json=payload, timeout=60)
+            response = requests.post(url, json=payload, timeout=120)  # Increased timeout
             response.raise_for_status()
             result = response.json()
             return result.get('response', '').strip()
@@ -86,6 +86,26 @@ Tags:"""
             raise ConnectionError(
                 f"Could not connect to Ollama at {ollama_url}. "
                 "Make sure Ollama is running: https://ollama.ai"
+            )
+        except requests.exceptions.HTTPError as e:
+            # Try to get more details from the error response
+            error_detail = ""
+            try:
+                error_detail = response.text[:500] if hasattr(response, 'text') else ""
+                try:
+                    error_json = response.json()
+                    if isinstance(error_json, dict) and 'error' in error_json:
+                        error_detail = error_json['error']
+                except:
+                    pass
+            except:
+                pass
+            
+            raise Exception(
+                f"Ollama API error ({response.status_code}): {str(e)}. "
+                f"Error details: {error_detail}. "
+                f"Model: '{self.model}'. "
+                f"Try: 'ollama pull {self.model}' or use '--model llama3.2:latest'"
             )
         except requests.exceptions.RequestException as e:
             raise Exception(f"Ollama API error: {str(e)}")
