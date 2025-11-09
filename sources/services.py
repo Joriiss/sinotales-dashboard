@@ -21,6 +21,8 @@ class TaggingService:
         """
         self.provider = provider.lower()
         self.model = model or self._get_default_model()
+        # Create session for connection pooling (Ollama only)
+        self._session = None
         
     def _get_default_model(self) -> str:
         """Get default model based on provider"""
@@ -64,6 +66,18 @@ Tags:"""
         except ImportError:
             raise ImportError("requests library required for Ollama. Install with: pip install requests")
         
+        # Use session for connection pooling (reuse connections)
+        if self._session is None:
+            self._session = requests.Session()
+            # Configure session for better performance
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=10,
+                pool_maxsize=20,
+                max_retries=2
+            )
+            self._session.mount('http://', adapter)
+            self._session.mount('https://', adapter)
+        
         ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
         url = f"{ollama_url}/api/generate"
         
@@ -78,7 +92,7 @@ Tags:"""
         }
         
         try:
-            response = requests.post(url, json=payload, timeout=120)  # Increased timeout
+            response = self._session.post(url, json=payload, timeout=120)  # Use session
             response.raise_for_status()
             result = response.json()
             return result.get('response', '').strip()
