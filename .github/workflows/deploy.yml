@@ -22,6 +22,8 @@ jobs:
           port : 59821
           script: |
             cd /srv/china_blog_dashboard
+            git reset --hard HEAD
+            git clean -fd
             git pull origin main
             source venv/bin/activate
             pip install -r requirements.txt
