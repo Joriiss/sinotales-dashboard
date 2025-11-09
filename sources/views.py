@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import Length
-from .models import Source, Content
+from .models import Source, Content, Tag, ContentChunk
 from .forms import SourceForm, ContentForm
 
 
@@ -70,6 +70,28 @@ def dashboard(request):
         content_count=Count('contents')
     ).filter(content_count__gt=0).order_by('-content_count')[:10]
     
+    # Tags statistics
+    total_tags = Tag.objects.count()
+    contents_with_tags = Content.objects.filter(tags__isnull=False).distinct().count()
+    
+    # Chunks and embeddings statistics
+    total_chunks = ContentChunk.objects.count()
+    chunks_with_embeddings = ContentChunk.objects.filter(embedding__isnull=False).count()
+    contents_with_embeddings = Content.objects.filter(
+        chunks__embedding__isnull=False
+    ).distinct().count()
+    
+    # Calculate embedding percentage
+    embedding_percentage = (
+        (chunks_with_embeddings / total_chunks * 100) 
+        if total_chunks > 0 else 0
+    )
+    
+    # Top tags
+    top_tags = Tag.objects.annotate(
+        content_count=Count('contents')
+    ).filter(content_count__gt=0).order_by('-content_count')[:10]
+    
     context = {
         'total_sources': total_sources,
         'total_contents': total_contents,
@@ -84,6 +106,13 @@ def dashboard(request):
         'recent_contents': recent_contents,
         'recent_sources': recent_sources,
         'top_sources': top_sources,
+        'total_tags': total_tags,
+        'contents_with_tags': contents_with_tags,
+        'total_chunks': total_chunks,
+        'chunks_with_embeddings': chunks_with_embeddings,
+        'contents_with_embeddings': contents_with_embeddings,
+        'embedding_percentage': embedding_percentage,
+        'top_tags': top_tags,
     }
     return render(request, 'sources/dashboard.html', context)
 
