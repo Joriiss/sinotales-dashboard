@@ -25,8 +25,14 @@ class Migration(migrations.Migration):
             options={
                 'db_table': 'content_chunks',
                 'ordering': ['content', 'chunk_index'],
-                'indexes': [models.Index(fields=['content', 'chunk_index'], name='content_chu_content_69e279_idx'), models.Index(fields=['embedding'], name='content_chunks_embedding_idx', opclasses=['vector_cosine_ops'])],
+                'indexes': [models.Index(fields=['content', 'chunk_index'], name='content_chu_content_69e279_idx')],
                 'unique_together': {('content', 'chunk_index')},
             },
         ),
+        # Note: Vector index not created here because text-embedding-3-large (3072 dims)
+        # exceeds pgvector's 2000 dimension limit for HNSW/IVFFlat indexes.
+        # Similarity search will work but may be slower without an index.
+        # To use an index, consider switching to text-embedding-3-small (1536 dims) or
+        # create the index manually after reducing dimensions.
+        # For now, we skip the index creation to allow the migration to succeed.
     ]

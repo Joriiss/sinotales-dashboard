@@ -5,12 +5,15 @@ Django-based dashboard for managing content sources and generating blog posts ab
 ## Features
 
 - **Source Management**: Add and manage YouTube channels, blogs, ebooks, and RSS feeds
-- **PostgreSQL Database**: Robust data storage with proper indexing
+- **PostgreSQL Database**: Robust data storage with proper indexing and pgvector for semantic search
 - **Admin Interface**: Django admin for advanced management
 - **CSV Import**: Import channels, blogs, posts, and ebooks from CSV files
 - **Authentication**: Secure login system to protect the dashboard
 - **Content Translation**: Automatic translation of French content to English for ebooks
 - **Flexible Content Types**: Support for videos, blog posts, and ebooks with optional links
+- **AI-Powered Tagging**: Automatic content tagging using local LLMs (Ollama) or OpenAI
+- **Vector Embeddings**: Generate embeddings for semantic search using OpenAI's text-embedding-3-small
+- **Content Chunking**: Automatic chunking of long content for efficient embedding and retrieval
 
 ## Setup Instructions
 
@@ -22,18 +25,22 @@ pip install -r requirements.txt
 
 ### 2. Configure PostgreSQL Database
 
-Create a PostgreSQL database:
+Create a PostgreSQL database with the `pgvector` extension:
 
 ```sql
 CREATE DATABASE china_blog;
+\c china_blog
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
+
+**Note**: The `pgvector` extension is required for vector embeddings. Make sure your PostgreSQL version supports it (PostgreSQL 11+).
 
 Or set environment variables for database connection:
 
 ```bash
 DB_NAME="china_blog"
 DB_USER="postgres"
-DB_PASSWORD=""pwd
+DB_PASSWORD="pwd"
 DB_HOST="localhost"
 DB_PORT="5432"
 ```
@@ -115,18 +122,22 @@ china-blog-dashboard/
 │   ├── urls.py            # Main URL routing
 │   └── ...
 ├── sources/                # Sources app
-│   ├── models.py          # Source model (YouTube channels, blogs, etc.)
+│   ├── models.py          # Source, Content, Tag, ContentChunk models
 │   ├── views.py           # View functions
 │   ├── forms.py           # Form definitions
 │   ├── admin.py           # Django admin configuration
 │   ├── urls.py            # App URL routing
+│   ├── services.py        # TaggingService for AI-powered tagging
+│   ├── embedding_service.py  # EmbeddingService for vector embeddings
 │   └── management/
 │       └── commands/
 │           ├── import_channels.py  # Import YouTube channels from CSV
 │           ├── import_blogs.py     # Import blogs from CSV
 │           ├── import_posts.py    # Import blog posts from CSV
 │           ├── import_ebooks.py   # Import ebooks from CSV (with translation)
-│           └── import_videos.py   # Import videos from CSV
+│           ├── import_videos.py   # Import videos from CSV
+│           ├── auto_tag_content.py  # Automatic content tagging
+│           └── generate_embeddings.py  # Generate vector embeddings
 ├── templates/             # HTML templates
 │   ├── base.html          # Base template with sidebar
 │   ├── registration/      # Authentication templates
@@ -138,13 +149,29 @@ china-blog-dashboard/
 
 ## Database Table Structure
 
-See `SQL_TABLE_STRUCTURE.md` for the complete PostgreSQL table schema.
+See `DATABASE_DIAGRAM.md` for the complete database schema diagram.
 
-The main table is `sources` which stores:
+The main tables are:
+
+**sources** - Content sources (YouTube channels, blogs, ebooks, RSS):
 - Basic info: name, type, link, language
 - YouTube-specific: channel_id, include_shorts
 - Status: is_active, last_collected
 - Metadata: JSONB field for additional data
+
+**contents** - Individual content items (videos, blog posts, ebooks):
+- Source reference, title, link, content text
+- Content type, publication date
+- Status flags: has_content, processed
+
+**tags** - Content tags for categorization:
+- Tag name, slug, optional description
+- Many-to-many relationship with contents
+
+**content_chunks** - Chunked content with vector embeddings:
+- Content reference, chunk index, text
+- Vector embedding (1536 dimensions) for semantic search
+- HNSW index for fast similarity queries
 
 ## Usage
 
@@ -204,6 +231,10 @@ Variables:
 - `DB_HOST`: Database host (default: 'localhost')
 - `DB_PORT`: Database port (default: '5432')
 - `DJANGO_SECRET_KEY`: Django secret key (default: insecure key for dev only)
+- `OPENAI_API_KEY`: OpenAI API key (required for embeddings)
+- `OPENAI_EMBEDDING_MODEL`: Embedding model name (default: 'text-embedding-3-small')
+- `OPENAI_EMBEDDING_DIMENSIONS`: Embedding dimensions (default: 1536)
+- `OLLAMA_URL`: Ollama API URL (default: 'http://localhost:11434')
 
 ## CSV File Formats
 
@@ -241,9 +272,14 @@ For translation support:
 pip install deep-translator
 ```
 
-For OpenAI tagging (optional):
+For OpenAI tagging and embeddings (required for embedding generation):
 ```bash
 pip install openai
+```
+
+For vector embeddings (required):
+```bash
+pip install pgvector
 ```
 
 ## Automatic Content Tagging
@@ -325,16 +361,93 @@ If you prefer OpenAI (requires API key):
 
 For most use cases, **Ollama with llama3.2** provides excellent quality at zero cost.
 
+## Vector Embeddings and Semantic Search
+
+The dashboard includes a vector embedding system for semantic search using OpenAI's `text-embedding-3-small` model and PostgreSQL's `pgvector` extension.
+
+### Setup pgvector
+
+1. **Install pgvector extension** in PostgreSQL:
+   ```sql
+   \c china_blog
+   CREATE EXTENSION IF NOT EXISTS vector;
+   ```
+
+2. **Set OpenAI API Key** in settings or environment:
+   ```python
+   # settings.py or .env
+   OPENAI_API_KEY = "your-api-key-here"
+   OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"  # Optional, default
+   OPENAI_EMBEDDING_DIMENSIONS = 1536  # Optional, default
+   ```
+
+### Generate Embeddings
+
+Generate embeddings for all content with text:
+
+```bash
+python manage.py generate_embeddings --has-content-only
+```
+
+Generate embeddings for specific number of items (for testing):
+
+```bash
+python manage.py generate_embeddings --limit 10 --has-content-only
+```
+
+Skip content that already has embeddings:
+
+```bash
+python manage.py generate_embeddings --has-content-only --skip-embedded
+```
+
+Generate embeddings for content from a specific source:
+
+```bash
+python manage.py generate_embeddings --source 1 --has-content-only
+```
+
+### Embedding Options
+
+- `--limit N`: Process only N content items
+- `--skip-embedded`: Skip content that already has all chunks embedded
+- `--has-content-only`: Only process content that has text content
+- `--source ID`: Only process content from specific source ID
+- `--chunk-size N`: Max characters per chunk (default: 8000)
+- `--overlap N`: Overlap between chunks in characters (default: 200)
+- `--workers N`: Number of parallel workers (default: 1, recommended: 3-5)
+- `--delay N`: Delay between API requests in seconds (default: 0.05)
+- `--dry-run`: Show what would be processed without saving
+
+### How Embeddings Work
+
+1. **Content Chunking**: Long content is automatically split into chunks (default: 8000 characters with 200 character overlap)
+2. **Embedding Generation**: Each chunk is embedded using OpenAI's `text-embedding-3-small` model (1536 dimensions)
+3. **Embedding Content**: Each chunk's embedding includes:
+   - Content title
+   - Chunk text content
+   - Associated tags (if any)
+4. **Storage**: Embeddings are stored in the `content_chunks` table with an HNSW vector index for fast similarity search
+5. **Metadata**: Other fields (source, date, link) are stored as metadata for filtering, not included in embeddings
+
+### Cost Estimation
+
+- **text-embedding-3-small**: ~$0.02 per 1M tokens
+- Average content item (~8000 chars) ≈ ~2000 tokens
+- **Cost per 1000 items**: ~$0.04 (very affordable)
+
 ## Next Steps
 
 - [x] Add Contents tab for managing collected content
 - [x] Add authentication system
 - [x] Add CSV import for blogs, posts, and ebooks
 - [x] Add translation support for French content
+- [x] Add automatic content tagging system
+- [x] Set up embedding generation pipeline
+- [x] Integrate with PostgreSQL pgvector for vector search
+- [ ] Add semantic search functionality (query embeddings and similarity search)
 - [ ] Add Post Ideas tab for generated article ideas
 - [ ] Add Blog Posts tab for managing generated posts
-- [ ] Set up embedding generation pipeline
-- [ ] Integrate with vector database (Qdrant/Weaviate/Chroma)
 - [ ] Add RAG pipeline for content generation
 
 

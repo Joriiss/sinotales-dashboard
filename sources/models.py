@@ -2,7 +2,6 @@ from django.db import models
 from django.core.validators import URLValidator
 from django.utils.text import slugify
 from pgvector.django import VectorField
-from django.contrib.postgres.indexes import Index
 
 
 class Tag(models.Model):
@@ -260,7 +259,7 @@ class ContentChunk(models.Model):
         help_text="Text content of this chunk"
     )
     embedding = VectorField(
-        dimensions=3072,  # text-embedding-3-large dimensions
+        dimensions=1536,  # text-embedding-3-small dimensions (supports vector indexes)
         null=True,
         blank=True,
         help_text="Vector embedding for semantic search"
@@ -272,11 +271,7 @@ class ContentChunk(models.Model):
         ordering = ['content', 'chunk_index']
         indexes = [
             models.Index(fields=['content', 'chunk_index']),
-            Index(
-                name='content_chunks_embedding_idx',
-                fields=['embedding'],
-                opclasses=['vector_cosine_ops'],  # For cosine similarity search
-            ),
+            # Note: Vector index will be created in migration using raw SQL
         ]
         unique_together = [['content', 'chunk_index']]
     

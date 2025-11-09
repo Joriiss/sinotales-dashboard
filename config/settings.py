@@ -153,7 +153,7 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 # OpenAI settings for embeddings
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-OPENAI_EMBEDDING_MODEL = os.environ.get('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-large')
-OPENAI_EMBEDDING_DIMENSIONS = int(os.environ.get('OPENAI_EMBEDDING_DIMENSIONS', 3072))
+OPENAI_EMBEDDING_MODEL = os.environ.get('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
+OPENAI_EMBEDDING_DIMENSIONS = int(os.environ.get('OPENAI_EMBEDDING_DIMENSIONS', 1536))
 
 

@@ -15,8 +15,8 @@ class EmbeddingService:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY not set in settings")
         
-        self.model = getattr(settings, 'OPENAI_EMBEDDING_MODEL', 'text-embedding-3-large')
-        self.dimensions = getattr(settings, 'OPENAI_EMBEDDING_DIMENSIONS', 3072)
+        self.model = getattr(settings, 'OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
+        self.dimensions = getattr(settings, 'OPENAI_EMBEDDING_DIMENSIONS', 1536)
         
         try:
             from openai import OpenAI
