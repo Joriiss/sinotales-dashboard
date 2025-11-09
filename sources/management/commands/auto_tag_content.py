@@ -67,6 +67,11 @@ class Command(BaseCommand):
             default=None,
             help='Delay between requests in seconds (default: 0.5 for Ollama, 0.1 for OpenAI)',
         )
+        parser.add_argument(
+            '--reverse',
+            action='store_true',
+            help='Process content in reverse order (useful for running multiple instances in parallel)',
+        )
     
     def handle(self, *args, **options):
         provider = options['provider']
@@ -78,6 +83,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         workers = max(1, options['workers'])  # At least 1 worker
         delay = options['delay']
+        reverse = options['reverse']
         
         # Initialize tagging service
         try:
@@ -104,6 +110,12 @@ class Command(BaseCommand):
         if source_id:
             queryset = queryset.filter(source_id=source_id)
         
+        # Apply reverse ordering if requested
+        if reverse:
+            # Reverse the default ordering (which is typically -date, -created_at)
+            # We'll order by date ascending, then created_at ascending
+            queryset = queryset.order_by('date', 'created_at')
+        
         if limit:
             queryset = queryset[:limit]
         
@@ -116,6 +128,8 @@ class Command(BaseCommand):
         self.stdout.write(f'\nFound {total} content item(s) to tag')
         if skip_tagged:
             self.stdout.write(self.style.WARNING('Note: Skipping content that already has tags'))
+        if reverse:
+            self.stdout.write(self.style.SUCCESS('Processing in REVERSE order (oldest first)'))
         if dry_run:
             self.stdout.write(self.style.WARNING('DRY RUN MODE - No changes will be saved'))
         if workers > 1:
