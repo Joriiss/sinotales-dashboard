@@ -14,7 +14,17 @@ class RAGService:
     
     def __init__(self):
         """Initialize RAG service"""
-        self.embedding_service = EmbeddingService()
+        try:
+            self.embedding_service = EmbeddingService()
+        except ValueError as e:
+            # Re-raise with clearer message
+            if "OPENAI_API_KEY" in str(e):
+                raise ValueError(
+                    "OPENAI_API_KEY is required for semantic search. "
+                    "Even though Ollama is used for generation, OpenAI embeddings are needed to find relevant content. "
+                    "Please set OPENAI_API_KEY in your settings or environment variables."
+                )
+            raise
         self._session = None
     
     def search_similar_chunks(

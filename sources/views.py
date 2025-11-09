@@ -407,7 +407,17 @@ def agent_chat_api(request):
                 tag_ids = []
         
         # Initialize RAG service
-        rag_service = RAGService()
+        try:
+            rag_service = RAGService()
+        except ValueError as e:
+            # Handle missing OpenAI API key
+            if "OPENAI_API_KEY" in str(e):
+                return JsonResponse({
+                    'error': str(e),
+                    'success': False,
+                    'error_type': 'missing_openai_key'
+                }, status=400)
+            raise
         
         # Generate response
         try:

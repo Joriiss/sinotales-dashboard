@@ -340,7 +340,16 @@
                 }
             } else {
                 const errorMsg = data.error || 'Unknown error occurred';
-                addMessage('agent', `❌ Error: ${errorMsg}\n\n💡 Try selecting a different model or check if Ollama is running.`);
+                let suggestion = '💡 Try selecting a different model or check if Ollama is running.';
+                
+                // Provide specific suggestions based on error type
+                if (data.error_type === 'missing_openai_key' || errorMsg.includes('OPENAI_API_KEY')) {
+                    suggestion = '💡 OpenAI API key is required for semantic search. Please set OPENAI_API_KEY in your settings. Note: Ollama is used for generation, but OpenAI embeddings are needed to find relevant content.';
+                } else if (errorMsg.includes('Ollama') || errorMsg.includes('ollama')) {
+                    suggestion = '💡 Make sure Ollama is running and the selected model is available.';
+                }
+                
+                addMessage('agent', `❌ Error: ${errorMsg}\n\n${suggestion}`);
             }
         } catch (error) {
             removeLoading(loadingId);
