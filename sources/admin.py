@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Source, Content, Tag, ContentChunk
+from django.core.exceptions import ImproperlyConfigured
+
+try:
+    from .models import Source, Content, Tag, ContentChunk
+except ImportError as e:
+    raise ImproperlyConfigured(f"Error importing models in admin.py: {e}")
 
 
 @admin.register(Tag)
