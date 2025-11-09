@@ -76,7 +76,7 @@ class ContentChunkAdmin(admin.ModelAdmin):
     list_display = ['content', 'chunk_index', 'text_preview', 'has_embedding', 'created_at']
     list_filter = ['created_at', 'content__source']
     search_fields = ['content__title', 'text']
-    readonly_fields = ['created_at']
+    readonly_fields = ['created_at', 'has_embedding']
     raw_id_fields = ['content']
     
     fieldsets = (
