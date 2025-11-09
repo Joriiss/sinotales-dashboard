@@ -18,6 +18,11 @@ urlpatterns = [
     path('contents/<int:pk>/', views.content_detail, name='content_detail'),
     path('contents/<int:pk>/edit/', views.content_edit, name='content_edit'),
     path('contents/<int:pk>/delete/', views.content_delete, name='content_delete'),
+    
+    # Agent URLs
+    path('agent/', views.agent_view, name='agent'),
+    path('api/agent/chat/', views.agent_chat_api, name='agent_chat_api'),
+    path('api/agent/models/', views.agent_models_api, name='agent_models_api'),
 ]
 
 

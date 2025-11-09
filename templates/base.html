@@ -248,6 +248,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if 'agent' in request.path %}active{% endif %}" href="{% url 'sources:agent' %}">
+                                <i class="bi bi-chat-dots"></i> Agent
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="#" style="opacity: 0.5; cursor: not-allowed;">
                                 <i class="bi bi-lightbulb"></i> Post Ideas
                             </a>

@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+
+{% block title %}Agent - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1><i class="bi bi-chat-dots me-2"></i>RAG Agent</h1>
+    <p class="text-muted mb-0">Ask questions about your content library</p>
+</div>
+
+<div class="row g-4">
+    <!-- Settings Panel -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Settings</h5>
+            </div>
+            <div class="card-body">
+                <!-- Model Selection -->
+                <div class="mb-3">
+                    <label for="modelSelect" class="form-label">Model</label>
+                    <select class="form-select" id="modelSelect">
+                        <option value="">Loading models...</option>
+                    </select>
+                    <small class="text-muted">Select Ollama model</small>
+                </div>
+                
+                <!-- Chunk Count -->
+                <div class="mb-3">
+                    <label for="chunkCount" class="form-label">Chunks: <span id="chunkCountValue">5</span></label>
+                    <input type="range" class="form-range" id="chunkCount" min="1" max="20" value="5">
+                    <small class="text-muted">Number of context chunks to retrieve</small>
+                </div>
+                
+                <!-- Filters (Collapsible) -->
+                <div class="mb-3">
+                    <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+                        <i class="bi bi-funnel me-1"></i>Filters
+                    </button>
+                    <div class="collapse mt-2" id="filtersCollapse">
+                        <div class="mb-2">
+                            <label for="sourceFilter" class="form-label small">Source</label>
+                            <select class="form-select form-select-sm" id="sourceFilter">
+                                <option value="">All Sources</option>
+                                {% for source in sources %}
+                                <option value="{{ source.id }}">{{ source.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="contentTypeFilter" class="form-label small">Content Type</label>
+                            <select class="form-select form-select-sm" id="contentTypeFilter">
+                                <option value="">All Types</option>
+                                <option value="video">Video</option>
+                                <option value="blog_post">Blog Post</option>
+                                <option value="ebook">Ebook</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="tagFilter" class="form-label small">Tags</label>
+                            <select class="form-select form-select-sm" id="tagFilter" multiple size="5">
+                                {% for tag in tags %}
+                                <option value="{{ tag.id }}">{{ tag.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Clear Chat Button -->
+                <button class="btn btn-outline-danger btn-sm w-100" id="clearChatBtn">
+                    <i class="bi bi-trash me-1"></i>Clear Chat
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Area -->
+    <div class="col-md-9">
+        <div class="card border-0 shadow-sm h-100 d-flex flex-column">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>Chat</h5>
+            </div>
+            <div class="card-body flex-grow-1 d-flex flex-column p-0">
+                <!-- Messages Area -->
+                <div id="chatMessages" class="flex-grow-1 p-4" style="overflow-y: auto; max-height: 600px; background-color: #f8fafc;">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-chat-dots" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p class="mt-3">Start a conversation by asking a question about your content library</p>
+                    </div>
+                </div>
+                
+                <!-- Input Area -->
+                <div class="border-top p-3 bg-white">
+                    <form id="chatForm">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="questionInput" placeholder="Ask a question about your content..." autocomplete="off">
+                            <button class="btn btn-primary" type="submit" id="sendBtn">
+                                <i class="bi bi-send"></i> Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .message {
+        margin-bottom: 1.5rem;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message-user {
+        text-align: right;
+    }
+    
+    .message-user .message-bubble {
+        background-color: #2563eb;
+        color: white;
+        display: inline-block;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem 1rem 0.25rem 1rem;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    
+    .message-agent {
+        text-align: left;
+    }
+    
+    .message-agent .message-bubble {
+        background-color: white;
+        color: #1e293b;
+        display: inline-block;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem 1rem 1rem 0.25rem;
+        max-width: 80%;
+        word-wrap: break-word;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .message-sources {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: #64748b;
+    }
+    
+    .message-sources .source-item {
+        margin: 0.25rem 0;
+        padding: 0.25rem 0.5rem;
+        background-color: #f1f5f9;
+        border-radius: 0.375rem;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+    
+    .loading-indicator {
+        text-align: center;
+        padding: 1rem;
+        color: #64748b;
+    }
+    
+    .loading-indicator .spinner-border {
+        width: 2rem;
+        height: 2rem;
+    }
+</style>
+
+<script>
+    let conversationHistory = [];
+    let availableModels = [];
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadModels();
+        setupEventListeners();
+    });
+    
+    // Load available models from API
+    async function loadModels() {
+        try {
+            const response = await fetch('{% url "sources:agent_models_api" %}');
+            const data = await response.json();
+            
+            if (data.models && data.models.length > 0) {
+                availableModels = data.models;
+                const select = document.getElementById('modelSelect');
+                select.innerHTML = '';
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select a model...';
+                select.appendChild(defaultOption);
+                
+                // Add models
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    select.appendChild(option);
+                });
+                
+                // Auto-select first Chinese model if available, otherwise select smallest model
+                const chineseModel = data.models.find(m => 
+                    m.toLowerCase().includes('qwen') || 
+                    m.toLowerCase().includes('chinese') ||
+                    m.toLowerCase().includes('zh')
+                );
+                if (chineseModel) {
+                    select.value = chineseModel;
+                } else {
+                    // Prefer smaller models (3b, 4b) over larger ones
+                    const smallModel = data.models.find(m => 
+                        m.includes(':3b') || m.includes(':4b') || m.includes('3b') || m.includes('4b')
+                    );
+                    if (smallModel) {
+                        select.value = smallModel;
+                    } else if (data.models.length > 0) {
+                        // Fallback to first model
+                        select.value = data.models[0];
+                    }
+                }
+            } else {
+                document.getElementById('modelSelect').innerHTML = 
+                    '<option value="">No models available. Make sure Ollama is running.</option>';
+            }
+        } catch (error) {
+            console.error('Error loading models:', error);
+            document.getElementById('modelSelect').innerHTML = 
+                '<option value="">Error loading models</option>';
+        }
+    }
+    
+    // Setup event listeners
+    function setupEventListeners() {
+        // Chat form submission
+        document.getElementById('chatForm').addEventListener('submit', handleSubmit);
+        
+        // Chunk count slider
+        document.getElementById('chunkCount').addEventListener('input', function(e) {
+            document.getElementById('chunkCountValue').textContent = e.target.value;
+        });
+        
+        // Clear chat button
+        document.getElementById('clearChatBtn').addEventListener('click', clearChat);
+        
+        // Enter key to send (but allow Shift+Enter for new line)
+        document.getElementById('questionInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    }
+    
+    // Handle form submission
+    async function handleSubmit(e) {
+        e.preventDefault();
+        
+        const question = document.getElementById('questionInput').value.trim();
+        const model = document.getElementById('modelSelect').value;
+        const numChunks = parseInt(document.getElementById('chunkCount').value);
+        const sourceId = document.getElementById('sourceFilter').value || null;
+        const contentType = document.getElementById('contentTypeFilter').value || null;
+        const tagSelect = document.getElementById('tagFilter');
+        const tagIds = Array.from(tagSelect.selectedOptions).map(opt => parseInt(opt.value));
+        
+        if (!question) {
+            return;
+        }
+        
+        if (!model) {
+            alert('Please select a model first');
+            return;
+        }
+        
+        // Clear input
+        document.getElementById('questionInput').value = '';
+        
+        // Add user message to chat
+        addMessage('user', question);
+        
+        // Show loading indicator
+        const loadingId = showLoading();
+        
+        try {
+            // Prepare request data
+            const requestData = {
+                question: question,
+                model: model,
+                num_chunks: numChunks,
+                source_id: sourceId,
+                tag_ids: tagIds,
+                content_type: contentType,
+                conversation_history: conversationHistory
+            };
+            
+            // Send request
+            const response = await fetch('{% url "sources:agent_chat_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json();
+            
+            // Remove loading indicator
+            removeLoading(loadingId);
+            
+            if (data.success && data.answer) {
+                // Check if answer starts with error indicators
+                const isError = data.answer.startsWith('❌') || data.answer.startsWith('Error:');
+                
+                // Add agent response
+                addMessage('agent', data.answer, data.sources);
+                
+                // Only update conversation history if not an error
+                if (!isError) {
+                    conversationHistory.push({
+                        question: question,
+                        answer: data.answer
+                    });
+                    
+                    // Keep only last 10 exchanges
+                    if (conversationHistory.length > 10) {
+                        conversationHistory = conversationHistory.slice(-10);
+                    }
+                }
+            } else {
+                const errorMsg = data.error || 'Unknown error occurred';
+                addMessage('agent', `❌ Error: ${errorMsg}\n\n💡 Try selecting a different model or check if Ollama is running.`);
+            }
+        } catch (error) {
+            removeLoading(loadingId);
+            addMessage('agent', `Error: ${error.message}`);
+        }
+    }
+    
+    // Add message to chat
+    function addMessage(type, text, sources = null) {
+        const messagesDiv = document.getElementById('chatMessages');
+        
+        // Remove empty state if present
+        const emptyState = messagesDiv.querySelector('.text-center.text-muted');
+        if (emptyState) {
+            emptyState.remove();
+        }
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message message-${type}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.textContent = text;
+        messageDiv.appendChild(bubble);
+        
+        // Add sources if provided
+        if (sources && sources.length > 0) {
+            const sourcesDiv = document.createElement('div');
+            sourcesDiv.className = 'message-sources';
+            sourcesDiv.innerHTML = '<strong>Sources:</strong> ';
+            
+            sources.forEach((source, index) => {
+                const sourceSpan = document.createElement('span');
+                sourceSpan.className = 'source-item';
+                sourceSpan.textContent = `${source.title} (${source.source})`;
+                sourceSpan.title = `Similarity: ${(source.similarity * 100).toFixed(1)}%`;
+                sourcesDiv.appendChild(sourceSpan);
+            });
+            
+            messageDiv.appendChild(sourcesDiv);
+        }
+        
+        messagesDiv.appendChild(messageDiv);
+        
+        // Auto-scroll to bottom
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    
+    // Show loading indicator
+    function showLoading() {
+        const messagesDiv = document.getElementById('chatMessages');
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.id = 'loading-indicator';
+        loadingDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div><div class="mt-2">Thinking...</div>';
+        messagesDiv.appendChild(loadingDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        return 'loading-indicator';
+    }
+    
+    // Remove loading indicator
+    function removeLoading(id) {
+        const loading = document.getElementById(id);
+        if (loading) {
+            loading.remove();
+        }
+    }
+    
+    // Clear chat
+    function clearChat() {
+        if (confirm('Clear all chat history?')) {
+            conversationHistory = [];
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-chat-dots" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="mt-3">Start a conversation by asking a question about your content library</p>
+                </div>
+            `;
+        }
+    }
+    
+    // Get CSRF token from cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}
+

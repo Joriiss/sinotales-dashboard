@@ -7,8 +7,12 @@ from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import Length
+from django.http import JsonResponse
+from django.conf import settings
+import json
 from .models import Source, Content, Tag, ContentChunk
 from .forms import SourceForm, ContentForm
+from .rag_service import RAGService
 
 
 class CustomLoginView(LoginView):
@@ -291,3 +295,144 @@ def content_delete(request, pk):
     content.delete()
     messages.success(request, f'Content "{content_title}" deleted successfully!')
     return redirect('sources:content_list')
+
+
+# Agent Views
+@login_required
+def agent_view(request):
+    """Agent chat interface page"""
+    # Get sources and tags for filters
+    sources = Source.objects.all().order_by('name')
+    tags = Tag.objects.all().order_by('name')
+    
+    context = {
+        'sources': sources,
+        'tags': tags,
+    }
+    return render(request, 'sources/agent.html', context)
+
+
+@login_required
+def agent_models_api(request):
+    """API endpoint to fetch available Ollama models"""
+    try:
+        import requests
+    except ImportError:
+        return JsonResponse({'error': 'requests library required'}, status=500)
+    
+    ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+    url = f"{ollama_url}/api/tags"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Extract model names
+        models = []
+        if 'models' in data:
+            for model_info in data['models']:
+                model_name = model_info.get('name', '')
+                if model_name:
+                    models.append(model_name)
+        
+        # Sort models (prefer Chinese models first, then smaller models)
+        chinese_models = [m for m in models if any(keyword in m.lower() for keyword in ['qwen', 'chinese', 'zh', 'cn'])]
+        other_models = [m for m in models if m not in chinese_models]
+        
+        # Within each group, prefer smaller models (3b, 4b) first
+        def sort_key(model_name):
+            name_lower = model_name.lower()
+            # Smaller models first
+            if ':3b' in name_lower or '3b' in name_lower:
+                return (0, name_lower)
+            elif ':4b' in name_lower or '4b' in name_lower:
+                return (1, name_lower)
+            elif ':7b' in name_lower or '7b' in name_lower:
+                return (2, name_lower)
+            elif ':8b' in name_lower or '8b' in name_lower:
+                return (3, name_lower)
+            else:
+                return (4, name_lower)
+        
+        chinese_models.sort(key=sort_key)
+        other_models.sort(key=sort_key)
+        sorted_models = chinese_models + other_models
+        
+        return JsonResponse({'models': sorted_models})
+    except requests.exceptions.ConnectionError:
+        return JsonResponse({'error': 'Could not connect to Ollama. Make sure Ollama is running.'}, status=503)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def agent_chat_api(request):
+    """API endpoint for chat messages"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        question = data.get('question', '').strip()
+        model = data.get('model', '').strip()
+        num_chunks = int(data.get('num_chunks', 5))
+        source_id = data.get('source_id')
+        tag_ids = data.get('tag_ids', [])
+        content_type = data.get('content_type')
+        conversation_history = data.get('conversation_history', [])
+        
+        # Validate inputs
+        if not question:
+            return JsonResponse({'error': 'Question is required'}, status=400)
+        
+        if not model:
+            return JsonResponse({'error': 'Model is required'}, status=400)
+        
+        if num_chunks < 1 or num_chunks > 20:
+            num_chunks = 5
+        
+        # Convert source_id to int if provided
+        if source_id:
+            try:
+                source_id = int(source_id)
+            except (ValueError, TypeError):
+                source_id = None
+        
+        # Convert tag_ids to list of ints
+        if tag_ids:
+            try:
+                tag_ids = [int(tid) for tid in tag_ids if tid]
+            except (ValueError, TypeError):
+                tag_ids = []
+        
+        # Initialize RAG service
+        rag_service = RAGService()
+        
+        # Generate response
+        try:
+            answer, sources = rag_service.generate_response(
+                question=question,
+                model=model,
+                num_chunks=num_chunks,
+                source_id=source_id,
+                tag_ids=tag_ids if tag_ids else None,
+                content_type=content_type,
+                conversation_history=conversation_history
+            )
+            
+            return JsonResponse({
+                'answer': answer,
+                'sources': sources,
+                'success': True
+            })
+        except Exception as e:
+            return JsonResponse({
+                'error': str(e),
+                'success': False
+            }, status=500)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
