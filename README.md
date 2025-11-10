@@ -383,41 +383,45 @@ The dashboard includes a vector embedding system for semantic search using OpenA
 
 ### Generate Embeddings
 
-Generate embeddings for all content with text:
+**Important**: The embedding script only processes content that has **both text content AND at least one tag**. This ensures embeddings are only generated for properly categorized content.
+
+Generate embeddings for all eligible content:
 
 ```bash
-python manage.py generate_embeddings --has-content-only
+python manage.py generate_embeddings
 ```
 
 Generate embeddings for specific number of items (for testing):
 
 ```bash
-python manage.py generate_embeddings --limit 10 --has-content-only
+python manage.py generate_embeddings --limit 10
 ```
 
 Skip content that already has embeddings:
 
 ```bash
-python manage.py generate_embeddings --has-content-only --skip-embedded
+python manage.py generate_embeddings --skip-embedded
 ```
 
 Generate embeddings for content from a specific source:
 
 ```bash
-python manage.py generate_embeddings --source 1 --has-content-only
+python manage.py generate_embeddings --source 1
 ```
 
 ### Embedding Options
 
 - `--limit N`: Process only N content items
 - `--skip-embedded`: Skip content that already has all chunks embedded
-- `--has-content-only`: Only process content that has text content
+- `--has-content-only`: (Deprecated) Now always enforced - content must have text
 - `--source ID`: Only process content from specific source ID
 - `--chunk-size N`: Max characters per chunk (default: 8000)
 - `--overlap N`: Overlap between chunks in characters (default: 200)
 - `--workers N`: Number of parallel workers (default: 1, recommended: 3-5)
 - `--delay N`: Delay between API requests in seconds (default: 0.05)
 - `--dry-run`: Show what would be processed without saving
+
+**Note**: Content without tags or without text content will be automatically skipped during processing.
 
 ### How Embeddings Work
 
@@ -426,7 +430,7 @@ python manage.py generate_embeddings --source 1 --has-content-only
 3. **Embedding Content**: Each chunk's embedding includes:
    - Content title
    - Chunk text content
-   - Associated tags (if any)
+   - Associated tags (required - content must have tags to be embedded)
 4. **Storage**: Embeddings are stored in the `content_chunks` table with an HNSW vector index for fast similarity search
 5. **Metadata**: Other fields (source, date, link) are stored as metadata for filtering, not included in embeddings
 
