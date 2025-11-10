@@ -65,6 +65,23 @@
             box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
         }
         
+        .sidebar .logout-button {
+            color: #cbd5e1;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            font-size: 0.875rem;
+            width: 100%;
+            text-align: left;
+        }
+        
+        .sidebar .logout-button:hover {
+            background-color: var(--sidebar-hover);
+            color: #fff;
+            transform: translateX(4px);
+        }
+        
         .main-content {
             padding: 2.5rem;
             background-color: #f8fafc;
@@ -476,9 +493,12 @@
                                 <div class="text-white-50 small mb-1">
                                     <i class="bi bi-person-circle me-1"></i> {{ user.username }}
                                 </div>
-                                <a class="nav-link p-0" href="{% url 'logout' %}" style="font-size: 0.875rem;">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
-                                </a>
+                                <form method="post" action="{% url 'logout' %}" style="display: inline; width: 100%;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="logout-button border-0 bg-transparent">
+                                        <i class="bi bi-box-arrow-right"></i> Logout
+                                    </button>
+                                </form>
                             </div>
                         </li>
                     </ul>
