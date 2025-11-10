@@ -42,12 +42,14 @@
                     <dt class="col-sm-3">Date:</dt>
                     <dd class="col-sm-9">{{ content.date|date:"F d, Y" }}</dd>
                     
+                    {% if content.link %}
                     <dt class="col-sm-3">Link:</dt>
                     <dd class="col-sm-9">
                         <a href="{{ content.link }}" target="_blank" class="text-decoration-none">
                             <i class="bi bi-link-45deg"></i> {{ content.link|truncatechars:60 }}
                         </a>
                     </dd>
+                    {% endif %}
                     
                     <dt class="col-sm-3">Has Content:</dt>
                     <dd class="col-sm-9">
@@ -133,9 +135,11 @@
                             <i class="bi bi-trash"></i> Delete Content
                         </button>
                     </form>
+                    {% if content.link %}
                     <a href="{{ content.link }}" target="_blank" class="btn btn-outline-primary">
                         <i class="bi bi-box-arrow-up-right"></i> Open Link
                     </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

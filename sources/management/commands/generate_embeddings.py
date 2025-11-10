@@ -90,8 +90,11 @@ class Command(BaseCommand):
             # Only get content that doesn't have any chunks yet
             queryset = queryset.filter(chunks__isnull=True)
         
-        if has_content_only:
-            queryset = queryset.filter(has_content=True)
+        # Only process content that has content text
+        queryset = queryset.filter(has_content=True)
+        
+        # Only process content that has at least one tag
+        queryset = queryset.filter(tags__isnull=False).distinct()
         
         if source_id:
             queryset = queryset.filter(source_id=source_id)
@@ -106,6 +109,7 @@ class Command(BaseCommand):
             return
         
         self.stdout.write(f'\nFound {total} content item(s) to process')
+        self.stdout.write(self.style.SUCCESS('Note: Only processing content with both text content and tags'))
         if skip_embedded:
             self.stdout.write(self.style.WARNING('Note: Skipping content that already has embeddings'))
         if dry_run:
@@ -151,8 +155,30 @@ class Command(BaseCommand):
                 # Get tags
                 tags = list(content.tags.values_list('name', flat=True))
                 
+                # Skip if no tags (safety check)
+                if not tags:
+                    with counters_lock:
+                        skipped_count += 1
+                    return {
+                        'status': 'skipped',
+                        'title': content.title[:50],
+                        'reason': 'no tags',
+                        'chunks': 0
+                    }
+                
                 # Get content text
                 content_text = content.content if hasattr(content, 'content') else ""
+                
+                # Skip if no content text (safety check)
+                if not content_text or not content_text.strip():
+                    with counters_lock:
+                        skipped_count += 1
+                    return {
+                        'status': 'skipped',
+                        'title': content.title[:50],
+                        'reason': 'no content text',
+                        'chunks': 0
+                    }
                 
                 # Get service for this thread
                 thread_service = get_service()
