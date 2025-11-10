@@ -200,6 +200,7 @@ def content_list(request):
     content_type_filter = request.GET.get('content_type', '').strip()
     has_content_filter = request.GET.get('has_content', '').strip()
     processed_filter = request.GET.get('processed', '').strip()
+    tag_filter = request.GET.get('tag', '').strip()
     search_query = request.GET.get('search', '').strip()
     
     if source_filter:
@@ -210,6 +211,8 @@ def content_list(request):
         contents = contents.filter(has_content=(has_content_filter == 'true'))
     if processed_filter:
         contents = contents.filter(processed=(processed_filter == 'true'))
+    if tag_filter:
+        contents = contents.filter(tags__id=tag_filter).distinct()
     if search_query:
         contents = contents.filter(
             title__icontains=search_query
@@ -226,10 +229,12 @@ def content_list(request):
         'page_obj': page_obj,
         'contents': page_obj,
         'sources': Source.objects.all(),
+        'tags': Tag.objects.all().order_by('name'),
         'source_filter': source_filter,
         'content_type_filter': content_type_filter,
         'has_content_filter': has_content_filter,
         'processed_filter': processed_filter,
+        'tag_filter': tag_filter,
         'search_query': search_query,
     }
     return render(request, 'sources/content_list.html', context)
