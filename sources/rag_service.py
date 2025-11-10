@@ -7,6 +7,8 @@ from django.db.models import Q
 from pgvector.django import CosineDistance
 from .models import ContentChunk, Content, Tag
 from .embedding_service import EmbeddingService
+import re
+import requests
 
 
 class RAGService:
@@ -26,6 +28,7 @@ class RAGService:
                 )
             raise
         self._session = None
+        self._web_session = None
     
     def search_similar_chunks(
         self,
@@ -131,11 +134,212 @@ class RAGService:
         
         return "\n\n---\n\n".join(context_parts)
     
+    def search_web(self, query: str, num_results: int = 3) -> List[Dict]:
+        """
+        Search the web for additional information
+        
+        Args:
+            query: Search query
+            num_results: Number of results to return
+            
+        Returns:
+            List of dicts with web results: {
+                'title': str,
+                'url': str,
+                'snippet': str,
+                'score': float
+            }
+        """
+        # Try different search APIs in order of preference
+        tavily_api_key = getattr(settings, 'TAVILY_API_KEY', None)
+        if tavily_api_key:
+            return self._search_tavily(query, num_results, tavily_api_key)
+        
+        serper_api_key = getattr(settings, 'SERPER_API_KEY', None)
+        if serper_api_key:
+            return self._search_serper(query, num_results, serper_api_key)
+        
+        google_api_key = getattr(settings, 'GOOGLE_API_KEY', None)
+        google_cse_id = getattr(settings, 'GOOGLE_CSE_ID', None)
+        if google_api_key and google_cse_id:
+            return self._search_google(query, num_results, google_api_key, google_cse_id)
+        
+        # No API key configured
+        return []
+    
+    def _search_tavily(self, query: str, num_results: int, api_key: str) -> List[Dict]:
+        """Search using Tavily API (optimized for RAG)"""
+        if self._web_session is None:
+            self._web_session = requests.Session()
+        
+        url = "https://api.tavily.com/search"
+        payload = {
+            "api_key": api_key,
+            "query": query,
+            "search_depth": "basic",
+            "include_answer": True,
+            "include_raw_content": False,
+            "max_results": num_results
+        }
+        
+        try:
+            response = self._web_session.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = []
+            # Tavily provides an answer summary
+            if data.get('answer'):
+                results.append({
+                    'title': 'Web Search Summary',
+                    'url': '',
+                    'snippet': data['answer'],
+                    'score': 1.0
+                })
+            
+            # Add individual results
+            for result in data.get('results', []):
+                results.append({
+                    'title': result.get('title', ''),
+                    'url': result.get('url', ''),
+                    'snippet': result.get('content', ''),
+                    'score': result.get('score', 0.8)
+                })
+            
+            return results[:num_results]
+        except Exception as e:
+            print(f"Tavily search error: {e}")
+            return []
+    
+    def _search_serper(self, query: str, num_results: int, api_key: str) -> List[Dict]:
+        """Search using Serper API"""
+        if self._web_session is None:
+            self._web_session = requests.Session()
+        
+        url = "https://google.serper.dev/search"
+        headers = {
+            "X-API-KEY": api_key,
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "q": query,
+            "num": num_results
+        }
+        
+        try:
+            response = self._web_session.post(url, headers=headers, json=payload, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = []
+            for result in data.get('organic', []):
+                results.append({
+                    'title': result.get('title', ''),
+                    'url': result.get('link', ''),
+                    'snippet': result.get('snippet', ''),
+                    'score': 0.8
+                })
+            
+            return results
+        except Exception as e:
+            print(f"Serper search error: {e}")
+            return []
+    
+    def _search_google(self, query: str, num_results: int, api_key: str, cse_id: str) -> List[Dict]:
+        """Search using Google Custom Search API"""
+        if self._web_session is None:
+            self._web_session = requests.Session()
+        
+        url = "https://www.googleapis.com/customsearch/v1"
+        params = {
+            "key": api_key,
+            "cx": cse_id,
+            "q": query,
+            "num": min(num_results, 10)  # Google limits to 10
+        }
+        
+        try:
+            response = self._web_session.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = []
+            for item in data.get('items', []):
+                results.append({
+                    'title': item.get('title', ''),
+                    'url': item.get('link', ''),
+                    'snippet': item.get('snippet', ''),
+                    'score': 0.8
+                })
+            
+            return results
+        except Exception as e:
+            print(f"Google search error: {e}")
+            return []
+    
+    def _format_context_with_web(self, chunks: List[Dict], web_results: List[Dict] = None) -> str:
+        """
+        Format retrieved chunks and web results as context for LLM
+        """
+        context_parts = []
+        
+        # Database context
+        if chunks:
+            context_parts.append("=== Information from your content library ===")
+            for i, chunk_data in enumerate(chunks, 1):
+                title = chunk_data['title']
+                tags = chunk_data['tags']
+                text = chunk_data['text']
+                source = chunk_data['source_name']
+                
+                context_part = f"[Source {i}] {title}"
+                if tags:
+                    context_part += f" (Tags: {', '.join(tags)})"
+                context_part += f"\nFrom: {source}\n\n{text}"
+                context_parts.append(context_part)
+        else:
+            context_parts.append("No relevant information found in your content library.")
+        
+        # Web context
+        if web_results:
+            context_parts.append("\n\n=== Additional information from the web ===")
+            for i, web_result in enumerate(web_results, 1):
+                context_part = f"[Web Source {i}] {web_result['title']}\n"
+                if web_result['url']:
+                    context_part += f"URL: {web_result['url']}\n"
+                context_part += f"Content: {web_result['snippet']}"
+                context_parts.append(context_part)
+        
+        return "\n\n---\n\n".join(context_parts)
+    
+    def _extract_search_request(self, text: str) -> Optional[str]:
+        """
+        Extract web search request from LLM response
+        Looks for patterns like: SEARCH: <query> or [SEARCH: <query>]
+        """
+        # Pattern 1: SEARCH: query
+        match = re.search(r'SEARCH:\s*(.+?)(?:\n|$)', text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        
+        # Pattern 2: [SEARCH: query]
+        match = re.search(r'\[SEARCH:\s*(.+?)\]', text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        
+        # Pattern 3: search_web("query")
+        match = re.search(r'search_web\(["\'](.+?)["\']\)', text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        
+        return None
+    
     def _create_rag_prompt(
         self,
         question: str,
         context: str,
-        conversation_history: Optional[List[Dict]] = None
+        conversation_history: Optional[List[Dict]] = None,
+        web_search_enabled: bool = False
     ) -> str:
         """
         Create RAG prompt with context and conversation history
@@ -144,6 +348,7 @@ class RAGService:
             question: Current user question
             context: Formatted context from retrieved chunks
             conversation_history: Optional list of previous Q&A pairs
+            web_search_enabled: Whether web search is available
         
         Returns:
             Formatted prompt string
@@ -151,12 +356,26 @@ class RAGService:
         prompt_parts = []
         
         # System instruction
-        prompt_parts.append(
+        instruction = (
             "You are a helpful assistant that answers questions about China based on the provided context. "
-            "Answer the question using only the information from the context. "
-            "If the answer cannot be found in the context, say so clearly. "
+            "Answer the question using the information from the context. "
             "Be concise and accurate."
         )
+        
+        # Add web search instructions if enabled
+        if web_search_enabled:
+            instruction += (
+                "\n\nIf you need more current information, recent data, or the database context is insufficient, "
+                "you can request a web search by responding with exactly: SEARCH: <your search query>\n"
+                "For example: SEARCH: current visa requirements for China 2024\n"
+                "Only request a search if truly needed. Otherwise, answer based on the provided context."
+            )
+        else:
+            instruction += (
+                " If the answer cannot be found in the context, say so clearly."
+            )
+        
+        prompt_parts.append(instruction)
         
         # Conversation history (if any)
         if conversation_history:
@@ -245,10 +464,11 @@ class RAGService:
         source_id: Optional[int] = None,
         tag_ids: Optional[List[int]] = None,
         content_type: Optional[str] = None,
-        conversation_history: Optional[List[Dict]] = None
+        conversation_history: Optional[List[Dict]] = None,
+        web_search_enabled: bool = False
     ) -> Tuple[str, List[Dict]]:
         """
-        Generate RAG response: search + LLM generation
+        Generate RAG response: search + LLM generation with optional web search
         
         Args:
             question: User's question
@@ -258,6 +478,7 @@ class RAGService:
             tag_ids: Optional tag filter
             content_type: Optional content type filter
             conversation_history: Optional conversation history
+            web_search_enabled: Whether to allow LLM to request web searches
         
         Returns:
             Tuple of (answer_text, sources_list)
@@ -274,14 +495,16 @@ class RAGService:
         # Format context
         context = self._format_context(chunks)
         
-        # Create prompt
-        prompt = self._create_rag_prompt(question, context, conversation_history)
+        # Create prompt with web search instructions if enabled
+        prompt = self._create_rag_prompt(question, context, conversation_history, web_search_enabled)
         
-        # Generate response
+        # Generate initial response
         try:
             answer = self._call_ollama(prompt, model)
         except ConnectionError as e:
             answer = f"❌ Connection Error: {str(e)}\n\nPlease make sure Ollama is running."
+            sources = []
+            return answer, sources
         except Exception as e:
             error_msg = str(e)
             # Check if it's a memory error
@@ -296,18 +519,66 @@ class RAGService:
                 )
             else:
                 answer = f"❌ Error: {error_msg}\n\n💡 Try selecting a different model or check if Ollama is running properly."
+            sources = []
+            return answer, sources
         
-        # Format sources for return (simplified)
+        # Check if LLM requested a web search
+        web_results = []
+        if web_search_enabled:
+            search_query = self._extract_search_request(answer)
+            if search_query:
+                # Perform web search
+                try:
+                    web_results = self.search_web(search_query, num_results=3)
+                    
+                    if web_results:
+                        # Update context with web results
+                        context = self._format_context_with_web(chunks, web_results)
+                        
+                        # Create new prompt with web results
+                        followup_prompt = self._create_rag_prompt(
+                            question, 
+                            context, 
+                            conversation_history, 
+                            web_search_enabled=False  # Don't allow another search
+                        )
+                        
+                        # Generate final answer with web context
+                        try:
+                            answer = self._call_ollama(followup_prompt, model)
+                            # Remove the SEARCH: line from answer if present
+                            answer = re.sub(r'SEARCH:\s*.+', '', answer, flags=re.IGNORECASE).strip()
+                        except Exception as e:
+                            # If followup fails, use original answer
+                            print(f"Followup generation error: {e}")
+                except Exception as e:
+                    # Web search failed, continue with original answer
+                    print(f"Web search error: {e}")
+                    answer += f"\n\n(Note: Web search was requested but unavailable: {str(e)})"
+        
+        # Format sources for return
         sources = [
             {
                 'title': chunk['title'],
                 'source': chunk['source_name'],
                 'content_type': chunk['content_type'],
                 'tags': chunk['tags'],
-                'similarity': round(chunk['similarity'], 3)
+                'similarity': round(chunk['similarity'], 3),
+                'type': 'database'
             }
             for chunk in chunks
         ]
+        
+        # Add web sources
+        for web_result in web_results:
+            sources.append({
+                'title': web_result['title'],
+                'source': web_result['url'] if web_result['url'] else 'Web Search',
+                'content_type': 'Web',
+                'tags': [],
+                'similarity': round(web_result.get('score', 0.7), 3),
+                'type': 'web'
+            })
         
         return answer, sources
 

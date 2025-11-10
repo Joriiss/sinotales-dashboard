@@ -386,6 +386,7 @@ def agent_chat_api(request):
         tag_ids = data.get('tag_ids', [])
         content_type = data.get('content_type')
         conversation_history = data.get('conversation_history', [])
+        web_search_enabled = data.get('web_search_enabled', False)
         
         # Validate inputs
         if not question:
@@ -433,7 +434,8 @@ def agent_chat_api(request):
                 source_id=source_id,
                 tag_ids=tag_ids if tag_ids else None,
                 content_type=content_type,
-                conversation_history=conversation_history
+                conversation_history=conversation_history,
+                web_search_enabled=web_search_enabled
             )
             
             return JsonResponse({

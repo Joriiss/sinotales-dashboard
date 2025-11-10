@@ -32,6 +32,17 @@
                     <small class="text-muted">Number of context chunks to retrieve</small>
                 </div>
                 
+                <!-- Web Search Toggle -->
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="webSearchToggle" checked>
+                        <label class="form-check-label" for="webSearchToggle">
+                            <i class="bi bi-globe me-1"></i>Enable Internet Search
+                        </label>
+                    </div>
+                    <small class="text-muted">Allow AI to search the web when needed</small>
+                </div>
+                
                 <!-- Filters (Collapsible) -->
                 <div class="mb-3">
                     <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
@@ -147,6 +158,78 @@
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
+    .message-agent .message-bubble table {
+        border-collapse: collapse;
+        margin: 1rem 0;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        display: block;
+    }
+    
+    .message-agent .message-bubble table th,
+    .message-agent .message-bubble table td {
+        border: 1px solid #e2e8f0;
+        padding: 0.5rem;
+        text-align: left;
+    }
+    
+    .message-agent .message-bubble table th {
+        background-color: #f1f5f9;
+        font-weight: 600;
+    }
+    
+    .message-agent .message-bubble table tr:nth-child(even) {
+        background-color: #f8fafc;
+    }
+    
+    .message-agent .message-bubble ul,
+    .message-agent .message-bubble ol {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .message-agent .message-bubble li {
+        margin: 0.25rem 0;
+    }
+    
+    .message-agent .message-bubble p {
+        margin: 0.5rem 0;
+    }
+    
+    .message-agent .message-bubble p:first-child {
+        margin-top: 0;
+    }
+    
+    .message-agent .message-bubble p:last-child {
+        margin-bottom: 0;
+    }
+    
+    .message-agent .message-bubble strong {
+        font-weight: 600;
+    }
+    
+    .message-agent .message-bubble code {
+        background-color: #f1f5f9;
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+    }
+    
+    .message-agent .message-bubble pre {
+        background-color: #f1f5f9;
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+        overflow-x: auto;
+        margin: 0.5rem 0;
+    }
+    
+    .message-agent .message-bubble pre code {
+        background-color: transparent;
+        padding: 0;
+    }
+    
     .message-sources {
         margin-top: 0.5rem;
         font-size: 0.875rem;
@@ -160,6 +243,15 @@
         border-radius: 0.375rem;
         display: inline-block;
         margin-right: 0.5rem;
+    }
+    
+    .message-sources .source-item a {
+        color: #2563eb;
+        font-weight: 500;
+    }
+    
+    .message-sources .source-item a:hover {
+        text-decoration: underline;
     }
     
     .loading-indicator {
@@ -273,6 +365,7 @@
         const contentType = document.getElementById('contentTypeFilter').value || null;
         const tagSelect = document.getElementById('tagFilter');
         const tagIds = Array.from(tagSelect.selectedOptions).map(opt => parseInt(opt.value));
+        const webSearchEnabled = document.getElementById('webSearchToggle').checked;
         
         if (!question) {
             return;
@@ -301,7 +394,8 @@
                 source_id: sourceId,
                 tag_ids: tagIds,
                 content_type: contentType,
-                conversation_history: conversationHistory
+                conversation_history: conversationHistory,
+                web_search_enabled: webSearchEnabled
             };
             
             // Send request
@@ -372,7 +466,14 @@
         
         const bubble = document.createElement('div');
         bubble.className = 'message-bubble';
-        bubble.textContent = text;
+        
+        // Render markdown for agent messages, plain text for user messages
+        if (type === 'agent') {
+            bubble.innerHTML = renderMarkdown(text);
+        } else {
+            bubble.textContent = text;
+        }
+        
         messageDiv.appendChild(bubble);
         
         // Add sources if provided
@@ -384,8 +485,27 @@
             sources.forEach((source, index) => {
                 const sourceSpan = document.createElement('span');
                 sourceSpan.className = 'source-item';
-                sourceSpan.textContent = `${source.title} (${source.source})`;
-                sourceSpan.title = `Similarity: ${(source.similarity * 100).toFixed(1)}%`;
+                
+                // Different display for web vs database sources
+                if (source.type === 'web') {
+                    if (source.source && source.source.startsWith('http')) {
+                        const link = document.createElement('a');
+                        link.href = source.source;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        link.textContent = source.title || source.source;
+                        link.className = 'text-decoration-none';
+                        sourceSpan.appendChild(link);
+                        sourceSpan.innerHTML += ' <i class="bi bi-globe text-primary"></i>';
+                    } else {
+                        sourceSpan.textContent = `${source.title} (Web)`;
+                    }
+                    sourceSpan.title = 'Web source';
+                } else {
+                    sourceSpan.textContent = `${source.title} (${source.source})`;
+                    sourceSpan.title = `Similarity: ${(source.similarity * 100).toFixed(1)}%`;
+                }
+                
                 sourcesDiv.appendChild(sourceSpan);
             });
             
@@ -445,6 +565,176 @@
             }
         }
         return cookieValue;
+    }
+    
+    // Simple markdown renderer for tables, bold, lists, etc.
+    function renderMarkdown(text) {
+        if (!text) return '';
+        
+        let html = text;
+        
+        // Process tables first (before other replacements)
+        // Match: header row, separator row, and data rows
+        html = html.replace(/(\|[^\n]+\|\n\|[:\s\-|]+\|\n(?:\|[^\n]+\|\n?)+)/g, function(tableMatch) {
+            const lines = tableMatch.trim().split('\n');
+            if (lines.length < 2) return tableMatch;
+            
+            // First line is header
+            const headerCells = lines[0].split('|').map(c => c.trim()).filter(c => c);
+            // Second line is separator (skip it)
+            // Remaining lines are data rows
+            const dataRows = lines.slice(2).filter(line => line.trim());
+            
+            let tableHtml = '<table>';
+            
+            // Header row
+            if (headerCells.length > 0) {
+                tableHtml += '<thead><tr>';
+                headerCells.forEach(cell => {
+                    // Process markdown in header cells (bold, etc.)
+                    let cellContent = escapeHtml(cell);
+                    cellContent = cellContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    cellContent = cellContent.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+                    tableHtml += '<th>' + cellContent + '</th>';
+                });
+                tableHtml += '</tr></thead>';
+            }
+            
+            // Data rows
+            if (dataRows.length > 0) {
+                tableHtml += '<tbody>';
+                dataRows.forEach(row => {
+                    const cells = row.split('|').map(c => c.trim()).filter(c => c);
+                    tableHtml += '<tr>';
+                    cells.forEach(cell => {
+                        // Process markdown in cells (bold, lists, etc.)
+                        let cellContent = escapeHtml(cell);
+                        // Bold text
+                        cellContent = cellContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        // Bullet points (• or *)
+                        cellContent = cellContent.replace(/^[•\*]\s+(.+)$/gm, '<li>$1</li>');
+                        // Wrap list items
+                        if (cellContent.includes('<li>')) {
+                            cellContent = '<ul>' + cellContent + '</ul>';
+                        }
+                        // Line breaks
+                        cellContent = cellContent.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+                        tableHtml += '<td>' + cellContent + '</td>';
+                    });
+                    tableHtml += '</tr>';
+                });
+                tableHtml += '</tbody>';
+            }
+            
+            tableHtml += '</table>';
+            return tableHtml;
+        });
+        
+        // Escape remaining HTML (but preserve already processed tables)
+        const tablePlaceholder = '___TABLE_PLACEHOLDER___';
+        const tables = [];
+        html = html.replace(/<table>[\s\S]*?<\/table>/g, function(match) {
+            tables.push(match);
+            return tablePlaceholder;
+        });
+        
+        // Escape HTML
+        html = html.replace(/&/g, '&amp;')
+                   .replace(/</g, '&lt;')
+                   .replace(/>/g, '&gt;');
+        
+        // Restore tables
+        tables.forEach(table => {
+            html = html.replace(tablePlaceholder, table);
+        });
+        
+        // Restore escaped markdown characters
+        html = html.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+        
+        // Headers
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+        
+        // Bold (tables already processed, so this is for remaining content)
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Italic (only if not already inside HTML tags)
+        html = html.replace(/\*([^*]+?)\*/g, function(match, content) {
+            // Skip if inside HTML tag or table
+            if (match.includes('<') || match.includes('>') || match.includes('table')) {
+                return match;
+            }
+            return '<em>' + content + '</em>';
+        });
+        
+        // Code blocks
+        html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Lists (unordered)
+        html = html.replace(/^[\*\-] (.+)$/gim, '<li>$1</li>');
+        // Lists (ordered)
+        html = html.replace(/^\d+\. (.+)$/gim, '<li>$1</li>');
+        
+        // Wrap consecutive list items in ul
+        html = html.replace(/(<li>.*?<\/li>\s*)+/g, function(match) {
+            return '<ul>' + match + '</ul>';
+        });
+        
+        // Paragraphs (text between blank lines, but not inside tables/lists)
+        const blockElements = ['table', 'ul', 'ol', 'h1', 'h2', 'h3', 'pre'];
+        const lines = html.split('\n');
+        let inBlock = false;
+        let result = [];
+        let currentPara = [];
+        
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            const isBlockStart = blockElements.some(tag => trimmed.startsWith('<' + tag));
+            const isBlockEnd = blockElements.some(tag => trimmed.endsWith('</' + tag + '>'));
+            
+            if (isBlockStart) {
+                if (currentPara.length > 0) {
+                    result.push('<p>' + currentPara.join(' ') + '</p>');
+                    currentPara = [];
+                }
+                inBlock = true;
+                result.push(trimmed);
+            } else if (isBlockEnd) {
+                result.push(trimmed);
+                inBlock = false;
+            } else if (inBlock || trimmed.startsWith('<')) {
+                result.push(trimmed);
+            } else if (trimmed) {
+                currentPara.push(trimmed);
+            } else {
+                if (currentPara.length > 0) {
+                    result.push('<p>' + currentPara.join(' ') + '</p>');
+                    currentPara = [];
+                }
+            }
+        });
+        
+        if (currentPara.length > 0) {
+            result.push('<p>' + currentPara.join(' ') + '</p>');
+        }
+        
+        html = result.join('\n');
+        
+        // Line breaks (but not inside pre/code blocks)
+        html = html.replace(/\n/g, '<br>');
+        html = html.replace(/<br><\/pre>/g, '</pre>');
+        html = html.replace(/<br><\/code>/g, '</code>');
+        
+        return html;
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 </script>
 {% endblock %}
