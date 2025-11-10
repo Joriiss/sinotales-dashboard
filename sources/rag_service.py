@@ -136,7 +136,7 @@ class RAGService:
     
     def search_web(self, query: str, num_results: int = 3) -> List[Dict]:
         """
-        Search the web for additional information
+        Search the web for additional information with automatic fallback
         
         Args:
             query: Search query
@@ -150,22 +150,52 @@ class RAGService:
                 'score': float
             }
         """
-        # Try different search APIs in order of preference
         tavily_api_key = getattr(settings, 'TAVILY_API_KEY', None)
-        if tavily_api_key:
-            return self._search_tavily(query, num_results, tavily_api_key)
-        
         serper_api_key = getattr(settings, 'SERPER_API_KEY', None)
-        if serper_api_key:
-            return self._search_serper(query, num_results, serper_api_key)
-        
         google_api_key = getattr(settings, 'GOOGLE_API_KEY', None)
         google_cse_id = getattr(settings, 'GOOGLE_CSE_ID', None)
+        
+        # Try Tavily first (if configured)
+        if tavily_api_key:
+            try:
+                print(f"Trying Tavily API for web search")
+                return self._search_tavily(query, num_results, tavily_api_key)
+            except Exception as e:
+                error_msg = str(e).lower()
+                # Check if it's a rate limit, quota, or credit limit error
+                if any(keyword in error_msg for keyword in [
+                    'rate limit', 'quota', '429', '402', 'limit exceeded', 
+                    'credits', 'exceeded', 'insufficient', 'payment required'
+                ]):
+                    print(f"Tavily rate limit/quota exceeded, falling back to Serper...")
+                else:
+                    print(f"Tavily API error: {e}, falling back to Serper...")
+                # Fall through to try Serper
+        
+        # Try Serper as fallback (if configured)
+        if serper_api_key:
+            try:
+                print(f"Trying Serper API for web search")
+                return self._search_serper(query, num_results, serper_api_key)
+            except Exception as e:
+                print(f"Serper API error: {e}")
+                # Fall through to try Google if Serper also fails
+        
+        # Try Google as last resort (if configured)
         if google_api_key and google_cse_id:
-            return self._search_google(query, num_results, google_api_key, google_cse_id)
+            try:
+                print(f"Trying Google Custom Search API for web search")
+                return self._search_google(query, num_results, google_api_key, google_cse_id)
+            except Exception as e:
+                print(f"Google API error: {e}")
+                raise Exception(f"All web search APIs failed. Last error: {str(e)}")
         
         # No API key configured
-        return []
+        print("No web search API key configured")
+        raise Exception(
+            "No web search API key configured. "
+            "Please set TAVILY_API_KEY, SERPER_API_KEY, or GOOGLE_API_KEY in your settings."
+        )
     
     def _search_tavily(self, query: str, num_results: int, api_key: str) -> List[Dict]:
         """Search using Tavily API (optimized for RAG)"""
@@ -187,6 +217,10 @@ class RAGService:
             response.raise_for_status()
             data = response.json()
             
+            # Check for errors in response
+            if 'error' in data:
+                raise Exception(f"Tavily API error: {data['error']}")
+            
             results = []
             # Tavily provides an answer summary
             if data.get('answer'):
@@ -206,10 +240,22 @@ class RAGService:
                     'score': result.get('score', 0.8)
                 })
             
-            return results[:num_results]
+            print(f"Tavily search successful: {len(results)} results")
+            return results[:num_results] if results else []
+        except requests.exceptions.HTTPError as e:
+            error_detail = ""
+            try:
+                error_json = response.json()
+                error_detail = error_json.get('error', str(e))
+            except:
+                error_detail = response.text[:200] if hasattr(response, 'text') else str(e)
+            print(f"Tavily HTTP error: {error_detail}")
+            raise Exception(f"Tavily API HTTP error: {error_detail}")
         except Exception as e:
             print(f"Tavily search error: {e}")
-            return []
+            import traceback
+            traceback.print_exc()
+            raise
     
     def _search_serper(self, query: str, num_results: int, api_key: str) -> List[Dict]:
         """Search using Serper API"""
@@ -231,6 +277,10 @@ class RAGService:
             response.raise_for_status()
             data = response.json()
             
+            # Check for errors in response
+            if 'error' in data:
+                raise Exception(f"Serper API error: {data['error']}")
+            
             results = []
             for result in data.get('organic', []):
                 results.append({
@@ -240,10 +290,22 @@ class RAGService:
                     'score': 0.8
                 })
             
-            return results
+            print(f"Serper search successful: {len(results)} results")
+            return results if results else []
+        except requests.exceptions.HTTPError as e:
+            error_detail = ""
+            try:
+                error_json = response.json()
+                error_detail = error_json.get('message', error_json.get('error', str(e)))
+            except:
+                error_detail = response.text[:200] if hasattr(response, 'text') else str(e)
+            print(f"Serper HTTP error: {error_detail}")
+            raise Exception(f"Serper API HTTP error: {error_detail}")
         except Exception as e:
             print(f"Serper search error: {e}")
-            return []
+            import traceback
+            traceback.print_exc()
+            raise
     
     def _search_google(self, query: str, num_results: int, api_key: str, cse_id: str) -> List[Dict]:
         """Search using Google Custom Search API"""
@@ -529,7 +591,9 @@ class RAGService:
             if search_query:
                 # Perform web search
                 try:
+                    print(f"Web search requested: {search_query}")
                     web_results = self.search_web(search_query, num_results=3)
+                    print(f"Web search returned {len(web_results)} results")
                     
                     if web_results:
                         # Update context with web results
@@ -545,16 +609,48 @@ class RAGService:
                         
                         # Generate final answer with web context
                         try:
-                            answer = self._call_ollama(followup_prompt, model)
+                            print("Generating followup answer with web results...")
+                            followup_answer = self._call_ollama(followup_prompt, model)
                             # Remove the SEARCH: line from answer if present
-                            answer = re.sub(r'SEARCH:\s*.+', '', answer, flags=re.IGNORECASE).strip()
+                            answer = re.sub(r'SEARCH:\s*.+', '', followup_answer, flags=re.IGNORECASE).strip()
+                            # Also remove any remaining SEARCH: lines
+                            answer = re.sub(r'SEARCH:\s*.+', '', answer, flags=re.IGNORECASE | re.MULTILINE).strip()
+                            
+                            # If answer is empty after removing SEARCH line, use the followup answer
+                            if not answer or len(answer) < 10:
+                                answer = followup_answer
+                                # Try one more time to clean it
+                                answer = re.sub(r'SEARCH:\s*.+', '', answer, flags=re.IGNORECASE | re.MULTILINE).strip()
+                            
+                            print(f"Followup answer generated successfully (length: {len(answer)})")
                         except Exception as e:
-                            # If followup fails, use original answer
+                            # If followup fails, use original answer but inform user
                             print(f"Followup generation error: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            answer = (
+                                f"I requested a web search for: {search_query}\n\n"
+                                f"However, I encountered an error generating the final answer. "
+                                f"Error: {str(e)}"
+                            )
+                    else:
+                        # Web search returned no results
+                        print("Web search returned no results")
+                        answer = (
+                            f"I requested a web search for: {search_query}\n\n"
+                            f"However, the search did not return any results. "
+                            f"This might be due to API configuration issues or the search query."
+                        )
                 except Exception as e:
-                    # Web search failed, continue with original answer
+                    # Web search failed, inform user
                     print(f"Web search error: {e}")
-                    answer += f"\n\n(Note: Web search was requested but unavailable: {str(e)})"
+                    import traceback
+                    traceback.print_exc()
+                    answer = (
+                        f"I requested a web search for: {search_query}\n\n"
+                        f"However, the web search failed: {str(e)}\n\n"
+                        f"Please check your API key configuration (TAVILY_API_KEY, SERPER_API_KEY, or GOOGLE_API_KEY)."
+                    )
         
         # Format sources for return
         sources = [

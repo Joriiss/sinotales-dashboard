@@ -156,4 +156,10 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_EMBEDDING_MODEL = os.environ.get('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
 OPENAI_EMBEDDING_DIMENSIONS = int(os.environ.get('OPENAI_EMBEDDING_DIMENSIONS', 1536))
 
+# Web search API settings (for RAG agent)
+TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', None)
+SERPER_API_KEY = os.environ.get('SERPER_API_KEY', None)
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', None)
+GOOGLE_CSE_ID = os.environ.get('GOOGLE_CSE_ID', None)
+
 
