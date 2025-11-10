@@ -11,7 +11,7 @@
 
 <!-- Statistics Cards -->
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -20,7 +20,7 @@
                         <h2 class="mb-0 fw-bold">{{ total_sources }}</h2>
                         <small class="text-muted">{{ active_sources }} active</small>
                     </div>
-                    <div class="text-primary" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-primary d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-collection"></i>
                     </div>
                 </div>
@@ -37,7 +37,7 @@
                         <h2 class="mb-0 fw-bold">{{ total_contents }}</h2>
                         <small class="text-muted">{{ contents_with_text }} with text</small>
                     </div>
-                    <div class="text-success" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-success d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-file-text"></i>
                     </div>
                 </div>
@@ -45,7 +45,7 @@
         </div>
     </div>
     
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -54,7 +54,7 @@
                         <h2 class="mb-0 fw-bold">{{ total_words|floatformat:0|intcomma }}</h2>
                         <small class="text-muted">~{{ total_mb|floatformat:2 }} MB</small>
                     </div>
-                    <div class="text-info" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-info d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-file-earmark-text"></i>
                     </div>
                 </div>
@@ -62,7 +62,7 @@
         </div>
     </div>
     
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -78,7 +78,7 @@
                             {% endif %}
                         </small>
                     </div>
-                    <div class="text-warning" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-warning d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-check-circle"></i>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
 
 <!-- Additional Statistics Cards -->
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -98,7 +98,7 @@
                         <h2 class="mb-0 fw-bold">{{ total_tags }}</h2>
                         <small class="text-muted">{{ contents_with_tags }} content tagged</small>
                     </div>
-                    <div class="text-danger" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-danger d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-tags"></i>
                     </div>
                 </div>
@@ -106,7 +106,7 @@
         </div>
     </div>
     
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -115,7 +115,7 @@
                         <h2 class="mb-0 fw-bold">{{ total_chunks }}</h2>
                         <small class="text-muted">{{ chunks_with_embeddings }} embedded</small>
                     </div>
-                    <div class="text-purple" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-purple d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-stack"></i>
                     </div>
                 </div>
@@ -123,7 +123,7 @@
         </div>
     </div>
     
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -138,7 +138,7 @@
                             {% endif %}
                         </small>
                     </div>
-                    <div class="text-indigo" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-indigo d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-diagram-3"></i>
                     </div>
                 </div>
@@ -146,7 +146,7 @@
         </div>
     </div>
     
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -161,7 +161,7 @@
                         </h2>
                         <small class="text-muted">{{ chunks_with_embeddings }}/{{ total_chunks }} chunks</small>
                     </div>
-                    <div class="text-teal" style="font-size: 2.5rem; opacity: 0.2;">
+                    <div class="text-teal d-none d-md-block" style="font-size: 2.5rem; opacity: 0.2;">
                         <i class="bi bi-graph-up-arrow"></i>
                     </div>
                 </div>
@@ -172,7 +172,7 @@
 
 <div class="row g-4">
     <!-- Content Breakdown -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Content by Type</h5>
@@ -203,7 +203,7 @@
     </div>
     
     <!-- Sources Breakdown -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Sources by Type</h5>
@@ -237,11 +237,11 @@
 
 <div class="row g-4 mt-2">
     <!-- Top Sources -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Top Sources</h5>
-                <a href="{% url 'sources:source_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-column flex-md-row">
+                <h5 class="mb-0 mb-md-0"><i class="bi bi-trophy me-2"></i>Top Sources</h5>
+                <a href="{% url 'sources:source_list' %}" class="btn btn-sm btn-outline-primary mt-2 mt-md-0">View All</a>
             </div>
             <div class="card-body">
                 {% if top_sources %}
@@ -267,7 +267,7 @@
     </div>
     
     <!-- Language Breakdown -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="bi bi-translate me-2"></i>Sources by Language</h5>
@@ -302,7 +302,7 @@
 
 <div class="row g-4 mt-2">
     <!-- Top Tags -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="bi bi-tags me-2"></i>Top Tags</h5>
@@ -328,7 +328,7 @@
     </div>
     
     <!-- Embedding Status -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Embedding Status</h5>
@@ -379,11 +379,11 @@
 
 <div class="row g-4 mt-2">
     <!-- Recent Content -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Content</h5>
-                <a href="{% url 'sources:content_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-column flex-md-row">
+                <h5 class="mb-0 mb-md-0"><i class="bi bi-clock-history me-2"></i>Recent Content</h5>
+                <a href="{% url 'sources:content_list' %}" class="btn btn-sm btn-outline-primary mt-2 mt-md-0">View All</a>
             </div>
             <div class="card-body">
                 {% if recent_contents %}
@@ -415,11 +415,11 @@
     </div>
     
     <!-- Recent Sources -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Recent Sources</h5>
-                <a href="{% url 'sources:source_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-column flex-md-row">
+                <h5 class="mb-0 mb-md-0"><i class="bi bi-plus-circle me-2"></i>Recent Sources</h5>
+                <a href="{% url 'sources:source_list' %}" class="btn btn-sm btn-outline-primary mt-2 mt-md-0">View All</a>
             </div>
             <div class="card-body">
                 {% if recent_sources %}
