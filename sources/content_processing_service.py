@@ -3,6 +3,9 @@ Service for processing content: extract, translate, tag, and embed
 """
 from typing import Optional
 from django.db import transaction
+from django.conf import settings
+from pathlib import Path
+import os
 from .models import Content, Tag, ContentChunk
 from .content_extraction_service import extract_article_content
 from .services import TaggingService
@@ -27,29 +30,100 @@ except ImportError:
     YOUTUBE_TRANSCRIPT_AVAILABLE = False
     YouTubeTranscriptApi = None
 
+# Proxy support
+try:
+    from youtube_transcript_api.proxies import WebshareProxyConfig
+    PROXY_SUPPORT = True
+except ImportError:
+    PROXY_SUPPORT = False
+    WebshareProxyConfig = None
+
 
 class ContentProcessingService:
     """Service for processing content through the full pipeline"""
     
-    def __init__(self, tagging_provider=None, tagging_model=None):
+    def __init__(self, tagging_provider=None, tagging_model=None, use_proxy=False):
         """
         Initialize the processing service
         
         Args:
             tagging_provider: Provider for tagging ('ollama' or 'openai'). If None, uses settings.
             tagging_model: Model name for tagging (optional). If None, uses settings.
+            use_proxy: If True, use Webshare proxies for YouTube transcript fetching (for batch operations)
         """
         # Get settings from database if not provided
         if tagging_provider is None or tagging_model is None:
-            from .models import Settings
-            settings = Settings.get_settings()
+            from .models import Settings as SettingsModel
+            app_settings = SettingsModel.get_settings()
             if tagging_provider is None:
-                tagging_provider = settings.default_tagging_provider
+                tagging_provider = app_settings.default_tagging_provider
             if tagging_model is None:
-                tagging_model = settings.default_tagging_model
+                tagging_model = app_settings.default_tagging_model
         
         self.tagging_service = TaggingService(provider=tagging_provider, model=tagging_model)
         self.embedding_service = EmbeddingService()
+        self.use_proxy = use_proxy
+        self._proxy_config = None
+        
+        # Load proxy config if requested
+        if use_proxy and PROXY_SUPPORT:
+            self._proxy_config = self._load_proxy_config()
+    
+    def _load_proxy_config(self):
+        """
+        Load Webshare proxy configuration from .env file or environment variables.
+        
+        Returns:
+            WebshareProxyConfig instance or None
+        """
+        if not PROXY_SUPPORT:
+            return None
+        
+        # Try to get from environment variables first
+        proxy_username = os.environ.get('WEBSHARE_PROXY_USERNAME', '').strip()
+        proxy_password = os.environ.get('WEBSHARE_PROXY_PASSWORD', '').strip()
+        
+        # If not in environment, try to load from .env file
+        if not proxy_username or not proxy_password:
+            # Try to find .env file in project root
+            base_dir = Path(settings.BASE_DIR)
+            env_file = base_dir / '.env'
+            
+            if env_file.exists():
+                try:
+                    with open(env_file, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#'):
+                                continue
+                            if '=' in line:
+                                key, value = line.split('=', 1)
+                                key = key.strip()
+                                value = value.strip()
+                                # Remove quotes if present
+                                if value.startswith('"') and value.endswith('"'):
+                                    value = value[1:-1]
+                                elif value.startswith("'") and value.endswith("'"):
+                                    value = value[1:-1]
+                                
+                                if key == 'WEBSHARE_PROXY_USERNAME':
+                                    proxy_username = value
+                                elif key == 'WEBSHARE_PROXY_PASSWORD':
+                                    proxy_password = value
+                except Exception as e:
+                    print(f"Warning: Could not read .env file: {str(e)}")
+        
+        if proxy_username and proxy_password:
+            try:
+                return WebshareProxyConfig(
+                    proxy_username=proxy_username,
+                    proxy_password=proxy_password
+                )
+            except Exception as e:
+                print(f"Warning: Could not create proxy config: {str(e)}")
+                return None
+        
+        return None
     
     def extract_youtube_video_id(self, url: str) -> Optional[str]:
         """
@@ -125,7 +199,11 @@ class ContentProcessingService:
             return False
         
         try:
-            api = YouTubeTranscriptApi()
+            # Create API instance with proxy config if available
+            if self._proxy_config:
+                api = YouTubeTranscriptApi(proxy_config=self._proxy_config)
+            else:
+                api = YouTubeTranscriptApi()
             
             # Get source language for preferred transcript language
             source_language = None

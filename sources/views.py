@@ -687,6 +687,40 @@ def agent_models_api(request):
 
 
 @login_required
+def youtube_channels_api(request):
+    """API endpoint to get all YouTube channel sources"""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        # Get all YouTube channel sources
+        youtube_sources = Source.objects.filter(
+            source_type='youtube',
+            channel_id__isnull=False
+        ).exclude(channel_id='').order_by('name')
+        
+        # Build response data
+        channels = []
+        for source in youtube_sources:
+            channels.append({
+                'name': source.name,
+                'channel_id': source.channel_id,
+                'include_shorts': source.include_shorts
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'channels': channels,
+            'count': len(channels)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
 def agent_chat_api(request):
     """API endpoint for chat messages"""
     if request.method != 'POST':
