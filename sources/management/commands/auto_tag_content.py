@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction, IntegrityError
 from sources.models import Content, Tag
 from sources.services import TaggingService
+from sources.utils import log_activity
 import time
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -224,6 +225,14 @@ class Command(BaseCommand):
                     # Save tags to content
                     with transaction.atomic():
                         content.tags.set(tag_objects)
+                        # Log individual content tagging
+                        log_activity(
+                            'content_tagged',
+                            f'Content "{content.title}" was tagged with {len(generated_tags)} tags',
+                            content=content,
+                            source=content.source,
+                            metadata={'tags': generated_tags, 'new_tags': new_tags_count}
+                        )
                 
                 with counters_lock:
                     tagged_count += 1
@@ -315,4 +324,16 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('\nDRY RUN - No changes were saved'))
         else:
             self.stdout.write(self.style.SUCCESS('\n✓ Tagging complete!'))
+            # Log summary activity
+            if tagged_count > 0:
+                log_activity(
+                    'tags_created',
+                    f'Tagged {tagged_count} content items and created {tags_created} new tags',
+                    metadata={
+                        'tagged_count': tagged_count,
+                        'tags_created': tags_created,
+                        'skipped_count': skipped_count,
+                        'error_count': error_count,
+                    }
+                )
 

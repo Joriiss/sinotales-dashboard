@@ -11,6 +11,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from sources.models import Source, Content
+from sources.utils import log_activity
 
 # Translation imports
 try:
@@ -499,6 +500,19 @@ class Command(BaseCommand):
         if errors > 0:
             self.stdout.write(self.style.ERROR(f'  Errors: {errors}'))
         self.stdout.write(self.style.SUCCESS('=' * 50))
+        
+        # Log the import activity
+        if imported > 0:
+            log_activity(
+                'import_completed',
+                f'Imported {imported} ebook content items from CSV',
+                metadata={
+                    'imported': imported,
+                    'skipped': skipped,
+                    'content_loaded': content_loaded if load_content else 0,
+                    'errors': errors,
+                }
+            )
     
     def find_part_files(self, title, author, txt_dir):
         """Find all part files for a given ebook title and author"""

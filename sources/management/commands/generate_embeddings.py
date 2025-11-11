@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from sources.models import Content, ContentChunk
 from sources.embedding_service import EmbeddingService
+from sources.utils import log_activity
 import time
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -332,4 +333,16 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('\nDRY RUN - No changes were saved'))
         else:
             self.stdout.write(self.style.SUCCESS('\n✓ Embedding generation complete!'))
+            # Log the activity
+            if processed_count > 0:
+                log_activity(
+                    'embeddings_generated',
+                    f'Generated embeddings for {processed_count} content items ({total_chunks} chunks total)',
+                    metadata={
+                        'processed_count': processed_count,
+                        'total_chunks': total_chunks,
+                        'skipped_count': skipped_count,
+                        'error_count': error_count,
+                    }
+                )
 

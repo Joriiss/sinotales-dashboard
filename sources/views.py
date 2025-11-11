@@ -10,9 +10,10 @@ from django.db.models.functions import Length
 from django.http import JsonResponse
 from django.conf import settings
 import json
-from .models import Source, Content, Tag, ContentChunk
+from .models import Source, Content, Tag, ContentChunk, ActivityLog
 from .forms import SourceForm, ContentForm
 from .rag_service import RAGService
+from .utils import log_activity
 
 
 class CustomLoginView(LoginView):
@@ -144,6 +145,12 @@ def source_add(request):
         form = SourceForm(request.POST)
         if form.is_valid():
             source = form.save()
+            log_activity(
+                'source_created',
+                f'Source "{source.name}" ({source.get_source_type_display()}) was created',
+                user=request.user,
+                source=source
+            )
             messages.success(request, f'Source "{source.name}" added successfully!')
             return redirect('sources:source_list')
     else:
@@ -165,6 +172,12 @@ def source_edit(request, pk):
         form = SourceForm(request.POST, instance=source)
         if form.is_valid():
             source = form.save()
+            log_activity(
+                'source_updated',
+                f'Source "{source.name}" ({source.get_source_type_display()}) was updated',
+                user=request.user,
+                source=source
+            )
             messages.success(request, f'Source "{source.name}" updated successfully!')
             return redirect('sources:source_list')
     else:
@@ -184,6 +197,13 @@ def source_delete(request, pk):
     """Delete a source"""
     source = get_object_or_404(Source, pk=pk)
     source_name = source.name
+    source_type = source.get_source_type_display()
+    log_activity(
+        'source_deleted',
+        f'Source "{source_name}" ({source_type}) was deleted',
+        user=request.user,
+        source=source
+    )
     source.delete()
     messages.success(request, f'Source "{source_name}" deleted successfully!')
     return redirect('sources:source_list')
@@ -247,6 +267,13 @@ def content_add(request):
         form = ContentForm(request.POST)
         if form.is_valid():
             content = form.save()
+            log_activity(
+                'content_created',
+                f'Content "{content.title}" ({content.get_content_type_display()}) was created',
+                user=request.user,
+                content=content,
+                source=content.source
+            )
             messages.success(request, f'Content "{content.title}" added successfully!')
             return redirect('sources:content_list')
     else:
@@ -268,6 +295,13 @@ def content_edit(request, pk):
         form = ContentForm(request.POST, instance=content)
         if form.is_valid():
             content = form.save()
+            log_activity(
+                'content_updated',
+                f'Content "{content.title}" ({content.get_content_type_display()}) was updated',
+                user=request.user,
+                content=content,
+                source=content.source
+            )
             messages.success(request, f'Content "{content.title}" updated successfully!')
             return redirect('sources:content_list')
     else:
@@ -297,6 +331,15 @@ def content_delete(request, pk):
     """Delete a content"""
     content = get_object_or_404(Content, pk=pk)
     content_title = content.title
+    content_type = content.get_content_type_display()
+    source = content.source
+    log_activity(
+        'content_deleted',
+        f'Content "{content_title}" ({content_type}) was deleted',
+        user=request.user,
+        content=content,
+        source=source
+    )
     content.delete()
     messages.success(request, f'Content "{content_title}" deleted successfully!')
     return redirect('sources:content_list')
@@ -453,3 +496,30 @@ def agent_chat_api(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+# Logs View
+@login_required
+def logs_view(request):
+    """Display activity logs"""
+    logs = ActivityLog.objects.select_related('source', 'content').all()
+    
+    # Filtering
+    activity_type_filter = request.GET.get('activity_type', '').strip()
+    if activity_type_filter:
+        logs = logs.filter(activity_type=activity_type_filter)
+    
+    # Pagination
+    paginator = Paginator(logs, 50)  # Show 50 logs per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Get activity type choices for filter
+    activity_types = ActivityLog.ACTIVITY_TYPE_CHOICES
+    
+    context = {
+        'logs': page_obj,
+        'activity_types': activity_types,
+        'activity_type_filter': activity_type_filter,
+    }
+    return render(request, 'sources/logs.html', context)

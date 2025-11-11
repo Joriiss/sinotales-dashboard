@@ -23,6 +23,9 @@ urlpatterns = [
     path('agent/', views.agent_view, name='agent'),
     path('api/agent/chat/', views.agent_chat_api, name='agent_chat_api'),
     path('api/agent/models/', views.agent_models_api, name='agent_models_api'),
+    
+    # Logs
+    path('logs/', views.logs_view, name='logs'),
 ]
 
 

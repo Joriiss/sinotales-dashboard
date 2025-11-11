@@ -285,3 +285,72 @@ class ContentChunk(models.Model):
         return f"Chunk {self.chunk_index} of {self.content.title}"
 
 
+class ActivityLog(models.Model):
+    """
+    Logs of activities performed in the system
+    """
+    ACTIVITY_TYPE_CHOICES = [
+        ('source_created', 'Source Created'),
+        ('source_updated', 'Source Updated'),
+        ('source_deleted', 'Source Deleted'),
+        ('content_created', 'Content Created'),
+        ('content_updated', 'Content Updated'),
+        ('content_deleted', 'Content Deleted'),
+        ('content_tagged', 'Content Tagged'),
+        ('embeddings_generated', 'Embeddings Generated'),
+        ('tags_created', 'Tags Created'),
+        ('import_completed', 'Import Completed'),
+    ]
+    
+    activity_type = models.CharField(
+        max_length=50,
+        choices=ACTIVITY_TYPE_CHOICES,
+        help_text="Type of activity"
+    )
+    description = models.TextField(
+        help_text="Description of the activity"
+    )
+    user = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        help_text="User who performed the activity (if applicable)"
+    )
+    # Optional foreign keys to related objects
+    source = models.ForeignKey(
+        Source,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activity_logs',
+        help_text="Related source (if applicable)"
+    )
+    content = models.ForeignKey(
+        Content,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activity_logs',
+        help_text="Related content (if applicable)"
+    )
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional metadata (e.g., count of items processed)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'activity_logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['activity_type']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['source']),
+            models.Index(fields=['content']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_activity_type_display()} - {self.description[:50]}"
+
+
