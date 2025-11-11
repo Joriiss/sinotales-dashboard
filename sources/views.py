@@ -740,6 +740,7 @@ def youtube_channels_api(request):
         channels = []
         for source in youtube_sources:
             channels.append({
+                'id': source.id,
                 'name': source.name,
                 'channel_id': source.channel_id,
                 'include_shorts': source.include_shorts
