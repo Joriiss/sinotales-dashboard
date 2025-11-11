@@ -162,4 +162,7 @@ SERPER_API_KEY = os.environ.get('SERPER_API_KEY', None)
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', None)
 GOOGLE_CSE_ID = os.environ.get('GOOGLE_CSE_ID', None)
 
+# API Token for external API access
+API_TOKEN = os.environ.get('API_TOKEN', '')
+
 

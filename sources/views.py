@@ -686,11 +686,39 @@ def agent_models_api(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@login_required
 def youtube_channels_api(request):
-    """API endpoint to get all YouTube channel sources"""
+    """API endpoint to get all YouTube channel sources (token-based authentication)"""
     if request.method != 'GET':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Token-based authentication
+    api_token = settings.API_TOKEN
+    if not api_token:
+        return JsonResponse({
+            'success': False,
+            'error': 'API token not configured'
+        }, status=500)
+    
+    # Get token from Authorization header or query parameter
+    provided_token = None
+    
+    # Check Authorization header: "Token <token>" or "Bearer <token>"
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    if auth_header:
+        parts = auth_header.split()
+        if len(parts) == 2 and parts[0].lower() in ('token', 'bearer'):
+            provided_token = parts[1]
+    
+    # Check query parameter
+    if not provided_token:
+        provided_token = request.GET.get('token', None)
+    
+    # Validate token
+    if not provided_token or provided_token != api_token:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid or missing authentication token'
+        }, status=401)
     
     try:
         # Get all YouTube channel sources
