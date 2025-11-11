@@ -59,14 +59,16 @@ def get_youtube_api_key() -> Optional[str]:
     return api_key
 
 
-def get_channel_videos(channel_id: str, include_shorts: bool = False, api_key: Optional[str] = None, fetch_details: bool = False) -> List[Dict]:
+def get_channel_videos(channel_id: str, include_shorts: bool = False, api_key: Optional[str] = None, fetch_details: bool = False, max_videos: Optional[int] = None) -> List[Dict]:
     """
-    Retrieves all videos from a YouTube channel.
+    Retrieves videos from a YouTube channel.
     
     Args:
         channel_id: YouTube channel ID
         include_shorts: Whether to include videos under 90 seconds (shorts)
         api_key: YouTube API key (if None, tries to get from settings)
+        fetch_details: Whether to fetch description and tags
+        max_videos: Maximum number of videos to fetch (None = all)
         
     Returns:
         List of dicts with keys: 'video_id', 'title', 'upload_date', 'duration', 'link'
@@ -80,21 +82,25 @@ def get_channel_videos(channel_id: str, include_shorts: bool = False, api_key: O
     if not api_key:
         raise ValueError("YouTube API key is required. Set YOUTUBE_API_KEY in settings or environment.")
     
+    print(f"  Building YouTube API client...", flush=True)
     youtube = googleapiclient.discovery.build("youtube", "v3", developerKey=api_key)
     video_data = []
     
     try:
         # 1. Get the 'uploads' playlist ID
+        print(f"  Calling YouTube API: channels().list()...", flush=True)
         channel_request = youtube.channels().list(
             part="contentDetails",
             id=channel_id
         )
         channel_response = channel_request.execute()
+        print(f"  ✓ Channel info retrieved", flush=True)
         
         if not channel_response.get('items'):
             raise ValueError(f"Channel ID {channel_id} not found")
         
         uploads_playlist_id = channel_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+        print(f"  Uploads playlist ID: {uploads_playlist_id}", flush=True)
     except (IndexError, KeyError) as e:
         raise ValueError(f"Could not retrieve 'uploads' playlist ID. Check the Channel ID: {str(e)}")
     except Exception as e:
@@ -102,9 +108,12 @@ def get_channel_videos(channel_id: str, include_shorts: bool = False, api_key: O
     
     # 2. Get video IDs from the playlist (with pagination)
     next_page_token = None
+    page_count = 0
     
     while True:
         try:
+            page_count += 1
+            print(f"  Fetching page {page_count} of playlist items...", flush=True)
             playlist_request = youtube.playlistItems().list(
                 part="snippet,contentDetails",
                 playlistId=uploads_playlist_id,
@@ -112,6 +121,7 @@ def get_channel_videos(channel_id: str, include_shorts: bool = False, api_key: O
                 pageToken=next_page_token
             )
             playlist_response = playlist_request.execute()
+            print(f"  ✓ Page {page_count} retrieved ({len(playlist_response.get('items', []))} items)", flush=True)
             
             # Extract video IDs for batch lookup
             video_ids = []
@@ -121,11 +131,13 @@ def get_channel_videos(channel_id: str, include_shorts: bool = False, api_key: O
             
             # 3. Batch Request for Upload Dates, Titles, and Duration
             if video_ids:
+                print(f"  Fetching details for {len(video_ids)} videos...", flush=True)
                 video_details_request = youtube.videos().list(
                     part="snippet,contentDetails",
                     id=",".join(video_ids)
                 )
                 video_details_response = video_details_request.execute()
+                print(f"  ✓ Video details retrieved", flush=True)
                 
                 for item in video_details_response.get('items', []):
                     video_id = item['id']
@@ -165,14 +177,25 @@ def get_channel_videos(channel_id: str, include_shorts: bool = False, api_key: O
                         'description': description,
                         'tags': tags
                     })
+                    
+                    # Stop if we've reached the max_videos limit
+                    if max_videos and len(video_data) >= max_videos:
+                        print(f"  Reached max_videos limit ({max_videos}), stopping...", flush=True)
+                        return video_data
             
             # Check for the next page token
             next_page_token = playlist_response.get('nextPageToken')
             if not next_page_token:
+                print(f"  No more pages to fetch", flush=True)
+                break
+            
+            # Stop if we've reached max_videos
+            if max_videos and len(video_data) >= max_videos:
                 break
                 
         except Exception as e:
             raise Exception(f"Error during pagination: {str(e)}")
     
+    print(f"  Total videos fetched: {len(video_data)}", flush=True)
     return video_data
 

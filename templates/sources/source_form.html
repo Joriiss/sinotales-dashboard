@@ -138,8 +138,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <form method="post" action="{% url 'sources:source_edit' source.pk %}" id="get-videos-form" style="display: inline;">
                     {% csrf_token %}
                     <button type="submit" name="get_videos" id="get-videos-btn" class="btn btn-outline-primary" 
-                            onclick="if(confirm('This will fetch the most recent video from this YouTube channel, check if it exists, and judge its relevance. Continue?')) { showLoadingState(); return true; } else { return false; }">
-                        <i class="bi bi-youtube"></i> <span id="get-videos-text">Test Most Recent Video</span>
+                            onclick="if(confirm('This will fetch all videos from this YouTube channel and create content entries. This may take a while. Continue?')) { showLoadingState(); return true; } else { return false; }">
+                        <i class="bi bi-youtube"></i> <span id="get-videos-text">Get Videos</span>
                         <span id="get-videos-spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
                     </button>
                 </form>
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const spinner = document.getElementById('get-videos-spinner');
                     if (btn && text && spinner) {
                         btn.disabled = true;
-                        text.textContent = 'Testing...';
+                        text.textContent = 'Fetching Videos...';
                         spinner.classList.remove('d-none');
                     }
                 }
