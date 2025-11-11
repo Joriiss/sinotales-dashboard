@@ -11,8 +11,8 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.utils.html import json_script
 import json
-from .models import Source, Content, Tag, ContentChunk, ActivityLog
-from .forms import SourceForm, ContentForm
+from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings
+from .forms import SourceForm, ContentForm, SettingsForm
 from .rag_service import RAGService
 from .utils import log_activity
 from .content_processing_service import ContentProcessingService
@@ -270,6 +270,15 @@ def content_add(request):
         if form.is_valid():
             content = form.save()
             
+            # Log content creation BEFORE processing
+            log_activity(
+                'content_created',
+                f'Content "{content.title}" ({content.get_content_type_display()}) was created',
+                user=request.user,
+                content=content,
+                source=content.source
+            )
+            
             # Process content: extract, translate, tag, embed
             try:
                 processing_service = ContentProcessingService()
@@ -280,6 +289,9 @@ def content_add(request):
                     tag=True,
                     embed=True
                 )
+                
+                # Refresh content to get latest state (especially has_content)
+                content.refresh_from_db()
                 
                 # Log processing results
                 processing_summary = []
@@ -309,14 +321,6 @@ def content_add(request):
                     request, 
                     f'Content "{content.title}" added, but processing encountered an error: {str(e)}'
                 )
-            
-            log_activity(
-                'content_created',
-                f'Content "{content.title}" ({content.get_content_type_display()}) was created',
-                user=request.user,
-                content=content,
-                source=content.source
-            )
             
             return redirect('sources:content_list')
     else:
@@ -364,6 +368,56 @@ def content_edit(request, pk):
         else:
             messages.warning(request, 'Content can only be fetched for blog posts with a valid link.')
         # Redirect back to edit page to show updated content
+        return redirect('sources:content_edit', pk=content.pk)
+    
+    # Handle add tags action
+    if request.method == 'POST' and 'add_tags' in request.POST:
+        if not content.content or not content.content.strip():
+            messages.warning(request, 'Content must have text before tags can be added.')
+        else:
+            try:
+                processing_service = ContentProcessingService()
+                # Force re-tagging even if tags already exist
+                content.tags.clear()  # Clear existing tags to force re-tagging
+                tagged = processing_service.add_tags(content)
+                if tagged:
+                    messages.success(request, f'Tags added successfully to "{content.title}"')
+                    content.refresh_from_db()
+                else:
+                    messages.warning(request, f'Could not add tags. Check console for details.')
+            except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"Error adding tags: {str(e)}")
+                print(error_trace)
+                messages.error(request, f'Error adding tags: {str(e)}')
+        # Redirect back to edit page
+        return redirect('sources:content_edit', pk=content.pk)
+    
+    # Handle generate embeddings action
+    if request.method == 'POST' and 'generate_embeddings' in request.POST:
+        if not content.content or not content.content.strip():
+            messages.warning(request, 'Content must have text before embeddings can be generated.')
+        elif not content.tags.exists():
+            messages.warning(request, 'Content must have tags before embeddings can be generated.')
+        else:
+            try:
+                processing_service = ContentProcessingService()
+                # Force re-embedding even if embeddings already exist
+                content.chunks.all().delete()  # Clear existing chunks to force re-embedding
+                embedded = processing_service.generate_embeddings(content)
+                if embedded:
+                    messages.success(request, f'Embeddings generated successfully for "{content.title}"')
+                    content.refresh_from_db()
+                else:
+                    messages.warning(request, f'Could not generate embeddings. Check console for details.')
+            except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"Error generating embeddings: {str(e)}")
+                print(error_trace)
+                messages.error(request, f'Error generating embeddings: {str(e)}')
+        # Redirect back to edit page
         return redirect('sources:content_edit', pk=content.pk)
     
     if request.method == 'POST':
@@ -610,3 +664,33 @@ def logs_view(request):
         'activity_type_filter': activity_type_filter,
     }
     return render(request, 'sources/logs.html', context)
+
+
+@login_required
+def settings_view(request):
+    """View and edit application settings"""
+    settings = Settings.get_settings()
+    
+    if request.method == 'POST':
+        form = SettingsForm(request.POST, instance=settings)
+        if form.is_valid():
+            form.save()
+            log_activity(
+                'settings_updated',
+                'Application settings were updated',
+                user=request.user,
+                metadata={
+                    'tagging_provider': form.cleaned_data.get('default_tagging_provider'),
+                    'tagging_model': form.cleaned_data.get('default_tagging_model'),
+                }
+            )
+            messages.success(request, 'Settings updated successfully!')
+            return redirect('sources:settings')
+    else:
+        form = SettingsForm(instance=settings)
+    
+    context = {
+        'form': form,
+        'settings': settings,
+    }
+    return render(request, 'sources/settings.html', context)

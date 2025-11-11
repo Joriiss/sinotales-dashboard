@@ -21,14 +21,23 @@ except ImportError:
 class ContentProcessingService:
     """Service for processing content through the full pipeline"""
     
-    def __init__(self, tagging_provider='ollama', tagging_model=None):
+    def __init__(self, tagging_provider=None, tagging_model=None):
         """
         Initialize the processing service
         
         Args:
-            tagging_provider: Provider for tagging ('ollama' or 'openai')
-            tagging_model: Model name for tagging (optional)
+            tagging_provider: Provider for tagging ('ollama' or 'openai'). If None, uses settings.
+            tagging_model: Model name for tagging (optional). If None, uses settings.
         """
+        # Get settings from database if not provided
+        if tagging_provider is None or tagging_model is None:
+            from .models import Settings
+            settings = Settings.get_settings()
+            if tagging_provider is None:
+                tagging_provider = settings.default_tagging_provider
+            if tagging_model is None:
+                tagging_model = settings.default_tagging_model
+        
         self.tagging_service = TaggingService(provider=tagging_provider, model=tagging_model)
         self.embedding_service = EmbeddingService()
     
@@ -65,6 +74,8 @@ class ContentProcessingService:
             
             if result and result.get('content'):
                 content.content = result['content']
+                # Set has_content explicitly since we're using update_fields
+                content.has_content = True
                 
                 # Update date if missing and we found one
                 if result.get('date') and not content.date:
@@ -80,8 +91,8 @@ class ContentProcessingService:
                     except (ValueError, AttributeError):
                         pass
                 
-                # Save the extracted content
-                content.save(update_fields=['content', 'date'])
+                # Save the extracted content (include has_content in update_fields)
+                content.save(update_fields=['content', 'date', 'has_content'])
                 return True
         except Exception as e:
             # Log error but don't fail

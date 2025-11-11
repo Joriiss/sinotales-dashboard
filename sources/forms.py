@@ -1,6 +1,6 @@
 from django import forms
 from django.utils.text import slugify
-from .models import Source, Content
+from .models import Source, Content, Settings
 
 
 class SourceForm(forms.ModelForm):
@@ -188,5 +188,32 @@ class ContentForm(forms.ModelForm):
                     pass
         
         return cleaned_data
+
+
+class SettingsForm(forms.ModelForm):
+    class Meta:
+        model = Settings
+        fields = [
+            'default_tagging_provider',
+            'default_tagging_model',
+            'default_embedding_provider',
+        ]
+        widgets = {
+            'default_tagging_provider': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'default_tagging_model': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., gpt-oss:20b-cloud, llama3.2:latest'
+            }),
+            'default_embedding_provider': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+        }
+        help_texts = {
+            'default_tagging_provider': 'Provider for AI-powered content tagging',
+            'default_tagging_model': 'Model name for tagging (Ollama: e.g., gpt-oss:20b-cloud, llama3.2:latest | OpenAI: e.g., gpt-3.5-turbo)',
+            'default_embedding_provider': 'Provider for generating content embeddings',
+        }
 
 

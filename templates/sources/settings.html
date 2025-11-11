@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-column flex-md-row">
+    <div>
+        <h1><i class="bi bi-gear me-2"></i>Settings</h1>
+        <p class="text-muted mb-0">Configure application settings</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-sliders me-2"></i>Application Settings</h6>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <!-- Tagging Settings -->
+            <div class="mb-4">
+                <h5 class="mb-3"><i class="bi bi-tags me-2"></i>Tagging Settings</h5>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.default_tagging_provider.id_for_label }}" class="form-label">
+                            Default Tagging Provider
+                        </label>
+                        {{ form.default_tagging_provider }}
+                        {% if form.default_tagging_provider.errors %}
+                            <div class="text-danger small">{{ form.default_tagging_provider.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            {{ form.default_tagging_provider.help_text }}
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.default_tagging_model.id_for_label }}" class="form-label">
+                            Default Tagging Model
+                        </label>
+                        {{ form.default_tagging_model }}
+                        {% if form.default_tagging_model.errors %}
+                            <div class="text-danger small">{{ form.default_tagging_model.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            {{ form.default_tagging_model.help_text }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Embedding Settings -->
+            <div class="mb-4">
+                <h5 class="mb-3"><i class="bi bi-diagram-3 me-2"></i>Embedding Settings</h5>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.default_embedding_provider.id_for_label }}" class="form-label">
+                            Default Embedding Provider
+                        </label>
+                        {{ form.default_embedding_provider }}
+                        {% if form.default_embedding_provider.errors %}
+                            <div class="text-danger small">{{ form.default_embedding_provider.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            {{ form.default_embedding_provider.help_text }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'sources:dashboard' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Info Card -->
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Information</h6>
+    </div>
+    <div class="card-body">
+        <h6>Tagging Models</h6>
+        <ul class="mb-0">
+            <li><strong>Ollama:</strong> Use model names like <code>gpt-oss:20b-cloud</code>, <code>llama3.2:latest</code>, etc. Make sure the model is available: <code>ollama pull &lt;model-name&gt;</code></li>
+            <li><strong>OpenAI:</strong> Use model names like <code>gpt-3.5-turbo</code>, <code>gpt-4</code>, etc. Requires <code>OPENAI_API_KEY</code> in settings.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+

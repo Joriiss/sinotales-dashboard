@@ -96,14 +96,34 @@
                 <div class="col-md-12">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <label for="{{ form.content.id_for_label }}" class="form-label mb-0">Content</label>
-                        {% if action|lower == 'edit' and content and content.content_type == 'blog_post' and content.link %}
-                        <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" name="fetch_content" class="btn btn-sm btn-outline-primary" 
-                                    onclick="return confirm('This will replace the current content. Continue?');">
-                                <i class="bi bi-download"></i> Fetch Content
-                            </button>
-                        </form>
+                        {% if action|lower == 'edit' and content %}
+                        <div class="d-flex gap-2">
+                            {% if content.content_type == 'blog_post' and content.link %}
+                            <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" name="fetch_content" class="btn btn-sm btn-outline-primary" 
+                                        onclick="return confirm('This will replace the current content. Continue?');">
+                                    <i class="bi bi-download"></i> Fetch Content
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if content.content and content.content.strip %}
+                            <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" name="add_tags" class="btn btn-sm btn-outline-info" 
+                                        onclick="return confirm('This will add tags to the content. Continue?');">
+                                    <i class="bi bi-tags"></i> Add Tags
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" name="generate_embeddings" class="btn btn-sm btn-outline-success" 
+                                        onclick="return confirm('This will generate embeddings for the content. Continue?');">
+                                    <i class="bi bi-diagram-3"></i> Generate Embeddings
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                         {% endif %}
                     </div>
                     {{ form.content }}

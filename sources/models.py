@@ -300,6 +300,7 @@ class ActivityLog(models.Model):
         ('embeddings_generated', 'Embeddings Generated'),
         ('tags_created', 'Tags Created'),
         ('import_completed', 'Import Completed'),
+        ('settings_updated', 'Settings Updated'),
     ]
     
     activity_type = models.CharField(
@@ -352,5 +353,59 @@ class ActivityLog(models.Model):
     
     def __str__(self):
         return f"{self.get_activity_type_display()} - {self.description[:50]}"
+
+
+class Settings(models.Model):
+    """
+    Application settings (singleton pattern - only one instance)
+    """
+    # Tagging settings
+    default_tagging_provider = models.CharField(
+        max_length=20,
+        choices=[
+            ('ollama', 'Ollama'),
+            ('openai', 'OpenAI'),
+        ],
+        default='ollama',
+        help_text="Default provider for content tagging"
+    )
+    default_tagging_model = models.CharField(
+        max_length=100,
+        default='gpt-oss:20b-cloud',
+        help_text="Default model for content tagging (e.g., 'gpt-oss:20b-cloud' for Ollama, 'gpt-3.5-turbo' for OpenAI)"
+    )
+    
+    # Embedding settings (for future use)
+    default_embedding_provider = models.CharField(
+        max_length=20,
+        choices=[
+            ('openai', 'OpenAI'),
+        ],
+        default='openai',
+        help_text="Default provider for embeddings"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'settings'
+        verbose_name = 'Settings'
+        verbose_name_plural = 'Settings'
+    
+    def __str__(self):
+        return "Application Settings"
+    
+    @classmethod
+    def get_settings(cls):
+        """Get or create the singleton settings instance"""
+        settings, created = cls.objects.get_or_create(pk=1)
+        return settings
+    
+    def save(self, *args, **kwargs):
+        """Ensure only one settings instance exists"""
+        self.pk = 1
+        super().save(*args, **kwargs)
 
 

@@ -26,6 +26,9 @@ urlpatterns = [
     
     # Logs
     path('logs/', views.logs_view, name='logs'),
+    
+    # Settings
+    path('settings/', views.settings_view, name='settings'),
 ]
 
 

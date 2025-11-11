@@ -11,14 +11,24 @@ from django.conf import settings
 class TaggingService:
     """Service for generating tags from content using LLMs"""
     
-    def __init__(self, provider: str = 'ollama', model: Optional[str] = None):
+    def __init__(self, provider: Optional[str] = None, model: Optional[str] = None):
         """
         Initialize tagging service
         
         Args:
-            provider: 'ollama' or 'openai'
-            model: Model name (e.g., 'llama3.2' for Ollama, 'gpt-3.5-turbo' for OpenAI)
+            provider: 'ollama' or 'openai'. If None, uses settings.
+            model: Model name (e.g., 'llama3.2' for Ollama, 'gpt-3.5-turbo' for OpenAI). If None, uses settings.
         """
+        # Get settings from database if not provided
+        if provider is None:
+            try:
+                from .models import Settings
+                settings = Settings.get_settings()
+                provider = settings.default_tagging_provider
+            except Exception:
+                # Fallback to default
+                provider = 'ollama'
+        
         self.provider = provider.lower()
         self.model = model or self._get_default_model()
         # Create session for connection pooling (Ollama only)
@@ -26,8 +36,19 @@ class TaggingService:
         
     def _get_default_model(self) -> str:
         """Get default model based on provider"""
+        # Try to get from database settings first
+        try:
+            from .models import Settings
+            settings = Settings.get_settings()
+            if self.provider == settings.default_tagging_provider:
+                return settings.default_tagging_model
+        except Exception:
+            # If settings don't exist or error, fall back to hardcoded defaults
+            pass
+        
+        # Fallback to hardcoded defaults
         if self.provider == 'ollama':
-            return 'llama3.2:latest'  # Good balance of quality and speed
+            return 'gpt-oss:20b-cloud'  # Default model for tagging
         elif self.provider == 'openai':
             return 'gpt-3.5-turbo'
         else:
