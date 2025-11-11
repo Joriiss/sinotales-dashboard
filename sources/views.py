@@ -301,6 +301,10 @@ def content_add(request):
                     messages.success(request, f'Content "{content.title}" added successfully!')
             except Exception as e:
                 # Log error but don't fail the request
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"Error in content processing: {str(e)}")
+                print(error_trace)
                 messages.warning(
                     request, 
                     f'Content "{content.title}" added, but processing encountered an error: {str(e)}'
@@ -341,6 +345,26 @@ def content_add(request):
 def content_edit(request, pk):
     """Edit an existing content"""
     content = get_object_or_404(Content, pk=pk)
+    
+    # Handle fetch content action
+    if request.method == 'POST' and 'fetch_content' in request.POST:
+        if content.content_type == 'blog_post' and content.link:
+            try:
+                processing_service = ContentProcessingService()
+                # Force re-extraction even if content already exists
+                extracted = processing_service.extract_content(content, force=True)
+                if extracted:
+                    messages.success(request, f'Content fetched successfully from {content.link}')
+                    # Refresh content from DB to get updated content
+                    content.refresh_from_db()
+                else:
+                    messages.warning(request, f'Could not extract content from {content.link}. The page might not be accessible or the content structure is not recognized.')
+            except Exception as e:
+                messages.error(request, f'Error fetching content: {str(e)}')
+        else:
+            messages.warning(request, 'Content can only be fetched for blog posts with a valid link.')
+        # Redirect back to edit page to show updated content
+        return redirect('sources:content_edit', pk=content.pk)
     
     if request.method == 'POST':
         form = ContentForm(request.POST, instance=content)

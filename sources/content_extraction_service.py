@@ -253,90 +253,244 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
                 if content_element:
                     break
         
-        # Method 5: Fallback - find largest text container
+        # Method 4.5: Look for content before footer (common pattern)
         if not content_element:
-            divs = soup.find_all('div')
-            if divs:
-                scored_divs = []
-                for div in divs:
+            # Find footer first
+            footer = soup.find('footer') or soup.find(class_=re.compile(r'footer', re.I)) or soup.find(id=re.compile(r'footer', re.I))
+            if footer:
+                # Find the main content container that comes before footer
+                # Look for divs that contain substantial text and are before the footer
+                all_divs = soup.find_all('div')
+                for div in all_divs:
+                    # Check if this div comes before footer in the DOM
+                    if footer in div.find_all():
+                        continue  # Skip if footer is inside this div
+                    
+                    # Check if div has substantial content
                     classes = ' '.join(div.get('class', [])).lower()
                     if any(skip in classes for skip in ['nav', 'menu', 'sidebar', 'footer', 'header', 'ad', 'widget']):
                         continue
                     
                     text = div.get_text()
                     word_count = len(text.split())
-                    if word_count > 100:
-                        scored_divs.append((word_count, div))
+                    if word_count > 200:  # Substantial content
+                        paragraphs = div.find_all('p')
+                        if len(paragraphs) >= 3:  # Has multiple paragraphs
+                            # Check if it's likely main content (has headings)
+                            headings = div.find_all(['h1', 'h2', 'h3'])
+                            if headings:
+                                content_element = div
+                                break
+        
+        # Method 5: Fallback - find largest text container with better filtering
+        if not content_element:
+            divs = soup.find_all('div')
+            if divs:
+                scored_divs = []
+                for div in divs:
+                    classes = ' '.join(div.get('class', [])).lower()
+                    # Skip navigation, footer, header, ads, widgets
+                    if any(skip in classes for skip in ['nav', 'menu', 'sidebar', 'footer', 'header', 'ad', 'widget', 'cookie', 'popup', 'modal']):
+                        continue
+                    
+                    # Skip if it's clearly a footer/header by ID
+                    div_id = div.get('id', '').lower()
+                    if any(skip in div_id for skip in ['footer', 'header', 'nav', 'menu', 'sidebar', 'cookie', 'popup']):
+                        continue
+                    
+                    text = div.get_text()
+                    word_count = len(text.split())
+                    
+                    # Skip if text is too short
+                    if word_count < 100:
+                        continue
+                    
+                    # Penalize divs with repeated phrases (common in footers)
+                    text_lower = text.lower()
+                    repeated_phrases = [
+                        'need help?', 'request a custom', 'create your trip', 'contact us',
+                        'follow us', 'about us', 'terms and conditions', 'privacy policy',
+                        'copyright', 'all rights reserved', 'what our customers are saying'
+                    ]
+                    repeat_count = sum(1 for phrase in repeated_phrases if phrase in text_lower)
+                    if repeat_count >= 2:
+                        # Likely a footer, skip it
+                        continue
+                    
+                    # Score by word count, but prefer divs with more paragraphs
+                    paragraphs = div.find_all('p')
+                    paragraph_count = len([p for p in paragraphs if len(p.get_text().strip()) > 50])
+                    
+                    # Bonus for having headings (h1-h6)
+                    headings = div.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                    heading_count = len(headings)
+                    
+                    # Calculate score: word count + paragraph bonus + heading bonus
+                    score = word_count + (paragraph_count * 10) + (heading_count * 5)
+                    
+                    scored_divs.append((score, word_count, div))
                 
                 if scored_divs:
+                    # Sort by score (highest first)
                     scored_divs.sort(reverse=True, key=lambda x: x[0])
-                    content_element = scored_divs[0][1]
+                    content_element = scored_divs[0][2]  # Get the div element
         
         # Extract text from found element
         if content_element:
             # Remove unwanted elements from content
-            for unwanted in content_element.find_all(['script', 'style', 'nav', 'aside', 'advertisement', 'ad']):
+            for unwanted in content_element.find_all(['script', 'style', 'nav', 'aside', 'advertisement', 'ad', 'footer', 'header']):
+                unwanted.decompose()
+            
+            # Remove elements with footer-like classes/IDs
+            for unwanted in content_element.find_all(class_=re.compile(r'footer|header|nav|menu|sidebar|widget|cookie|popup|modal', re.I)):
+                unwanted.decompose()
+            
+            for unwanted in content_element.find_all(id=re.compile(r'footer|header|nav|menu|sidebar|widget|cookie|popup|modal', re.I)):
                 unwanted.decompose()
             
             # Get all content elements
             content_elements = content_element.find_all(['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li'])
             text_parts = []
+            seen_texts = set()  # Track seen text to avoid duplicates
             
             for elem in content_elements:
+                # Skip if parent is footer/header/nav
+                parent = elem.parent
+                if parent:
+                    parent_classes = ' '.join(parent.get('class', [])).lower()
+                    parent_id = parent.get('id', '').lower()
+                    if any(skip in parent_classes or skip in parent_id for skip in ['footer', 'header', 'nav', 'menu', 'sidebar']):
+                        continue
+                
                 if elem.name == 'li':
                     text = elem.get_text().strip()
                     if text and len(text) > 5:
-                        text_parts.append(f"• {text}")
+                        # Check for repeated footer phrases
+                        text_lower = text.lower()
+                        if any(phrase in text_lower for phrase in ['need help?', 'request a custom', 'create your trip', 'contact us', 'follow us', 'copyright']):
+                            continue
+                        # Avoid duplicates
+                        if text not in seen_texts:
+                            text_parts.append(f"• {text}")
+                            seen_texts.add(text)
                 else:
                     text = elem.get_text().strip()
                     if text and len(text) > 20:
-                        text_parts.append(text)
+                        # Check for repeated footer phrases
+                        text_lower = text.lower()
+                        if any(phrase in text_lower for phrase in ['need help?', 'request a custom', 'create your trip', 'contact us', 'follow us', 'copyright', 'all rights reserved']):
+                            continue
+                        # Avoid duplicates
+                        if text not in seen_texts:
+                            text_parts.append(text)
+                            seen_texts.add(text)
             
             if text_parts:
                 full_content = '\n\n'.join(text_parts)
                 full_content = clean_text(full_content)
                 
-                excerpt = text_parts[0] if text_parts else full_content[:500]
-                if len(excerpt) > 500:
-                    excerpt = excerpt[:500] + '...'
+                # Additional cleanup: remove any remaining footer-like content
+                lines = full_content.split('\n')
+                cleaned_lines = []
+                for line in lines:
+                    line_lower = line.lower().strip()
+                    # Skip lines that are clearly footer content
+                    if any(phrase in line_lower for phrase in [
+                        'need help?', 'request a custom', 'create your trip', 
+                        'contact us', 'follow us', 'copyright', 'all rights reserved',
+                        'terms and conditions', 'privacy policy', 'what our customers are saying'
+                    ]):
+                        continue
+                    # Skip very short lines that are likely navigation
+                    if len(line.strip()) < 10:
+                        continue
+                    cleaned_lines.append(line)
                 
-                return {
-                    'content': full_content,
-                    'excerpt': clean_text(excerpt),
-                    'date': extracted_date
-                }
+                full_content = '\n\n'.join(cleaned_lines)
+                full_content = clean_text(full_content)
+                
+                if full_content and len(full_content.strip()) > 100:  # Ensure we have substantial content
+                    excerpt = cleaned_lines[0] if cleaned_lines else full_content[:500]
+                    if len(excerpt) > 500:
+                        excerpt = excerpt[:500] + '...'
+                    
+                    return {
+                        'content': full_content,
+                        'excerpt': clean_text(excerpt),
+                        'date': extracted_date
+                    }
         
-        # Method 6: Last resort - extract all paragraph text
+        # Method 6: Last resort - extract all paragraph text and list items with better filtering
         content_elements = soup.find_all(['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li'])
         if content_elements:
             text_parts = []
+            seen_texts = set()
             for elem in content_elements:
-                parent_classes = ' '.join(elem.parent.get('class', [])).lower() if elem.parent else ''
-                if any(skip in parent_classes for skip in ['nav', 'menu', 'sidebar', 'footer', 'header']):
+                # Skip if in footer/header/nav
+                parent = elem.parent
+                if parent:
+                    parent_classes = ' '.join(parent.get('class', [])).lower()
+                    parent_id = parent.get('id', '').lower()
+                    if any(skip in parent_classes or skip in parent_id for skip in ['nav', 'menu', 'sidebar', 'footer', 'header']):
+                        continue
+                
+                # Skip if element itself has footer-like classes
+                elem_classes = ' '.join(elem.get('class', [])).lower()
+                elem_id = elem.get('id', '').lower()
+                if any(skip in elem_classes or skip in elem_id for skip in ['footer', 'header', 'nav', 'menu', 'sidebar', 'widget']):
                     continue
                 
                 if elem.name == 'li':
                     text = elem.get_text().strip()
                     if text and len(text) > 5:
-                        text_parts.append(f"• {text}")
+                        text_lower = text.lower()
+                        if any(phrase in text_lower for phrase in ['need help?', 'request a custom', 'create your trip', 'contact us', 'follow us', 'copyright']):
+                            continue
+                        if text not in seen_texts:
+                            text_parts.append(f"• {text}")
+                            seen_texts.add(text)
                 else:
                     text = elem.get_text().strip()
                     if text and len(text) > 20:
-                        text_parts.append(text)
+                        text_lower = text.lower()
+                        if any(phrase in text_lower for phrase in ['need help?', 'request a custom', 'create your trip', 'contact us', 'follow us', 'copyright', 'all rights reserved']):
+                            continue
+                        if text not in seen_texts:
+                            text_parts.append(text)
+                            seen_texts.add(text)
             
             if text_parts:
                 full_content = '\n\n'.join(text_parts)
                 full_content = clean_text(full_content)
                 
-                excerpt = text_parts[0] if text_parts else full_content[:500]
-                if len(excerpt) > 500:
-                    excerpt = excerpt[:500] + '...'
+                # Additional cleanup: remove any remaining footer-like content
+                lines = full_content.split('\n')
+                cleaned_lines = []
+                for line in lines:
+                    line_lower = line.lower().strip()
+                    if any(phrase in line_lower for phrase in [
+                        'need help?', 'request a custom', 'create your trip', 
+                        'contact us', 'follow us', 'copyright', 'all rights reserved',
+                        'terms and conditions', 'privacy policy', 'what our customers are saying'
+                    ]):
+                        continue
+                    if len(line.strip()) < 10:
+                        continue
+                    cleaned_lines.append(line)
                 
-                return {
-                    'content': full_content,
-                    'excerpt': clean_text(excerpt),
-                    'date': extracted_date
-                }
+                full_content = '\n\n'.join(cleaned_lines)
+                full_content = clean_text(full_content)
+                
+                if full_content and len(full_content.strip()) > 100:  # Ensure we have substantial content
+                    excerpt = cleaned_lines[0] if cleaned_lines else full_content[:500]
+                    if len(excerpt) > 500:
+                        excerpt = excerpt[:500] + '...'
+                    
+                    return {
+                        'content': full_content,
+                        'excerpt': clean_text(excerpt),
+                        'date': extracted_date
+                    }
         
     except Exception as e:
         return None

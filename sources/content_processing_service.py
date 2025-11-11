@@ -7,6 +7,7 @@ from .models import Content, Tag, ContentChunk
 from .content_extraction_service import extract_article_content
 from .services import TaggingService
 from .embedding_service import EmbeddingService
+from .utils import log_activity
 from urllib.parse import urlparse
 
 # Translation imports
@@ -31,12 +32,13 @@ class ContentProcessingService:
         self.tagging_service = TaggingService(provider=tagging_provider, model=tagging_model)
         self.embedding_service = EmbeddingService()
     
-    def extract_content(self, content: Content) -> bool:
+    def extract_content(self, content: Content, force: bool = False) -> bool:
         """
         Extract content from URL if content is empty and link is available.
         
         Args:
             content: Content object
+            force: If True, extract even if content already exists (for re-fetching)
             
         Returns:
             True if content was extracted, False otherwise
@@ -45,8 +47,8 @@ class ContentProcessingService:
         if content.content_type != 'blog_post':
             return False
         
-        # Skip if content already exists
-        if content.content and content.content.strip():
+        # Skip if content already exists (unless force is True)
+        if not force and content.content and content.content.strip():
             return False
         
         # Skip if no link
@@ -159,15 +161,25 @@ class ContentProcessingService:
         """
         # Skip if content already has tags
         if content.tags.exists():
+            print(f"Content {content.id} already has tags, skipping")
             return False
         
         # Skip if no title
         if not content.title:
+            print(f"Content {content.id} has no title, skipping tagging")
             return False
         
         try:
+            # Refresh content to get latest content text
+            content.refresh_from_db()
+            
             # Generate tags
             content_text = content.content if hasattr(content, 'content') else ""
+            if not content_text or not content_text.strip():
+                print(f"Content {content.id} has no content text, skipping tagging")
+                return False
+            
+            print(f"Generating tags for content {content.id}: {content.title[:50]}")
             generated_tags = self.tagging_service.generate_tags(
                 title=content.title,
                 content=content_text,
@@ -175,7 +187,10 @@ class ContentProcessingService:
             )
             
             if not generated_tags:
+                print(f"No tags generated for content {content.id}")
                 return False
+            
+            print(f"Generated {len(generated_tags)} tags: {generated_tags}")
             
             # Get or create tag objects
             tag_objects = []
@@ -185,9 +200,22 @@ class ContentProcessingService:
             
             # Set tags
             content.tags.set(tag_objects)
+            print(f"Successfully added tags to content {content.id}")
+            
+            # Log the tagging activity
+            log_activity(
+                'content_tagged',
+                f'Content "{content.title}" was tagged with {len(generated_tags)} tags',
+                content=content,
+                source=content.source,
+                metadata={'tags': generated_tags}
+            )
+            
             return True
         except Exception as e:
+            import traceback
             print(f"Error adding tags to content {content.id}: {str(e)}")
+            print(traceback.format_exc())
             return False
     
     def generate_embeddings(self, content: Content, chunk_size: int = 8000, overlap: int = 200) -> bool:
@@ -204,19 +232,26 @@ class ContentProcessingService:
         """
         # Skip if content already has embeddings
         if content.chunks.exists():
+            print(f"Content {content.id} already has embeddings, skipping")
             return False
+        
+        # Refresh content to get latest data
+        content.refresh_from_db()
         
         # Skip if no content text
         if not content.content or not content.content.strip():
+            print(f"Content {content.id} has no content text, skipping embedding")
             return False
         
         # Skip if no tags (required for embedding context)
         if not content.tags.exists():
+            print(f"Content {content.id} has no tags, skipping embedding")
             return False
         
         try:
             # Get tags
             tags = list(content.tags.values_list('name', flat=True))
+            print(f"Generating embeddings for content {content.id} with {len(tags)} tags")
             
             # Generate embeddings
             chunk_results = self.embedding_service.generate_embeddings_for_content(
@@ -228,7 +263,10 @@ class ContentProcessingService:
             )
             
             if not chunk_results:
+                print(f"No embeddings generated for content {content.id}")
                 return False
+            
+            print(f"Generated {len(chunk_results)} chunks for content {content.id}")
             
             # Delete existing chunks if any
             content.chunks.all().delete()
@@ -249,12 +287,27 @@ class ContentProcessingService:
             if chunks_to_create:
                 ContentChunk.objects.bulk_create(chunks_to_create)
                 content.processed = True
+                content.save(update_fields=['processed'])
+                print(f"Successfully created {len(chunks_to_create)} chunks with embeddings for content {content.id}")
+                
+                # Log the embedding activity
+                log_activity(
+                    'embeddings_generated',
+                    f'Generated embeddings for content "{content.title}" ({len(chunks_to_create)} chunks)',
+                    content=content,
+                    source=content.source,
+                    metadata={'chunks': len(chunks_to_create)}
+                )
+                
                 return True
+            else:
+                print(f"No valid chunks created for content {content.id}")
+                return False
         except Exception as e:
+            import traceback
             print(f"Error generating embeddings for content {content.id}: {str(e)}")
+            print(traceback.format_exc())
             return False
-        
-        return False
     
     def process_content(self, content: Content, extract: bool = True, translate: bool = True, 
                        tag: bool = True, embed: bool = True) -> dict:
@@ -281,30 +334,44 @@ class ContentProcessingService:
         # Step 1: Extract content
         if extract:
             results['extracted'] = self.extract_content(content)
-            # Content is saved inside extract_content, no need to refresh
+            # Content is saved inside extract_content, refresh to get updated content
+            if results['extracted']:
+                content.refresh_from_db()
         
         # Step 2: Translate if French
         if translate:
             results['translated'] = self.translate_content(content)
             if results['translated']:
                 content.save(update_fields=['content'])
+                content.refresh_from_db()
         
         # Step 3: Add tags (needs content to be present)
         if tag:
+            # Refresh to ensure we have latest content
+            content.refresh_from_db()
             # Only tag if we have content
             if content.content and content.content.strip():
                 results['tagged'] = self.add_tags(content)
                 # Tags are saved via ManyToMany, refresh to get updated tags
                 if results['tagged']:
                     content.refresh_from_db()
+            else:
+                print(f"Skipping tagging for content {content.id}: no content text")
         
         # Step 4: Generate embeddings (needs tags)
         if embed:
+            # Refresh to ensure we have latest content and tags
+            content.refresh_from_db()
             # Only embed if we have content and tags
-            if content.content and content.content.strip() and content.tags.exists():
-                results['embedded'] = self.generate_embeddings(content)
-                if results['embedded']:
-                    content.save(update_fields=['processed'])
+            if content.content and content.content.strip():
+                if content.tags.exists():
+                    results['embedded'] = self.generate_embeddings(content)
+                    if results['embedded']:
+                        content.save(update_fields=['processed'])
+                else:
+                    print(f"Skipping embedding for content {content.id}: no tags")
+            else:
+                print(f"Skipping embedding for content {content.id}: no content text")
         
         return results
 
