@@ -4,6 +4,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import Length
@@ -719,6 +720,7 @@ def _validate_api_token(request):
     return True, None
 
 
+@csrf_exempt
 def youtube_channels_api(request):
     """API endpoint to get all YouTube channel sources (token-based authentication)"""
     if request.method != 'GET':
@@ -758,6 +760,7 @@ def youtube_channels_api(request):
         }, status=500)
 
 
+@csrf_exempt
 def create_video_content_api(request):
     """API endpoint to create video content (token-based authentication)"""
     if request.method != 'POST':
