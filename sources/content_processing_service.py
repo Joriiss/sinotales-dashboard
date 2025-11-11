@@ -9,6 +9,7 @@ from .services import TaggingService
 from .embedding_service import EmbeddingService
 from .utils import log_activity
 from urllib.parse import urlparse
+import re
 
 # Translation imports
 try:
@@ -16,6 +17,15 @@ try:
     TRANSLATION_AVAILABLE = True
 except ImportError:
     TRANSLATION_AVAILABLE = False
+
+# YouTube Transcript API imports
+try:
+    from youtube_transcript_api import YouTubeTranscriptApi
+    from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound, VideoUnavailable
+    YOUTUBE_TRANSCRIPT_AVAILABLE = True
+except ImportError:
+    YOUTUBE_TRANSCRIPT_AVAILABLE = False
+    YouTubeTranscriptApi = None
 
 
 class ContentProcessingService:
@@ -41,9 +51,162 @@ class ContentProcessingService:
         self.tagging_service = TaggingService(provider=tagging_provider, model=tagging_model)
         self.embedding_service = EmbeddingService()
     
+    def extract_youtube_video_id(self, url: str) -> Optional[str]:
+        """
+        Extract YouTube video ID from various URL formats.
+        
+        Args:
+            url: YouTube URL
+            
+        Returns:
+            Video ID or None
+        """
+        if not url:
+            return None
+        
+        url = url.strip()
+        
+        # Pattern 1: youtube.com/watch?v=VIDEO_ID
+        match = re.match(r'(?:youtube\.com/watch\?v=|youtube\.com/watch\?.*&v=)([a-zA-Z0-9_-]{11})', url)
+        if match:
+            return match.group(1)
+        
+        # Pattern 2: youtu.be/VIDEO_ID
+        match = re.match(r'youtu\.be/([a-zA-Z0-9_-]{11})', url)
+        if match:
+            return match.group(1)
+        
+        # Pattern 3: youtube.com/embed/VIDEO_ID
+        match = re.match(r'youtube\.com/embed/([a-zA-Z0-9_-]{11})', url)
+        if match:
+            return match.group(1)
+        
+        # Pattern 4: youtube.com/v/VIDEO_ID
+        match = re.match(r'youtube\.com/v/([a-zA-Z0-9_-]{11})', url)
+        if match:
+            return match.group(1)
+        
+        # Pattern 5: If it's just the video ID itself (11 characters)
+        if re.match(r'^[a-zA-Z0-9_-]{11}$', url):
+            return url
+        
+        return None
+    
+    def extract_transcript(self, content: Content, force: bool = False) -> bool:
+        """
+        Extract transcript from YouTube video if content is empty and link/external_id is available.
+        
+        Args:
+            content: Content object
+            force: If True, extract even if content already exists (for re-fetching)
+            
+        Returns:
+            True if transcript was extracted, False otherwise
+        """
+        # Only extract for videos
+        if content.content_type != 'video':
+            return False
+        
+        # Skip if content already exists (unless force is True)
+        if not force and content.content and content.content.strip():
+            return False
+        
+        # Check if YouTube Transcript API is available
+        if not YOUTUBE_TRANSCRIPT_AVAILABLE:
+            print("YouTube Transcript API not available. Install with: pip install youtube-transcript-api")
+            return False
+        
+        # Get video ID from external_id or link
+        video_id = content.external_id
+        if not video_id and content.link:
+            video_id = self.extract_youtube_video_id(content.link)
+        
+        if not video_id:
+            return False
+        
+        try:
+            api = YouTubeTranscriptApi()
+            
+            # Get source language for preferred transcript language
+            source_language = None
+            if content.source and content.source.language:
+                lang_map = {
+                    'english': 'en',
+                    'anglais': 'en',
+                    'french': 'fr',
+                    'français': 'fr',
+                    'chinese': 'zh',
+                    'chinois': 'zh',
+                    'en': 'en',
+                    'fr': 'fr',
+                    'zh': 'zh',
+                }
+                source_language = lang_map.get(content.source.language.lower(), content.source.language.lower())
+            
+            # Build language list with source language first, then common fallbacks
+            languages_to_try = []
+            if source_language:
+                languages_to_try.append(source_language)
+            
+            # Add common fallback languages
+            fallback_languages = ['en', 'fr', 'zh', 'zh-CN', 'zh-TW', 'es', 'de', 'ja', 'ko', 'ru', 'it', 'pt']
+            for lang in fallback_languages:
+                if lang not in languages_to_try:
+                    languages_to_try.append(lang)
+            
+            transcript = None
+            language_used = None
+            
+            try:
+                # Try to fetch with language priority
+                if languages_to_try:
+                    transcript = api.fetch(video_id, languages=languages_to_try)
+                    language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'unknown'
+            except (NoTranscriptFound, TranscriptsDisabled):
+                # If that fails, try without specifying languages (auto-detect)
+                try:
+                    transcript = api.fetch(video_id)
+                    language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'auto'
+                except (NoTranscriptFound, TranscriptsDisabled) as e:
+                    if isinstance(e, TranscriptsDisabled):
+                        print(f"Transcripts are disabled for video {video_id}")
+                        return False
+                    print(f"No transcript found for video {video_id}")
+                    return False
+            except VideoUnavailable:
+                print(f"Video {video_id} is unavailable")
+                return False
+            
+            if transcript is None:
+                return False
+            
+            # Extract text from transcript snippets
+            transcript_text = '\n'.join([snippet.text for snippet in transcript.snippets])
+            
+            if transcript_text and transcript_text.strip():
+                content.content = transcript_text.strip()
+                content.has_content = True
+                
+                # Save the extracted transcript
+                content.save(update_fields=['content', 'has_content'])
+                print(f"Successfully extracted transcript for video {video_id} (language: {language_used})")
+                return True
+            else:
+                print(f"Empty transcript for video {video_id}")
+                return False
+                
+        except Exception as e:
+            # Log error but don't fail
+            print(f"Error extracting transcript for video {video_id}: {str(e)}")
+            return False
+        
+        return False
+    
     def extract_content(self, content: Content, force: bool = False) -> bool:
         """
         Extract content from URL if content is empty and link is available.
+        For blog posts: extracts article content from URL
+        For videos: extracts transcript from YouTube
         
         Args:
             content: Content object
@@ -52,7 +215,11 @@ class ContentProcessingService:
         Returns:
             True if content was extracted, False otherwise
         """
-        # Only extract for blog posts with links
+        # Handle videos differently (extract transcript)
+        if content.content_type == 'video':
+            return self.extract_transcript(content, force=force)
+        
+        # Handle blog posts (extract article content)
         if content.content_type != 'blog_post':
             return False
         
@@ -104,6 +271,7 @@ class ContentProcessingService:
     def translate_content(self, content: Content) -> bool:
         """
         Translate content from French to English if source language is French.
+        Works for both blog posts and video transcripts.
         
         Args:
             content: Content object
@@ -113,6 +281,7 @@ class ContentProcessingService:
         """
         # Check if translation is available
         if not TRANSLATION_AVAILABLE:
+            print("Translation library not available. Skipping translation.")
             return False
         
         # Check if source is French
@@ -126,38 +295,74 @@ class ContentProcessingService:
         
         try:
             content_text = content.content
-            chunk_size = 4500
+            chunk_size = 4500  # Max characters per translation request
             translated_chunks = []
+            
+            print(f"Translating content {content.id} from French to English...")
             
             if len(content_text) <= chunk_size:
                 # Small content - translate in one go
                 translator = GoogleTranslator(source='fr', target='en')
                 translated_text = translator.translate(content_text)
                 content.content = translated_text
+                print(f"Successfully translated content {content.id}")
                 return True
             else:
                 # Large content - translate in chunks
+                # For transcripts (newline-separated) and blog posts (sentence-separated)
                 translator = GoogleTranslator(source='fr', target='en')
-                sentences = content_text.split('. ')
-                current_chunk = ''
                 
-                for sentence in sentences:
-                    if len(current_chunk) + len(sentence) <= chunk_size:
-                        current_chunk += sentence + '. '
-                    else:
-                        if current_chunk:
-                            translated_chunk = translator.translate(current_chunk)
-                            translated_chunks.append(translated_chunk)
-                        current_chunk = sentence + '. '
+                # Try splitting by sentences first (for blog posts)
+                if '. ' in content_text or '.\n' in content_text:
+                    # Split by periods (with space or newline after)
+                    import re
+                    sentences = re.split(r'([.!?]\s+)', content_text)
+                    current_chunk = ''
+                    
+                    for sentence in sentences:
+                        if len(current_chunk) + len(sentence) <= chunk_size:
+                            current_chunk += sentence
+                        else:
+                            if current_chunk:
+                                translated_chunk = translator.translate(current_chunk)
+                                translated_chunks.append(translated_chunk)
+                            current_chunk = sentence
+                    
+                    if current_chunk:
+                        translated_chunk = translator.translate(current_chunk)
+                        translated_chunks.append(translated_chunk)
+                else:
+                    # For transcripts or content without periods, split by newlines or fixed size
+                    lines = content_text.split('\n')
+                    current_chunk = ''
+                    
+                    for line in lines:
+                        if len(current_chunk) + len(line) + 1 <= chunk_size:
+                            current_chunk += line + '\n' if current_chunk else line
+                        else:
+                            if current_chunk:
+                                translated_chunk = translator.translate(current_chunk)
+                                translated_chunks.append(translated_chunk)
+                            current_chunk = line + '\n'
+                    
+                    if current_chunk:
+                        translated_chunk = translator.translate(current_chunk)
+                        translated_chunks.append(translated_chunk)
                 
-                if current_chunk:
-                    translated_chunk = translator.translate(current_chunk)
-                    translated_chunks.append(translated_chunk)
+                # Join translated chunks, preserving structure
+                if '\n' in content_text:
+                    # Preserve newlines for transcripts
+                    content.content = '\n'.join(translated_chunks)
+                else:
+                    # Join with spaces for blog posts
+                    content.content = ' '.join(translated_chunks)
                 
-                content.content = ' '.join(translated_chunks)
+                print(f"Successfully translated content {content.id} ({len(translated_chunks)} chunks)")
                 return True
         except Exception as e:
+            import traceback
             print(f"Error translating content {content.id}: {str(e)}")
+            print(traceback.format_exc())
             return False
     
     def add_tags(self, content: Content) -> bool:
