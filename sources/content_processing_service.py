@@ -179,15 +179,17 @@ class ContentProcessingService:
         """
         # Only extract for videos
         if content.content_type != 'video':
+            print(f"  [EXTRACT] Skipping: content type is {content.content_type}, not 'video'", flush=True)
             return False
         
         # Skip if content already exists (unless force is True)
         if not force and content.content and content.content.strip():
+            print(f"  [EXTRACT] Skipping: content already exists for video {content.external_id}", flush=True)
             return False
         
         # Check if YouTube Transcript API is available
         if not YOUTUBE_TRANSCRIPT_AVAILABLE:
-            print("YouTube Transcript API not available. Install with: pip install youtube-transcript-api")
+            print("  [EXTRACT] ERROR: YouTube Transcript API not available. Install with: pip install youtube-transcript-api", flush=True)
             return False
         
         # Get video ID from external_id or link
@@ -196,7 +198,10 @@ class ContentProcessingService:
             video_id = self.extract_youtube_video_id(content.link)
         
         if not video_id:
+            print(f"  [EXTRACT] ERROR: No video ID found for content {content.id}", flush=True)
             return False
+        
+        print(f"  [EXTRACT] Attempting to extract transcript for video {video_id}...", flush=True)
         
         try:
             # Create API instance with proxy config if available
@@ -238,24 +243,27 @@ class ContentProcessingService:
             try:
                 # Try to fetch with language priority
                 if languages_to_try:
+                    print(f"  [EXTRACT] Trying languages: {languages_to_try[:5]}...", flush=True)
                     transcript = api.fetch(video_id, languages=languages_to_try)
                     language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'unknown'
             except (NoTranscriptFound, TranscriptsDisabled):
                 # If that fails, try without specifying languages (auto-detect)
+                print(f"  [EXTRACT] Language-specific fetch failed, trying auto-detect...", flush=True)
                 try:
                     transcript = api.fetch(video_id)
                     language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'auto'
                 except (NoTranscriptFound, TranscriptsDisabled) as e:
                     if isinstance(e, TranscriptsDisabled):
-                        print(f"Transcripts are disabled for video {video_id}")
+                        print(f"  [EXTRACT] ERROR: Transcripts are disabled for video {video_id}", flush=True)
                         return False
-                    print(f"No transcript found for video {video_id}")
+                    print(f"  [EXTRACT] ERROR: No transcript found for video {video_id}", flush=True)
                     return False
             except VideoUnavailable:
-                print(f"Video {video_id} is unavailable")
+                print(f"  [EXTRACT] ERROR: Video {video_id} is unavailable", flush=True)
                 return False
             
             if transcript is None:
+                print(f"  [EXTRACT] ERROR: Transcript is None for video {video_id}", flush=True)
                 return False
             
             # Extract text from transcript snippets
@@ -267,15 +275,17 @@ class ContentProcessingService:
                 
                 # Save the extracted transcript
                 content.save(update_fields=['content', 'has_content'])
-                print(f"Successfully extracted transcript for video {video_id} (language: {language_used})")
+                print(f"  [EXTRACT] ✓ Successfully extracted transcript for video {video_id} (language: {language_used}, {len(transcript_text)} chars)", flush=True)
                 return True
             else:
-                print(f"Empty transcript for video {video_id}")
+                print(f"  [EXTRACT] ERROR: Empty transcript for video {video_id}", flush=True)
                 return False
                 
         except Exception as e:
             # Log error but don't fail
-            print(f"Error extracting transcript for video {video_id}: {str(e)}")
+            import traceback
+            print(f"  [EXTRACT] ERROR: Exception extracting transcript for video {video_id}: {str(e)}", flush=True)
+            print(f"  [EXTRACT] Traceback: {traceback.format_exc()}", flush=True)
             return False
         
         return False
@@ -623,14 +633,24 @@ class ContentProcessingService:
             'translated': False,
             'tagged': False,
             'embedded': False,
+            'errors': []
         }
         
         # Step 1: Extract content
         if extract:
-            results['extracted'] = self.extract_content(content)
-            # Content is saved inside extract_content, refresh to get updated content
-            if results['extracted']:
-                content.refresh_from_db()
+            print(f"  [PROCESS] Step 1: Extracting content...", flush=True)
+            try:
+                results['extracted'] = self.extract_content(content)
+                # Content is saved inside extract_content, refresh to get updated content
+                if results['extracted']:
+                    content.refresh_from_db()
+                    print(f"  [PROCESS] Step 1: ✓ Content extracted", flush=True)
+                else:
+                    print(f"  [PROCESS] Step 1: ✗ Content extraction failed", flush=True)
+                    results['errors'].append('Content extraction failed - check server logs for details')
+            except Exception as e:
+                print(f"  [PROCESS] Step 1: ✗ Exception during extraction: {str(e)}", flush=True)
+                results['errors'].append(f'Extraction error: {str(e)}')
         
         # Step 2: Translate if French
         if translate:
