@@ -686,15 +686,11 @@ def agent_models_api(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-def youtube_channels_api(request):
-    """API endpoint to get all YouTube channel sources (token-based authentication)"""
-    if request.method != 'GET':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-    
-    # Token-based authentication
+def _validate_api_token(request):
+    """Helper function to validate API token from request"""
     api_token = settings.API_TOKEN
     if not api_token:
-        return JsonResponse({
+        return None, JsonResponse({
             'success': False,
             'error': 'API token not configured'
         }, status=500)
@@ -715,10 +711,23 @@ def youtube_channels_api(request):
     
     # Validate token
     if not provided_token or provided_token != api_token:
-        return JsonResponse({
+        return None, JsonResponse({
             'success': False,
             'error': 'Invalid or missing authentication token'
         }, status=401)
+    
+    return True, None
+
+
+def youtube_channels_api(request):
+    """API endpoint to get all YouTube channel sources (token-based authentication)"""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
     
     try:
         # Get all YouTube channel sources
@@ -741,6 +750,146 @@ def youtube_channels_api(request):
             'channels': channels,
             'count': len(channels)
         })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+def create_video_content_api(request):
+    """API endpoint to create video content (token-based authentication)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        data = json.loads(request.body)
+        
+        # Required fields
+        source_id = data.get('source_id')
+        external_id = data.get('external_id')  # Video ID
+        title = data.get('title')
+        link = data.get('link')  # YouTube URL
+        
+        # Optional fields
+        date = data.get('date')  # YYYY-MM-DD format
+        auto_process = data.get('auto_process', True)  # Whether to automatically process (extract transcript, tag, embed)
+        
+        # Validate required fields
+        if not source_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'source_id is required'
+            }, status=400)
+        
+        if not external_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'external_id (video ID) is required'
+            }, status=400)
+        
+        if not title:
+            return JsonResponse({
+                'success': False,
+                'error': 'title is required'
+            }, status=400)
+        
+        # Get source
+        try:
+            source = Source.objects.get(pk=source_id, source_type='youtube')
+        except Source.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': f'Source with id {source_id} not found or is not a YouTube source'
+            }, status=404)
+        
+        # Check if content already exists
+        if Content.objects.filter(source=source, external_id=external_id).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Video with external_id "{external_id}" already exists for this source'
+            }, status=409)
+        
+        # Parse date if provided
+        parsed_date = None
+        if date:
+            try:
+                from datetime import datetime
+                parsed_date = datetime.strptime(date, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid date format. Use YYYY-MM-DD'
+                }, status=400)
+        
+        # Create content
+        # Note: date might be required, so use today's date if not provided
+        if not parsed_date:
+            from datetime import date
+            parsed_date = date.today()
+        
+        content = Content.objects.create(
+            source=source,
+            external_id=external_id,
+            title=title,
+            link=link or f"https://www.youtube.com/watch?v={external_id}",
+            content_type='video',
+            date=parsed_date,
+            content='',  # Empty - will be filled during processing
+            processed=False,
+        )
+        
+        # Log content creation
+        log_activity(
+            'content_created',
+            f'Content "{content.title}" (Video) was created via API',
+            user=None,  # API request, no user
+            content=content,
+            source=content.source
+        )
+        
+        # Process content if requested
+        processing_results = {}
+        if auto_process:
+            try:
+                processing_service = ContentProcessingService(use_proxy=True)
+                processing_results = processing_service.process_content(
+                    content,
+                    extract=True,
+                    translate=True,
+                    tag=True,
+                    embed=True
+                )
+                content.refresh_from_db()
+            except Exception as e:
+                # Log error but don't fail the request
+                print(f"Error processing content {content.id}: {str(e)}")
+                processing_results = {'error': str(e)}
+        
+        return JsonResponse({
+            'success': True,
+            'content': {
+                'id': content.id,
+                'title': content.title,
+                'external_id': content.external_id,
+                'link': content.link,
+                'date': str(content.date) if content.date else None,
+                'has_content': content.has_content,
+                'processed': content.processed,
+            },
+            'processing': processing_results
+        }, status=201)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON in request body'
+        }, status=400)
     except Exception as e:
         return JsonResponse({
             'success': False,
