@@ -867,6 +867,11 @@ def create_video_content_api(request):
         processing_results = {}
         if auto_process:
             try:
+                print(f"\n{'='*60}", flush=True)
+                print(f"Processing video content via API: {content.title}", flush=True)
+                print(f"Video ID: {content.external_id}", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
                 processing_service = ContentProcessingService(use_proxy=True)
                 processing_results = processing_service.process_content(
                     content,
@@ -876,10 +881,18 @@ def create_video_content_api(request):
                     embed=True
                 )
                 content.refresh_from_db()
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"Processing results: {processing_results}", flush=True)
+                print(f"Has content: {content.has_content}, Processed: {content.processed}", flush=True)
+                print(f"{'='*60}\n", flush=True)
             except Exception as e:
                 # Log error but don't fail the request
-                print(f"Error processing content {content.id}: {str(e)}")
-                processing_results = {'error': str(e)}
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"Error processing content {content.id}: {str(e)}", flush=True)
+                print(error_trace, flush=True)
+                processing_results = {'error': str(e), 'traceback': error_trace}
         
         return JsonResponse({
             'success': True,
