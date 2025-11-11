@@ -101,6 +101,10 @@ class Source(models.Model):
         default=False,
         help_text="Include YouTube Shorts when collecting videos (YouTube sources only)"
     )
+    filter_videos = models.BooleanField(
+        default=False,
+        help_text="Filter videos to only include those relevant to China (YouTube sources only)"
+    )
     
     # Metadata
     metadata = models.JSONField(

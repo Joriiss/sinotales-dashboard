@@ -13,6 +13,7 @@ class SourceForm(forms.ModelForm):
             'language',
             'channel_id',
             'include_shorts',
+            'filter_videos',
             'is_active',
         ]
         widgets = {
@@ -35,6 +36,9 @@ class SourceForm(forms.ModelForm):
                 'placeholder': 'UC1UNB6Gy11umcbEj_hqIwhw'
             }),
             'include_shorts': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
+            'filter_videos': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
             }),
             'is_active': forms.CheckboxInput(attrs={

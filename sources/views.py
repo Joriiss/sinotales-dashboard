@@ -228,9 +228,15 @@ def source_edit(request, pk):
             from django.db import transaction
             
             # Fetch videos from YouTube
+            print(f"\n{'='*60}", flush=True)
+            print(f"Get Videos: {source.name} (Channel: {source.channel_id})", flush=True)
+            print(f"Filter China: {source.filter_videos}", flush=True)
+            print(f"{'='*60}\n", flush=True)
+            
             videos = get_channel_videos(
                 channel_id=source.channel_id,
-                include_shorts=source.include_shorts
+                include_shorts=source.include_shorts,
+                filter_china=source.filter_videos
             )
             
             if not videos:

@@ -110,6 +110,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="col-md-6">
                     <div class="form-check">
+                        {{ form.filter_videos }}
+                        <label class="form-check-label" for="{{ form.filter_videos.id_for_label }}">
+                            Filter Videos (China-related only)
+                        </label>
+                    </div>
+                    {% if form.filter_videos.errors %}
+                        <div class="text-danger small">{{ form.filter_videos.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">Only import videos relevant to China (YouTube sources only)</small>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-check">
                         {{ form.is_active }}
                         <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
                             Active
