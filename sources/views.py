@@ -10,7 +10,6 @@ from django.db.models.functions import Length
 from django.http import JsonResponse
 from django.conf import settings
 from django.utils.html import json_script
-from django.utils.safestring import mark_safe
 import json
 from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings
 from .forms import SourceForm, ContentForm, SettingsForm
@@ -228,72 +227,26 @@ def source_edit(request, pk):
             from .youtube_service import get_channel_videos
             from django.db import transaction
             
-            print(f"\n{'='*60}", flush=True)
-            print(f"Fetching videos from YouTube channel: {source.name}", flush=True)
-            print(f"Channel ID: {source.channel_id}", flush=True)
-            print(f"Include Shorts: {source.include_shorts}", flush=True)
-            print(f"Filter Videos: SKIPPED (testing YouTube API only)", flush=True)
-            print(f"{'='*60}\n", flush=True)
-            
-            # Fetch videos from YouTube (skip details since we're not filtering)
-            fetch_details = False  # Don't fetch details to speed up API calls
-            # Limit to 10 videos for testing to avoid timeouts
-            max_videos = 10
-            print("Step 1: Fetching videos from YouTube API (limited to 10 for testing)...", flush=True)
-            try:
-                all_videos = get_channel_videos(
-                    channel_id=source.channel_id,
-                    include_shorts=source.include_shorts,
-                    fetch_details=fetch_details,
-                    max_videos=max_videos
-                )
-            except Exception as e:
-                error_msg = f'Error fetching videos from YouTube API: {str(e)}'
-                print(f"✗ {error_msg}", flush=True)
-                messages.error(request, error_msg)
-                return redirect('sources:source_edit', pk=source.pk)
-            
-            if not all_videos:
-                messages.info(request, f'No videos found for channel "{source.name}".')
-                print("✗ No videos found\n", flush=True)
-                return redirect('sources:source_edit', pk=source.pk)
-            
-            total_found = len(all_videos)
-            print(f"✓ Found {total_found} video(s) from YouTube\n", flush=True)
-            
-            # Step 2: Check which videos already exist
-            print("Step 2: Checking for existing videos in database...", flush=True)
-            existing_video_ids = set(
-                Content.objects.filter(source=source)
-                .values_list('external_id', flat=True)
+            # Fetch videos from YouTube
+            videos = get_channel_videos(
+                channel_id=source.channel_id,
+                include_shorts=source.include_shorts
             )
             
-            # Filter out videos that already exist
-            new_videos = []
-            already_exist_count = 0
-            for video in all_videos:
-                if video['video_id'] in existing_video_ids:
-                    already_exist_count += 1
-                else:
-                    new_videos.append(video)
-            
-            print(f"✓ {already_exist_count} video(s) already exist, {len(new_videos)} new video(s) to process\n", flush=True)
-            
-            if not new_videos:
-                messages.info(
-                    request,
-                    f'All {total_found} video(s) from "{source.name}" already exist in the database.'
-                )
+            if not videos:
+                messages.info(request, f'No videos found for channel "{source.name}".')
                 return redirect('sources:source_edit', pk=source.pk)
             
-            # Step 3: Create Content entries for each new video (NO FILTERING)
-            print(f"Step 3: Creating {len(new_videos)} content entry/entries (no filtering)...", flush=True)
+            # Create Content entries for each video
             created_count = 0
+            skipped_count = 0
             
             with transaction.atomic():
-                for i, video in enumerate(new_videos, 1):
-                    title_preview = video['title'][:50] + "..." if len(video['title']) > 50 else video['title']
-                    print(f"  [{i}/{len(new_videos)}] Creating: {title_preview}", flush=True)
+                for video in videos:
+                    # Check if content already exists (by external_id)
+                    if Content.objects.filter(source=source, external_id=video['video_id']).exists():
+                        skipped_count += 1
+                        continue
                     
                     # Create content entry
                     Content.objects.create(
@@ -308,59 +261,39 @@ def source_edit(request, pk):
                     )
                     created_count += 1
             
-            print(f"\n✓ Successfully created {created_count} content entry/entries", flush=True)
-            print(f"{'='*60}\n", flush=True)
-            
             # Log the activity
-            metadata = {
-                'videos_fetched': created_count,
-                'videos_skipped': already_exist_count,
-                'total_found': total_found
-            }
-            
             log_activity(
                 'content_created',
                 f'Fetched {created_count} videos from YouTube channel "{source.name}"',
                 user=request.user,
                 source=source,
-                metadata=metadata
+                metadata={
+                    'videos_fetched': created_count,
+                    'videos_skipped': skipped_count,
+                    'total_found': len(videos)
+                }
             )
             
             if created_count > 0:
-                message = f'Successfully fetched {created_count} video(s) from "{source.name}". '
-                if already_exist_count > 0:
-                    message += f'{already_exist_count} video(s) already exist.'
-                messages.success(request, message)
-                print(f"✓ Success message sent", flush=True)
+                messages.success(
+                    request,
+                    f'Successfully fetched {created_count} video(s) from "{source.name}". '
+                    f'{skipped_count} video(s) were skipped (already exist).'
+                )
             else:
                 messages.info(
                     request,
-                    f'No new videos to add from "{source.name}".'
+                    f'All {len(videos)} video(s) from "{source.name}" already exist in the database.'
                 )
             
         except ImportError as e:
-            error_msg = f'YouTube API library not available: {str(e)}'
-            print(f"✗ {error_msg}", flush=True)
-            messages.error(request, error_msg)
+            messages.error(request, f'YouTube API library not available: {str(e)}')
         except ValueError as e:
-            error_msg = f'Error: {str(e)}'
-            print(f"✗ {error_msg}", flush=True)
-            messages.error(request, error_msg)
-        except (BrokenPipeError, OSError) as e:
-            # Handle broken pipe gracefully - operation may have completed
-            print(f"⚠ Client disconnected during operation: {str(e)}", flush=True)
-            print("Operation may have completed successfully. Check logs above.", flush=True)
+            messages.error(request, f'Error: {str(e)}')
         except Exception as e:
-            error_msg = f'Error fetching videos: {str(e)}'
-            print(f"✗ {error_msg}", flush=True)
-            messages.error(request, error_msg)
+            messages.error(request, f'Error fetching videos: {str(e)}')
         
-        try:
-            return redirect('sources:source_edit', pk=source.pk)
-        except (BrokenPipeError, OSError):
-            # If redirect fails due to broken pipe, just return None
-            # The operation completed, browser just disconnected
-            return None
+        return redirect('sources:source_edit', pk=source.pk)
     
     if request.method == 'POST':
         form = SourceForm(request.POST, instance=source)
@@ -874,7 +807,6 @@ def settings_view(request):
                 metadata={
                     'tagging_provider': form.cleaned_data.get('default_tagging_provider'),
                     'tagging_model': form.cleaned_data.get('default_tagging_model'),
-                    'video_filter_model': form.cleaned_data.get('default_video_filter_model'),
                 }
             )
             messages.success(request, 'Settings updated successfully!')

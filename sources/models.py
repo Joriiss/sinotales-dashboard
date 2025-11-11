@@ -101,10 +101,6 @@ class Source(models.Model):
         default=False,
         help_text="Include YouTube Shorts when collecting videos (YouTube sources only)"
     )
-    filter_videos = models.BooleanField(
-        default=False,
-        help_text="Filter videos using AI to only include videos relevant to China (YouTube sources only)"
-    )
     
     # Metadata
     metadata = models.JSONField(
@@ -377,11 +373,6 @@ class Settings(models.Model):
         max_length=100,
         default='gpt-oss:20b-cloud',
         help_text="Default model for content tagging (e.g., 'gpt-oss:20b-cloud' for Ollama, 'gpt-3.5-turbo' for OpenAI)"
-    )
-    default_video_filter_model = models.CharField(
-        max_length=100,
-        default='gpt-oss:20b-cloud',
-        help_text="Default model for video filtering (e.g., 'gpt-oss:20b-cloud' for Ollama)"
     )
     
     # Embedding settings (for future use)

@@ -13,7 +13,6 @@ class SourceForm(forms.ModelForm):
             'language',
             'channel_id',
             'include_shorts',
-            'filter_videos',
             'is_active',
         ]
         widgets = {
@@ -36,9 +35,6 @@ class SourceForm(forms.ModelForm):
                 'placeholder': 'UC1UNB6Gy11umcbEj_hqIwhw'
             }),
             'include_shorts': forms.CheckboxInput(attrs={
-                'class': 'form-check-input',
-            }),
-            'filter_videos': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
             }),
             'is_active': forms.CheckboxInput(attrs={
@@ -200,7 +196,6 @@ class SettingsForm(forms.ModelForm):
         fields = [
             'default_tagging_provider',
             'default_tagging_model',
-            'default_video_filter_model',
             'default_embedding_provider',
         ]
         widgets = {
@@ -211,10 +206,6 @@ class SettingsForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'e.g., gpt-oss:20b-cloud, llama3.2:latest'
             }),
-            'default_video_filter_model': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., gpt-oss:20b-cloud, llama3.2:latest'
-            }),
             'default_embedding_provider': forms.Select(attrs={
                 'class': 'form-control',
             }),
@@ -222,7 +213,6 @@ class SettingsForm(forms.ModelForm):
         help_texts = {
             'default_tagging_provider': 'Provider for AI-powered content tagging',
             'default_tagging_model': 'Model name for tagging (Ollama: e.g., gpt-oss:20b-cloud, llama3.2:latest | OpenAI: e.g., gpt-3.5-turbo)',
-            'default_video_filter_model': 'Model name for video filtering (Ollama: e.g., gpt-oss:20b-cloud, llama3.2:latest)',
             'default_embedding_provider': 'Provider for generating content embeddings',
         }
 
