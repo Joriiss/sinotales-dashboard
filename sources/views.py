@@ -821,11 +821,17 @@ def create_video_content_api(request):
         if date:
             try:
                 from datetime import datetime
-                parsed_date = datetime.strptime(date, '%Y-%m-%d').date()
+                # Try ISO 8601 format first (with time and timezone)
+                try:
+                    dt = datetime.fromisoformat(date.replace('Z', '+00:00'))
+                    parsed_date = dt.date()
+                except ValueError:
+                    # Fallback to YYYY-MM-DD format
+                    parsed_date = datetime.strptime(date, '%Y-%m-%d').date()
             except ValueError:
                 return JsonResponse({
                     'success': False,
-                    'error': 'Invalid date format. Use YYYY-MM-DD'
+                    'error': 'Invalid date format. Use YYYY-MM-DD or ISO 8601 format (e.g., 2025-11-07T15:15:00+00:00)'
                 }, status=400)
         
         # Create content
