@@ -42,25 +42,46 @@
                 </div>
             </div>
 
-            <div class="row mb-3">
+            <div class="row mb-3" id="external-id-row" style="display: none;">
                 <div class="col-md-6">
-                    <label for="{{ form.external_id.id_for_label }}" class="form-label">External ID <span class="text-danger">*</span></label>
+                    <label for="{{ form.external_id.id_for_label }}" class="form-label">
+                        External ID 
+                        {% if form.external_id.field.required %}<span class="text-danger">*</span>{% endif %}
+                    </label>
                     {{ form.external_id }}
                     {% if form.external_id.errors %}
                         <div class="text-danger small">{{ form.external_id.errors }}</div>
                     {% endif %}
-                    <small class="form-text text-muted">e.g., video_id, blog post slug</small>
+                    <small class="form-text text-muted">
+                        {% if form.external_id.field.required %}
+                            Video ID (required for videos)
+                        {% else %}
+                            Optional - will be auto-generated from title if empty
+                        {% endif %}
+                    </small>
                 </div>
+                <div class="col-md-6" id="date-in-external-row">
+                    <label for="{{ form.date.id_for_label }}" class="form-label">Date <span class="text-danger">*</span></label>
+                    <div id="date-field-container">
+                        {{ form.date }}
+                    </div>
+                    {% if form.date.errors %}
+                        <div class="text-danger small">{{ form.date.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row mb-3" id="date-row-alone" style="display: none;">
                 <div class="col-md-6">
                     <label for="{{ form.date.id_for_label }}" class="form-label">Date <span class="text-danger">*</span></label>
-                    {{ form.date }}
+                    <div id="date-field-container-alone"></div>
                     {% if form.date.errors %}
                         <div class="text-danger small">{{ form.date.errors }}</div>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="row mb-3">
+            <div class="row mb-3" id="link-row">
                 <div class="col-md-12">
                     <label for="{{ form.link.id_for_label }}" class="form-label">Link <span class="text-danger">*</span></label>
                     {{ form.link }}
@@ -116,5 +137,264 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const contentTypeField = document.getElementById('{{ form.content_type.id_for_label }}');
+    const externalIdField = document.getElementById('{{ form.external_id.id_for_label }}');
+    const linkField = document.getElementById('{{ form.link.id_for_label }}');
+    const sourceField = document.getElementById('{{ form.source.id_for_label }}');
+    const externalIdRow = document.getElementById('external-id-row');
+    const dateRowAlone = document.getElementById('date-row-alone');
+    const linkRow = document.getElementById('link-row');
+    
+    if (!contentTypeField || !externalIdField || !sourceField) {
+        return; // Fields not found, skip
+    }
+    
+    const externalIdContainer = externalIdField.closest('.col-md-6');
+    if (!externalIdContainer) {
+        return; // Container not found, skip
+    }
+    
+    const externalIdLabel = externalIdContainer.querySelector('label');
+    const externalIdHelp = externalIdContainer.querySelector('.form-text');
+    
+    // Content type to source type mapping
+    const contentTypeToSourceType = {
+        'video': 'youtube',
+        'blog_post': 'blog',
+        'ebook': 'ebook'
+    };
+    
+    // Sources data from server
+    const sourcesByType = {{ sources_by_type_json|safe }};
+    
+    /**
+     * Filter source dropdown based on content type
+     */
+    function filterSources() {
+        const contentType = contentTypeField.value;
+        const sourceType = contentTypeToSourceType[contentType];
+        
+        if (!sourceType) {
+            // Show all sources if content type doesn't map to a source type
+            Array.from(sourceField.options).forEach(option => {
+                option.style.display = '';
+            });
+            return;
+        }
+        
+        // Get available sources for this type
+        const availableSources = sourcesByType[sourceType] || [];
+        const availableIds = new Set(availableSources.map(s => s.id.toString()));
+        
+        // Show/hide options based on source type
+        Array.from(sourceField.options).forEach(option => {
+            if (option.value === '') {
+                // Keep the empty/default option visible
+                option.style.display = '';
+            } else if (availableIds.has(option.value)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+        
+        // If current selection is not available, clear it
+        if (sourceField.value && !availableIds.has(sourceField.value)) {
+            sourceField.value = '';
+        }
+    }
+    
+    /**
+     * Extract YouTube video ID from various URL formats
+     * Supports:
+     * - https://www.youtube.com/watch?v=VIDEO_ID
+     * - https://youtu.be/VIDEO_ID
+     * - https://www.youtube.com/embed/VIDEO_ID
+     * - https://www.youtube.com/v/VIDEO_ID
+     */
+    function extractYouTubeVideoId(url) {
+        if (!url) return null;
+        
+        // Remove whitespace
+        url = url.trim();
+        
+        // Pattern 1: youtube.com/watch?v=VIDEO_ID
+        let match = url.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.*&v=)([a-zA-Z0-9_-]{11})/);
+        if (match) return match[1];
+        
+        // Pattern 2: youtu.be/VIDEO_ID
+        match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+        if (match) return match[1];
+        
+        // Pattern 3: youtube.com/embed/VIDEO_ID
+        match = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+        if (match) return match[1];
+        
+        // Pattern 4: youtube.com/v/VIDEO_ID
+        match = url.match(/youtube\.com\/v\/([a-zA-Z0-9_-]{11})/);
+        if (match) return match[1];
+        
+        // Pattern 5: If it's just the video ID itself (11 characters, alphanumeric + _ and -)
+        if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+            return url;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Auto-fill external_id from YouTube URL
+     */
+    function autoFillVideoId() {
+        const contentType = contentTypeField.value;
+        if (contentType !== 'video') return;
+        
+        // Try to extract from link field first
+        if (linkField && linkField.value) {
+            const videoId = extractYouTubeVideoId(linkField.value);
+            if (videoId && !externalIdField.value) {
+                externalIdField.value = videoId;
+                // Show a brief visual feedback
+                externalIdField.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    externalIdField.style.backgroundColor = '';
+                }, 1000);
+            }
+        }
+        
+        // Also check if user pasted URL directly into external_id field
+        if (externalIdField.value && externalIdField.value.includes('youtube.com') || externalIdField.value.includes('youtu.be')) {
+            const videoId = extractYouTubeVideoId(externalIdField.value);
+            if (videoId) {
+                externalIdField.value = videoId;
+                externalIdField.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    externalIdField.style.backgroundColor = '';
+                }, 1000);
+            }
+        }
+    }
+    
+    function updateExternalIdRequirement() {
+        const contentType = contentTypeField.value;
+        const isVideo = contentType === 'video';
+        const isEbook = contentType === 'ebook';
+        
+        // Hide external_id field for videos (will be auto-extracted from URL)
+        // Hide external_id and link fields for ebooks
+        if (isVideo) {
+            if (externalIdRow) externalIdRow.style.display = 'none';
+            if (dateRowAlone) dateRowAlone.style.display = '';
+            if (linkRow) linkRow.style.display = '';
+        } else if (isEbook) {
+            if (externalIdRow) externalIdRow.style.display = 'none';
+            if (dateRowAlone) dateRowAlone.style.display = '';
+            if (linkRow) linkRow.style.display = 'none';
+        } else {
+            if (externalIdRow) externalIdRow.style.display = '';
+            if (dateRowAlone) dateRowAlone.style.display = 'none';
+            if (linkRow) linkRow.style.display = '';
+        }
+        
+        // Move date field to appropriate row
+        const dateField = document.getElementById('{{ form.date.id_for_label }}');
+        const dateContainerInRow = document.getElementById('date-field-container');
+        const dateContainerAlone = document.getElementById('date-field-container-alone');
+        
+        if (dateField && dateContainerInRow && dateContainerAlone) {
+            if (isVideo) {
+                // For videos, show date in standalone row
+                if (dateField.parentElement !== dateContainerAlone) {
+                    dateContainerAlone.appendChild(dateField);
+                }
+            } else {
+                // For other types, show date in external_id row
+                if (dateField.parentElement !== dateContainerInRow) {
+                    dateContainerInRow.appendChild(dateField);
+                }
+            }
+        }
+        
+        // Update required attribute (for form validation)
+        externalIdField.required = false; // Never required in form, handled in clean()
+        
+        // Update placeholder and help text
+        if (isVideo) {
+            externalIdField.placeholder = 'e.g., HkmAqWavKCY (will be auto-extracted from URL)';
+            if (externalIdHelp) {
+                externalIdHelp.textContent = 'Video ID - will be auto-extracted from YouTube URL';
+            }
+        } else {
+            externalIdField.placeholder = 'e.g., blog-slug (optional, will be auto-generated from title if empty)';
+            if (externalIdHelp) {
+                externalIdHelp.textContent = 'Optional - will be auto-generated from title if empty';
+            }
+        }
+        
+        // Auto-fill video ID if content type is video
+        if (isVideo) {
+            autoFillVideoId();
+        }
+    }
+    
+    // Update on content type change
+    contentTypeField.addEventListener('change', function() {
+        updateExternalIdRequirement();
+        filterSources();
+    });
+    
+    // Auto-extract video ID when link field changes (for videos)
+    if (linkField) {
+        linkField.addEventListener('input', function() {
+            if (contentTypeField.value === 'video') {
+                autoFillVideoId();
+            }
+        });
+        linkField.addEventListener('paste', function() {
+            setTimeout(() => {
+                if (contentTypeField.value === 'video') {
+                    autoFillVideoId();
+                }
+            }, 10);
+        });
+    }
+    
+    // Auto-extract video ID if user pastes URL directly into external_id field
+    externalIdField.addEventListener('input', function() {
+        if (contentTypeField.value === 'video' && this.value.includes('youtube')) {
+            const videoId = extractYouTubeVideoId(this.value);
+            if (videoId) {
+                this.value = videoId;
+                this.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    this.style.backgroundColor = '';
+                }, 1000);
+            }
+        }
+    });
+    
+    externalIdField.addEventListener('paste', function() {
+        setTimeout(() => {
+            if (contentTypeField.value === 'video' && this.value.includes('youtube')) {
+                const videoId = extractYouTubeVideoId(this.value);
+                if (videoId) {
+                    this.value = videoId;
+                    this.style.backgroundColor = '#d4edda';
+                    setTimeout(() => {
+                        this.style.backgroundColor = '';
+                    }, 1000);
+                }
+            }
+        }, 10);
+    });
+    
+    // Initial update
+    updateExternalIdRequirement();
+    filterSources();
+});
+</script>
 {% endblock %}
 

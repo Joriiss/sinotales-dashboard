@@ -9,11 +9,13 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import Length
 from django.http import JsonResponse
 from django.conf import settings
+from django.utils.html import json_script
 import json
 from .models import Source, Content, Tag, ContentChunk, ActivityLog
 from .forms import SourceForm, ContentForm
 from .rag_service import RAGService
 from .utils import log_activity
+from .content_processing_service import ContentProcessingService
 
 
 class CustomLoginView(LoginView):
@@ -267,6 +269,43 @@ def content_add(request):
         form = ContentForm(request.POST)
         if form.is_valid():
             content = form.save()
+            
+            # Process content: extract, translate, tag, embed
+            try:
+                processing_service = ContentProcessingService()
+                processing_results = processing_service.process_content(
+                    content,
+                    extract=True,
+                    translate=True,
+                    tag=True,
+                    embed=True
+                )
+                
+                # Log processing results
+                processing_summary = []
+                if processing_results.get('extracted'):
+                    processing_summary.append('extracted')
+                if processing_results.get('translated'):
+                    processing_summary.append('translated')
+                if processing_results.get('tagged'):
+                    processing_summary.append('tagged')
+                if processing_results.get('embedded'):
+                    processing_summary.append('embedded')
+                
+                if processing_summary:
+                    messages.success(
+                        request, 
+                        f'Content "{content.title}" added and processed: {", ".join(processing_summary)}'
+                    )
+                else:
+                    messages.success(request, f'Content "{content.title}" added successfully!')
+            except Exception as e:
+                # Log error but don't fail the request
+                messages.warning(
+                    request, 
+                    f'Content "{content.title}" added, but processing encountered an error: {str(e)}'
+                )
+            
             log_activity(
                 'content_created',
                 f'Content "{content.title}" ({content.get_content_type_display()}) was created',
@@ -274,14 +313,26 @@ def content_add(request):
                 content=content,
                 source=content.source
             )
-            messages.success(request, f'Content "{content.title}" added successfully!')
+            
             return redirect('sources:content_list')
     else:
         form = ContentForm()
     
+    # Get all sources grouped by type for JavaScript filtering
+    sources_by_type = {}
+    for source in Source.objects.all().order_by('name'):
+        source_type = source.source_type
+        if source_type not in sources_by_type:
+            sources_by_type[source_type] = []
+        sources_by_type[source_type].append({
+            'id': source.id,
+            'name': source.name,
+        })
+    
     context = {
         'form': form,
         'action': 'Add',
+        'sources_by_type_json': json.dumps(sources_by_type),
     }
     return render(request, 'sources/content_form.html', context)
 
@@ -307,10 +358,22 @@ def content_edit(request, pk):
     else:
         form = ContentForm(instance=content)
     
+    # Get all sources grouped by type for JavaScript filtering
+    sources_by_type = {}
+    for source in Source.objects.all().order_by('name'):
+        source_type = source.source_type
+        if source_type not in sources_by_type:
+            sources_by_type[source_type] = []
+        sources_by_type[source_type].append({
+            'id': source.id,
+            'name': source.name,
+        })
+    
     context = {
         'form': form,
         'content': content,
         'action': 'Edit',
+        'sources_by_type_json': json.dumps(sources_by_type),
     }
     return render(request, 'sources/content_form.html', context)
 
