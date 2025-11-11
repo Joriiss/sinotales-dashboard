@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <div class="row mb-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="form-check">
                         {{ form.include_shorts }}
                         <label class="form-check-label" for="{{ form.include_shorts.id_for_label }}">
@@ -108,7 +108,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     {% endif %}
                     <small class="form-text text-muted">Only applies to YouTube sources</small>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        {{ form.filter_videos }}
+                        <label class="form-check-label" for="{{ form.filter_videos.id_for_label }}">
+                            Filter Videos (AI)
+                        </label>
+                    </div>
+                    {% if form.filter_videos.errors %}
+                        <div class="text-danger small">{{ form.filter_videos.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">Use AI to filter videos relevant to China</small>
+                </div>
+                <div class="col-md-4">
                     <div class="form-check">
                         {{ form.is_active }}
                         <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
@@ -121,11 +133,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end gap-2">
-                <a href="{% url 'sources:source_list' %}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle"></i> Save Source
-                </button>
+            <div class="d-flex justify-content-between align-items-center">
+                {% if action|lower == 'edit' and source and source.source_type == 'youtube' and source.channel_id %}
+                <form method="post" action="{% url 'sources:source_edit' source.pk %}" id="get-videos-form" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" name="get_videos" id="get-videos-btn" class="btn btn-outline-primary" 
+                            onclick="if(confirm('This will fetch all videos from this YouTube channel and create content entries. This may take a while. Continue?')) { showLoadingState(); return true; } else { return false; }">
+                        <i class="bi bi-youtube"></i> <span id="get-videos-text">Get Videos</span>
+                        <span id="get-videos-spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </form>
+                <script>
+                function showLoadingState() {
+                    const btn = document.getElementById('get-videos-btn');
+                    const text = document.getElementById('get-videos-text');
+                    const spinner = document.getElementById('get-videos-spinner');
+                    if (btn && text && spinner) {
+                        btn.disabled = true;
+                        text.textContent = 'Fetching Videos...';
+                        spinner.classList.remove('d-none');
+                    }
+                }
+                </script>
+                {% else %}
+                <div></div>
+                {% endif %}
+                <div class="d-flex gap-2">
+                    <a href="{% url 'sources:source_list' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Save Source
+                    </button>
+                </div>
             </div>
         </form>
     </div>

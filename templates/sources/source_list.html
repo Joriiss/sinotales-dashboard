@@ -13,6 +13,62 @@
     </a>
 </div>
 
+<!-- Filters -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Filters</h6>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-12 col-md-3">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" name="search" id="search" class="form-control" 
+                       placeholder="Search by name..." value="{{ search_query }}">
+            </div>
+            <div class="col-12 col-md-2">
+                <label for="source_type" class="form-label">Source Type</label>
+                <select name="source_type" id="source_type" class="form-select">
+                    <option value="">All Types</option>
+                    {% for value, label in source_types %}
+                        <option value="{{ value }}" {% if source_type_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label for="language" class="form-label">Language</label>
+                <select name="language" id="language" class="form-select">
+                    <option value="">All Languages</option>
+                    {% for value, label in languages %}
+                        <option value="{{ value }}" {% if language_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-funnel me-1"></i> <span class="d-none d-md-inline">Apply</span><span class="d-md-none">Filter</span>
+                </button>
+                {% if source_type_filter or language_filter or status_filter or search_query %}
+                <a href="{% url 'sources:source_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> <span class="d-none d-md-inline">Clear</span>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         {% if sources %}

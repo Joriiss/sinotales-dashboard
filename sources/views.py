@@ -134,8 +134,51 @@ def source_list(request):
         processed_contents=Count('contents', filter=Q(contents__processed=True)),
     ).all()
     
+    # Apply filters
+    source_type_filter = request.GET.get('source_type', '').strip()
+    language_filter = request.GET.get('language', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    search_query = request.GET.get('search', '').strip()
+    
+    if source_type_filter:
+        sources = sources.filter(source_type=source_type_filter)
+    
+    if language_filter:
+        sources = sources.filter(language=language_filter)
+    
+    if status_filter:
+        if status_filter == 'active':
+            sources = sources.filter(is_active=True)
+        elif status_filter == 'inactive':
+            sources = sources.filter(is_active=False)
+    
+    if search_query:
+        sources = sources.filter(name__icontains=search_query)
+    
+    # Get filter choices - only show types and languages that exist in the database
+    existing_source_types = Source.objects.values_list('source_type', flat=True).distinct().order_by('source_type')
+    existing_languages = Source.objects.values_list('language', flat=True).distinct().order_by('language')
+    
+    # Map to display labels
+    source_types = [
+        (st, dict(Source.SOURCE_TYPE_CHOICES)[st]) 
+        for st in existing_source_types 
+        if st in dict(Source.SOURCE_TYPE_CHOICES)
+    ]
+    languages = [
+        (lang, dict(Source.LANGUAGE_CHOICES)[lang]) 
+        for lang in existing_languages 
+        if lang in dict(Source.LANGUAGE_CHOICES)
+    ]
+    
     context = {
         'sources': sources,
+        'source_types': source_types,
+        'languages': languages,
+        'source_type_filter': source_type_filter,
+        'language_filter': language_filter,
+        'status_filter': status_filter,
+        'search_query': search_query,
     }
     return render(request, 'sources/source_list.html', context)
 
@@ -169,6 +212,171 @@ def source_add(request):
 def source_edit(request, pk):
     """Edit an existing source"""
     source = get_object_or_404(Source, pk=pk)
+    
+    # Handle get_videos action for YouTube sources
+    if request.method == 'POST' and 'get_videos' in request.POST:
+        if source.source_type != 'youtube':
+            messages.error(request, 'Get Videos is only available for YouTube sources.')
+            return redirect('sources:source_edit', pk=source.pk)
+        
+        if not source.channel_id:
+            messages.error(request, 'Channel ID is required to get videos.')
+            return redirect('sources:source_edit', pk=source.pk)
+        
+        try:
+            from .youtube_service import get_channel_videos
+            from .video_filter_service import is_video_relevant
+            from django.db import transaction
+            
+            print(f"\n{'='*60}")
+            print(f"Fetching videos from YouTube channel: {source.name}")
+            print(f"Channel ID: {source.channel_id}")
+            print(f"Include Shorts: {source.include_shorts}")
+            print(f"Filter Videos: {source.filter_videos}")
+            print(f"{'='*60}\n")
+            
+            # Fetch videos from YouTube (fetch details if filtering is enabled)
+            fetch_details = source.filter_videos
+            print("Step 1: Fetching videos from YouTube API...")
+            all_videos = get_channel_videos(
+                channel_id=source.channel_id,
+                include_shorts=source.include_shorts,
+                fetch_details=fetch_details
+            )
+            
+            if not all_videos:
+                messages.info(request, f'No videos found for channel "{source.name}".')
+                return redirect('sources:source_edit', pk=source.pk)
+            
+            total_found = len(all_videos)
+            print(f"✓ Found {total_found} video(s) from YouTube\n")
+            
+            # Step 2: Check which videos already exist (BEFORE filtering)
+            print("Step 2: Checking for existing videos in database...")
+            existing_video_ids = set(
+                Content.objects.filter(source=source)
+                .values_list('external_id', flat=True)
+            )
+            
+            # Filter out videos that already exist
+            new_videos = []
+            already_exist_count = 0
+            for video in all_videos:
+                if video['video_id'] in existing_video_ids:
+                    already_exist_count += 1
+                else:
+                    new_videos.append(video)
+            
+            print(f"✓ {already_exist_count} video(s) already exist, {len(new_videos)} new video(s) to process\n")
+            
+            if not new_videos:
+                messages.info(
+                    request,
+                    f'All {total_found} video(s) from "{source.name}" already exist in the database.'
+                )
+                return redirect('sources:source_edit', pk=source.pk)
+            
+            # Step 3: Filter videos if filter_videos is enabled (only filter NEW videos)
+            filtered_count = 0
+            videos_to_create = new_videos
+            if source.filter_videos:
+                print(f"Step 3: Filtering {len(new_videos)} new video(s) using AI...")
+                filtered_videos = []
+                for i, video in enumerate(new_videos, 1):
+                    title_preview = video['title'][:50] + "..." if len(video['title']) > 50 else video['title']
+                    print(f"  [{i}/{len(new_videos)}] Checking: {title_preview}")
+                    
+                    try:
+                        is_relevant = is_video_relevant(
+                            title=video['title'],
+                            description=video.get('description', ''),
+                            tags=video.get('tags', [])
+                        )
+                        if is_relevant:
+                            print(f"    ✓ Relevant - will be added")
+                            filtered_videos.append(video)
+                        else:
+                            print(f"    ✗ Not relevant - filtered out")
+                            filtered_count += 1
+                    except Exception as e:
+                        # If filtering fails, include the video (be permissive)
+                        print(f"    ⚠ Error filtering (including video): {str(e)}")
+                        filtered_videos.append(video)
+                
+                videos_to_create = filtered_videos
+                print(f"\n✓ Filtering complete: {len(filtered_videos)} relevant, {filtered_count} filtered out\n")
+            
+            if not videos_to_create:
+                messages.info(
+                    request, 
+                    f'No relevant new videos found for channel "{source.name}" after filtering. '
+                    f'{filtered_count} video(s) were filtered out, {already_exist_count} already exist.'
+                )
+                return redirect('sources:source_edit', pk=source.pk)
+            
+            # Step 4: Create Content entries for each video
+            print(f"Step 4: Creating {len(videos_to_create)} content entry/entries...")
+            created_count = 0
+            
+            with transaction.atomic():
+                for i, video in enumerate(videos_to_create, 1):
+                    title_preview = video['title'][:50] + "..." if len(video['title']) > 50 else video['title']
+                    print(f"  [{i}/{len(videos_to_create)}] Creating: {title_preview}")
+                    
+                    # Create content entry
+                    Content.objects.create(
+                        source=source,
+                        external_id=video['video_id'],
+                        title=video['title'],
+                        link=video['link'],
+                        content_type='video',
+                        date=video['upload_date'],
+                        content='',  # Empty - will be filled later when processing
+                        processed=False,
+                    )
+                    created_count += 1
+            
+            print(f"\n✓ Successfully created {created_count} content entry/entries")
+            print(f"{'='*60}\n")
+            
+            # Log the activity
+            metadata = {
+                'videos_fetched': created_count,
+                'videos_skipped': already_exist_count,
+                'total_found': total_found
+            }
+            if source.filter_videos:
+                metadata['videos_filtered'] = filtered_count
+            
+            log_activity(
+                'content_created',
+                f'Fetched {created_count} videos from YouTube channel "{source.name}"',
+                user=request.user,
+                source=source,
+                metadata=metadata
+            )
+            
+            if created_count > 0:
+                message = f'Successfully fetched {created_count} video(s) from "{source.name}". '
+                if already_exist_count > 0:
+                    message += f'{already_exist_count} video(s) already exist. '
+                if source.filter_videos and filtered_count > 0:
+                    message += f'{filtered_count} video(s) were filtered out (not relevant to China).'
+                messages.success(request, message)
+            else:
+                messages.info(
+                    request,
+                    f'No new videos to add from "{source.name}".'
+                )
+            
+        except ImportError as e:
+            messages.error(request, f'YouTube API library not available: {str(e)}')
+        except ValueError as e:
+            messages.error(request, f'Error: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error fetching videos: {str(e)}')
+        
+        return redirect('sources:source_edit', pk=source.pk)
     
     if request.method == 'POST':
         form = SourceForm(request.POST, instance=source)
@@ -682,6 +890,7 @@ def settings_view(request):
                 metadata={
                     'tagging_provider': form.cleaned_data.get('default_tagging_provider'),
                     'tagging_model': form.cleaned_data.get('default_tagging_model'),
+                    'video_filter_model': form.cleaned_data.get('default_video_filter_model'),
                 }
             )
             messages.success(request, 'Settings updated successfully!')
