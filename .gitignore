@@ -51,5 +51,7 @@ Thumbs.db
 
 
 /ebooks/
+/blogs/
+/videos/
 /config/settings.py
 /content/

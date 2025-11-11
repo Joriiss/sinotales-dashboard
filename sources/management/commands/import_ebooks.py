@@ -46,7 +46,7 @@ class Command(BaseCommand):
             '--txt-dir',
             type=str,
             default=None,
-            help='Path to TXT files directory (default: ebooks/txt/ relative to project root)',
+            help='Path to TXT files directory (default: ebooks/ relative to project root)',
         )
         parser.add_argument(
             '--scan-dir',
@@ -81,12 +81,17 @@ class Command(BaseCommand):
                 txt_dir = os.path.join(project_root, txt_dir)
             txt_dir = os.path.abspath(txt_dir)
         else:
-            # Default to ebooks/txt relative to project root
-            default_txt_dir = os.path.join(project_root, 'ebooks', 'txt')
+            # Default to ebooks/ relative to project root (for split files)
+            default_txt_dir = os.path.join(project_root, 'ebooks')
             if os.path.exists(default_txt_dir):
                 txt_dir = os.path.abspath(default_txt_dir)
             else:
-                txt_dir = None
+                # Fallback to ebooks/txt for backward compatibility
+                default_txt_dir_fallback = os.path.join(project_root, 'ebooks', 'txt')
+                if os.path.exists(default_txt_dir_fallback):
+                    txt_dir = os.path.abspath(default_txt_dir_fallback)
+                else:
+                    txt_dir = None
         
         if scan_dir:
             # Scan directory mode
@@ -140,112 +145,50 @@ class Command(BaseCommand):
                 link = ebook_data.get('link', '').strip()
                 ebook_language = ebook_data.get('language', '').strip()
                 
-                if not title or not txt_file:
+                part_files = ebook_data.get('part_files', [])
+                if not title or (not txt_file and not part_files):
                     self.stdout.write(
-                        self.style.WARNING(f'Skipping - missing title or txt_file: {title or txt_file}')
+                        self.style.WARNING(f'Skipping - missing title or files: {title or "no title"}')
                     )
                     skipped += 1
                     continue
                 
-                # Generate external_id from filename (remove extension, sanitize)
-                external_id = os.path.splitext(os.path.basename(txt_file))[0]
-                external_id = re.sub(r'[^\w\-_]', '_', external_id)[:255]
-                
-                # Find or create ebook source
-                if source_name:
-                    source = Source.objects.filter(
-                        name=source_name,
-                        source_type='ebook'
-                    ).first()
-                    
-                    if not source:
-                        # Try without source_type filter
-                        source = Source.objects.filter(name=source_name).first()
-                        if source:
-                            self.stdout.write(
-                                self.style.WARNING(f'Found source "{source_name}" but it\'s not an ebook type')
-                            )
-                        else:
-                            # Create new ebook source
-                            source = Source.objects.create(
-                                name=source_name,
-                                source_type='ebook',
-                                link=link if link else None,
-                                language='en',  # Default, can be updated later
-                                is_active=True,
-                            )
-                            self.stdout.write(
-                                self.style.SUCCESS(f'Created new ebook source: "{source_name}"')
-                            )
+                # Create a unique source for each ebook (using title + author as source name)
+                # This ensures each ebook has its own source
+                if title:
+                    if author:
+                        ebook_source_name = f"{title} - {author}"
+                    else:
+                        ebook_source_name = title
                 else:
-                    # Use a default source name based on filename or create generic
-                    source_name = 'Imported Ebooks'
-                    source = Source.objects.filter(
-                        name=source_name,
-                        source_type='ebook'
-                    ).first()
-                    
-                    if not source:
-                        source = Source.objects.create(
-                            name=source_name,
-                            source_type='ebook',
-                            link=None,
-                            language='en',
-                            is_active=True,
-                        )
+                    # Fallback
+                    ebook_source_name = source_name or 'Imported Ebook'
                 
-                # Check if ebook already exists (always check to avoid duplicates)
-                existing = Content.objects.filter(
-                    source=source,
-                    external_id=external_id
+                # Find or create unique source for this ebook
+                source = Source.objects.filter(
+                    name=ebook_source_name,
+                    source_type='ebook'
                 ).first()
                 
-                if existing:
-                    # If existing but no content, try to load it
-                    if not existing.has_content and load_content and txt_dir:
-                        # Try to load content for existing ebook
-                        if txt_file and not txt_file.endswith('.txt'):
-                            txt_file = txt_file + '.txt'
-                        
-                        txt_path = os.path.join(txt_dir, txt_file) if not os.path.isabs(txt_file) else txt_file
-                        if not os.path.exists(txt_path) and txt_dir:
-                            # Try to find file with similar name
-                            possible_files = [f for f in os.listdir(txt_dir) 
-                                            if f.lower().endswith('.txt') and 
-                                            (os.path.splitext(txt_file)[0].lower() in f.lower() or 
-                                             os.path.splitext(f)[0].lower() == os.path.splitext(txt_file)[0].lower())]
-                            if possible_files:
-                                txt_path = os.path.join(txt_dir, possible_files[0])
-                        
-                        if os.path.exists(txt_path):
-                            try:
-                                with open(txt_path, 'r', encoding='utf-8') as tf:
-                                    content_text = tf.read().strip()
-                                
-                                # Update existing ebook with content
-                                existing.content = content_text
-                                existing.save()  # This will auto-update has_content
-                                
-                                self.stdout.write(
-                                    self.style.SUCCESS(f'Updated existing ebook "{title}" with content from "{os.path.basename(txt_path)}"')
-                                )
-                                imported += 1
-                                continue
-                            except Exception as e:
-                                self.stdout.write(
-                                    self.style.WARNING(f'Could not load content for existing ebook "{title}": {str(e)}')
-                                )
-                    
-                    if skip_existing:
-                        self.stdout.write(
-                            self.style.WARNING(f'Skipping existing ebook "{title}"')
-                        )
-                    else:
-                        self.stdout.write(
-                            self.style.WARNING(f'Ebook "{title}" already exists (use --skip-existing to suppress)')
-                        )
-                    skipped += 1
-                    continue
+                if not source:
+                    # Create new unique source for this ebook
+                    source = Source.objects.create(
+                        name=ebook_source_name,
+                        source_type='ebook',
+                        link=link if link else None,
+                        language=ebook_language if ebook_language else 'en',
+                        is_active=True,
+                    )
+                    self.stdout.write(
+                        self.style.SUCCESS(f'Created new ebook source: "{ebook_source_name}"')
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.SUCCESS(f'Using existing ebook source: "{ebook_source_name}"')
+                    )
+                
+                # Note: We don't check for existing content here because we're processing parts individually
+                # Each part will be checked separately in the part processing loop
                 
                 # Parse date
                 date_obj = None
@@ -277,132 +220,266 @@ class Command(BaseCommand):
                     else:
                         date_obj = datetime.now().date()
                 
-                # Load content from TXT file
-                content_text = ''
-                if load_content and txt_dir:
-                    # Ensure .txt extension
-                    if txt_file and not txt_file.endswith('.txt'):
-                        txt_file = txt_file + '.txt'
+                # Process part files - create one content item per part
+                if part_files:
+                    self.stdout.write(f'Found {len(part_files)} part files for "{title}"')
                     
-                    txt_path = os.path.join(txt_dir, txt_file) if not os.path.isabs(txt_file) else txt_file
-                    if os.path.exists(txt_path):
+                    for part_file in part_files:
+                        part_path = os.path.join(txt_dir, part_file)
+                        if not os.path.exists(part_path):
+                            self.stdout.write(
+                                self.style.WARNING(f'Part file not found: "{part_path}"')
+                            )
+                            skipped += 1
+                            continue
+                        
+                        # Load content from this part file
+                        content_text = ''
                         try:
-                            with open(txt_path, 'r', encoding='utf-8') as tf:
+                            with open(part_path, 'r', encoding='utf-8') as tf:
                                 content_text = tf.read().strip()
+                            if not content_text:
+                                self.stdout.write(
+                                    self.style.WARNING(f'Part file "{part_file}" is empty, skipping')
+                                )
+                                skipped += 1
+                                continue
                             content_loaded += 1
                         except Exception as e:
                             self.stdout.write(
-                                self.style.WARNING(f'Could not load content from "{txt_file}": {str(e)}')
+                                self.style.WARNING(f'Could not load part file "{part_file}": {str(e)}')
                             )
-                    else:
-                        # Try to find file without extension or with different case
-                        if txt_dir:
-                            possible_files = [f for f in os.listdir(txt_dir) 
-                                            if f.lower().endswith('.txt') and 
-                                            (os.path.splitext(txt_file)[0].lower() in f.lower() or 
-                                             os.path.splitext(f)[0].lower() == os.path.splitext(txt_file)[0].lower())]
-                            if possible_files:
-                                txt_path = os.path.join(txt_dir, possible_files[0])
-                                try:
-                                    with open(txt_path, 'r', encoding='utf-8') as tf:
-                                        content_text = tf.read().strip()
-                                    content_loaded += 1
+                            errors += 1
+                            continue
+                        
+                        # Extract part number for title and external_id
+                        part_match = re.search(r'_part(\d+)', part_file, re.IGNORECASE)
+                        part_num = int(part_match.group(1)) if part_match else 0
+                        
+                        # Generate external_id for this part (use filename base to ensure uniqueness)
+                        part_external_id = os.path.splitext(part_file)[0]  # Remove .txt extension
+                        part_external_id = re.sub(r'[^\w\-_]', '_', part_external_id)[:255]
+                        
+                        # Build title with part number
+                        part_title = title
+                        if author:
+                            part_title = f"{title} - {author}"
+                        part_title = f"{part_title} - Part {part_num}"
+                        
+                        # Check if this part already exists
+                        existing = Content.objects.filter(
+                            source=source,
+                            external_id=part_external_id
+                        ).first()
+                        
+                        if existing:
+                            if skip_existing:
+                                self.stdout.write(
+                                    self.style.WARNING(f'Skipping existing part "{part_title}"')
+                                )
+                                skipped += 1
+                                continue
+                            else:
+                                self.stdout.write(
+                                    self.style.WARNING(f'Part "{part_title}" already exists (use --skip-existing to suppress)')
+                                )
+                                skipped += 1
+                                continue
+                        
+                        # Translate French content if needed
+                        ebook_language_lower = ebook_language.lower() if ebook_language else ''
+                        should_translate = (
+                            options.get('translate_fr', True) and 
+                            not options.get('no_translate', False) and
+                            ebook_language_lower in ('fr', 'french', 'français') and
+                            content_text and
+                            TRANSLATION_AVAILABLE
+                        )
+                        
+                        if should_translate:
+                            self.stdout.write(f'Translating French content for "{part_title}"...')
+                            try:
+                                # Translate in chunks to handle large files
+                                chunk_size = 4500
+                                translated_chunks = []
+                                
+                                if len(content_text) <= chunk_size:
+                                    translator = GoogleTranslator(source='fr', target='en')
+                                    translated_text = translator.translate(content_text)
+                                    content_text = translated_text
+                                else:
+                                    translator = GoogleTranslator(source='fr', target='en')
+                                    sentences = re.split(r'([.!?]\s+)', content_text)
+                                    current_chunk = ''
+                                    
+                                    for sentence in sentences:
+                                        if len(current_chunk) + len(sentence) <= chunk_size:
+                                            current_chunk += sentence
+                                        else:
+                                            if current_chunk:
+                                                translated_chunk = translator.translate(current_chunk)
+                                                translated_chunks.append(translated_chunk)
+                                            current_chunk = sentence
+                                    
+                                    if current_chunk:
+                                        translated_chunk = translator.translate(current_chunk)
+                                        translated_chunks.append(translated_chunk)
+                                    
+                                    content_text = ' '.join(translated_chunks)
+                                
+                                self.stdout.write(
+                                    self.style.SUCCESS(f'Translation completed for "{part_title}"')
+                                )
+                            except Exception as e:
+                                self.stdout.write(
+                                    self.style.WARNING(f'Translation failed for "{part_title}": {str(e)}. Using original content.')
+                                )
+                        elif ebook_language_lower in ('fr', 'french', 'français') and not TRANSLATION_AVAILABLE:
+                            self.stdout.write(
+                                self.style.WARNING(f'French content detected but translation library not available. Install: pip install deep-translator')
+                            )
+                        
+                        # Create content for this part
+                        with transaction.atomic():
+                            content = Content.objects.create(
+                                source=source,
+                                external_id=part_external_id,
+                                title=part_title,
+                                link=link if link else None,
+                                content_type='ebook',
+                                date=date_obj,
+                                content=content_text,
+                                processed=False,
+                            )
+                        
+                        self.stdout.write(
+                            self.style.SUCCESS(f'Imported "{part_title}" (ID: {part_external_id})')
+                        )
+                        imported += 1
+                
+                else:
+                    # Single file mode (backward compatibility)
+                    content_text = ''
+                    
+                    if load_content and txt_dir:
+                        # Ensure .txt extension
+                        if txt_file and not txt_file.endswith('.txt'):
+                            txt_file = txt_file + '.txt'
+                        
+                        txt_path = os.path.join(txt_dir, txt_file) if not os.path.isabs(txt_file) else txt_file
+                        if os.path.exists(txt_path):
+                            try:
+                                with open(txt_path, 'r', encoding='utf-8') as tf:
+                                    content_text = tf.read().strip()
+                                content_loaded += 1
+                            except Exception as e:
+                                self.stdout.write(
+                                    self.style.WARNING(f'Could not load content from "{txt_file}": {str(e)}')
+                                )
+                        else:
+                            # Try to find file without extension or with different case
+                            if txt_dir:
+                                possible_files = [f for f in os.listdir(txt_dir) 
+                                                if f.lower().endswith('.txt') and 
+                                                '_part' not in f.lower() and
+                                                (os.path.splitext(txt_file)[0].lower() in f.lower() or 
+                                                 os.path.splitext(f)[0].lower() == os.path.splitext(txt_file)[0].lower())]
+                                if possible_files:
+                                    txt_path = os.path.join(txt_dir, possible_files[0])
+                                    try:
+                                        with open(txt_path, 'r', encoding='utf-8') as tf:
+                                            content_text = tf.read().strip()
+                                        content_loaded += 1
+                                        self.stdout.write(
+                                            self.style.SUCCESS(f'Found file with different name: "{possible_files[0]}"')
+                                        )
+                                    except Exception as e:
+                                        self.stdout.write(
+                                            self.style.WARNING(f'Could not load content from "{possible_files[0]}": {str(e)}')
+                                        )
+                                else:
                                     self.stdout.write(
-                                        self.style.SUCCESS(f'Found file with different name: "{possible_files[0]}"')
-                                    )
-                                except Exception as e:
-                                    self.stdout.write(
-                                        self.style.WARNING(f'Could not load content from "{possible_files[0]}": {str(e)}')
+                                        self.style.WARNING(f'TXT file not found: "{txt_path}"')
                                     )
                             else:
                                 self.stdout.write(
                                     self.style.WARNING(f'TXT file not found: "{txt_path}"')
                                 )
-                        else:
+                    
+                    # Translate French content if needed
+                    ebook_language_lower = ebook_language.lower() if ebook_language else ''
+                    should_translate = (
+                        options.get('translate_fr', True) and 
+                        not options.get('no_translate', False) and
+                        ebook_language_lower in ('fr', 'french', 'français') and
+                        content_text and
+                        TRANSLATION_AVAILABLE
+                    )
+                    
+                    if should_translate:
+                        self.stdout.write(f'Translating French content for "{title}"...')
+                        try:
+                            chunk_size = 4500
+                            translated_chunks = []
+                            
+                            if len(content_text) <= chunk_size:
+                                translator = GoogleTranslator(source='fr', target='en')
+                                translated_text = translator.translate(content_text)
+                                content_text = translated_text
+                            else:
+                                translator = GoogleTranslator(source='fr', target='en')
+                                sentences = re.split(r'([.!?]\s+)', content_text)
+                                current_chunk = ''
+                                
+                                for sentence in sentences:
+                                    if len(current_chunk) + len(sentence) <= chunk_size:
+                                        current_chunk += sentence
+                                    else:
+                                        if current_chunk:
+                                            translated_chunk = translator.translate(current_chunk)
+                                            translated_chunks.append(translated_chunk)
+                                        current_chunk = sentence
+                                
+                                if current_chunk:
+                                    translated_chunk = translator.translate(current_chunk)
+                                    translated_chunks.append(translated_chunk)
+                                
+                                content_text = ' '.join(translated_chunks)
+                            
                             self.stdout.write(
-                                self.style.WARNING(f'TXT file not found: "{txt_path}"')
+                                self.style.SUCCESS(f'Translation completed for "{title}"')
                             )
-                
-                # Translate French content to English if needed
-                ebook_language_lower = ebook_language.lower() if ebook_language else ''
-                should_translate = (
-                    options.get('translate_fr', True) and 
-                    not options.get('no_translate', False) and
-                    ebook_language_lower in ('fr', 'french', 'français') and
-                    content_text and
-                    TRANSLATION_AVAILABLE
-                )
-                
-                if should_translate:
-                    self.stdout.write(f'Translating French content for "{title}"...')
-                    try:
-                        # Translate in chunks to handle large files
-                        # Google Translate has a 5000 character limit per request
-                        chunk_size = 4500  # Leave some margin
-                        translated_chunks = []
-                        
-                        if len(content_text) <= chunk_size:
-                            # Small content, translate directly
-                            translator = GoogleTranslator(source='fr', target='en')
-                            translated_text = translator.translate(content_text)
-                            content_text = translated_text
-                        else:
-                            # Large content, translate in chunks
-                            translator = GoogleTranslator(source='fr', target='en')
-                            # Split by sentences or paragraphs to avoid breaking mid-sentence
-                            sentences = re.split(r'([.!?]\s+)', content_text)
-                            current_chunk = ''
-                            
-                            for sentence in sentences:
-                                if len(current_chunk) + len(sentence) <= chunk_size:
-                                    current_chunk += sentence
-                                else:
-                                    if current_chunk:
-                                        translated_chunk = translator.translate(current_chunk)
-                                        translated_chunks.append(translated_chunk)
-                                    current_chunk = sentence
-                            
-                            # Translate remaining chunk
-                            if current_chunk:
-                                translated_chunk = translator.translate(current_chunk)
-                                translated_chunks.append(translated_chunk)
-                            
-                            content_text = ' '.join(translated_chunks)
-                        
+                        except Exception as e:
+                            self.stdout.write(
+                                self.style.WARNING(f'Translation failed for "{title}": {str(e)}. Using original content.')
+                            )
+                    elif ebook_language_lower in ('fr', 'french', 'français') and not TRANSLATION_AVAILABLE:
                         self.stdout.write(
-                            self.style.SUCCESS(f'Translation completed for "{title}"')
+                            self.style.WARNING(f'French content detected but translation library not available. Install: pip install deep-translator')
                         )
-                    except Exception as e:
-                        self.stdout.write(
-                            self.style.WARNING(f'Translation failed for "{title}": {str(e)}. Using original content.')
+                    
+                    # Build full title with author if available
+                    full_title = title
+                    if author:
+                        full_title = f"{title} - {author}"
+                    
+                    # Create content
+                    with transaction.atomic():
+                        content = Content.objects.create(
+                            source=source,
+                            external_id=external_id,
+                            title=full_title,
+                            link=link if link else None,
+                            content_type='ebook',
+                            date=date_obj,
+                            content=content_text,
+                            processed=False,
                         )
-                elif ebook_language_lower in ('fr', 'french', 'français') and not TRANSLATION_AVAILABLE:
+                    
                     self.stdout.write(
-                        self.style.WARNING(f'French content detected but translation library not available. Install: pip install deep-translator')
+                        self.style.SUCCESS(f'Imported "{full_title}" (ID: {external_id})')
                     )
-                
-                # Build full title with author if available
-                full_title = title
-                if author:
-                    full_title = f"{title} - {author}"
-                
-                # Create content
-                with transaction.atomic():
-                    content = Content.objects.create(
-                        source=source,
-                        external_id=external_id,
-                        title=full_title,
-                        link=link if link else None,
-                        content_type='ebook',
-                        date=date_obj,
-                        content=content_text,
-                        processed=False,
-                    )
-                
-                self.stdout.write(
-                    self.style.SUCCESS(f'Imported "{full_title}" (ID: {external_id})')
-                )
-                imported += 1
+                    imported += 1
                 
             except Exception as e:
                 self.stdout.write(
@@ -422,6 +499,80 @@ class Command(BaseCommand):
         if errors > 0:
             self.stdout.write(self.style.ERROR(f'  Errors: {errors}'))
         self.stdout.write(self.style.SUCCESS('=' * 50))
+    
+    def find_part_files(self, title, author, txt_dir):
+        """Find all part files for a given ebook title and author"""
+        if not txt_dir or not os.path.exists(txt_dir):
+            return []
+        
+        # Normalize title and author for matching
+        # Remove punctuation and split into key words
+        def normalize_text(text):
+            """Normalize text for matching - remove punctuation, split into words"""
+            if not text:
+                return []
+            # Replace common punctuation with spaces
+            text = re.sub(r'[:\-\(\)/]', ' ', text.lower())
+            # Split into words and filter out empty words
+            # Keep words that are at least 2 chars OR contain numbers (like "17th", "2025")
+            words = [w.strip() for w in text.split() 
+                    if w.strip() and (len(w.strip()) >= 2 or re.search(r'\d', w.strip()))]
+            return words
+        
+        title_words = normalize_text(title)
+        author_words = normalize_text(author) if author else []
+        
+        # Build search patterns - try multiple matching strategies
+        part_files = []
+        all_files = [f for f in os.listdir(txt_dir) if f.endswith('.txt')]
+        
+        for filename in all_files:
+            filename_lower = filename.lower()
+            # Check if it's a part file
+            if '_part' in filename_lower and filename_lower.endswith('.txt'):
+                # Remove the _partXXX.txt suffix for matching
+                filename_base = filename_lower.split('_part')[0]
+                
+                # Strategy 1: Check if all significant title words are in filename
+                # (need at least 2 words to match, or if title is short, all words)
+                title_match = False
+                if title_words:
+                    # Count how many title words appear in filename
+                    matching_words = sum(1 for word in title_words if word in filename_base)
+                    # Match if at least 60% of words match, or if we have 2+ matching words
+                    min_words = max(2, len(title_words) // 2) if len(title_words) > 3 else len(title_words)
+                    if matching_words >= min_words:
+                        title_match = True
+                
+                # Strategy 2: Also try exact substring match (for backwards compatibility)
+                if not title_match and title:
+                    title_clean = re.sub(r'[:\-\(\)/]', ' ', title.lower())
+                    # Try matching without punctuation
+                    if title_clean.replace(' ', '') in filename_base.replace(' ', '').replace('_', '').replace('-', ''):
+                        title_match = True
+                
+                # If title matches, check author if provided
+                if title_match:
+                    author_match = True
+                    if author_words:
+                        # Check if author words appear in filename
+                        matching_author_words = sum(1 for word in author_words if word in filename_base)
+                        # Need at least one author word to match (or all if author is short)
+                        min_author = 1 if len(author_words) > 2 else len(author_words)
+                        if matching_author_words < min_author:
+                            # Author doesn't match, but if we have strong title match, still include
+                            # (some files might not have author in filename)
+                            pass
+                    
+                    part_files.append(filename)
+        
+        # Sort by part number to ensure correct order
+        def extract_part_number(filename):
+            match = re.search(r'_part(\d+)', filename, re.IGNORECASE)
+            return int(match.group(1)) if match else 0
+        
+        part_files.sort(key=extract_part_number)
+        return part_files
     
     def read_csv(self, csv_file, txt_dir):
         """Read ebooks data from CSV file"""
@@ -445,25 +596,73 @@ class Command(BaseCommand):
                         value = str(v).strip() if v else ''
                     normalized_row[key] = value
                 
-                # Get txt_file path
-                txt_file = normalized_row.get('txt_file', '') or ''
-                if not txt_file:
-                    # Try to infer from title or filename
-                    title = normalized_row.get('title', '') or ''
-                    if title and txt_dir:
-                        # Try to find matching file
-                        possible_files = [f for f in os.listdir(txt_dir) if title.lower() in f.lower() and f.endswith('.txt')]
+                title = normalized_row.get('title', '') or ''
+                author = normalized_row.get('author', '') or ''
+                txt_file_base = normalized_row.get('txt_file', '').strip() or ''
+                
+                # Find all part files for this ebook
+                part_files = []
+                
+                # If txt_file column is provided, use it to find part files
+                if txt_file_base and txt_dir:
+                    # Normalize the base name for matching (remove extra spaces, handle variations)
+                    txt_file_base_clean = re.sub(r'\s+', ' ', txt_file_base.strip())
+                    txt_file_base_lower = txt_file_base_clean.lower()
+                    
+                    # Find all files that start with this base name and have _part in them
+                    all_files = [f for f in os.listdir(txt_dir) if f.endswith('.txt')]
+                    for filename in all_files:
+                        filename_lower = filename.lower()
+                        if '_part' in filename_lower:
+                            # Remove _partXXX.txt to get the base
+                            file_base = filename_lower.split('_part')[0].strip()
+                            # Try exact match first
+                            if file_base == txt_file_base_lower:
+                                part_files.append(filename)
+                            # Also try matching with normalized spaces/punctuation
+                            elif (file_base.replace('_', ' ').replace('-', ' ') == 
+                                  txt_file_base_lower.replace('_', ' ').replace('-', ' ')):
+                                part_files.append(filename)
+                            # Try substring match (in case of truncation)
+                            elif (txt_file_base_lower in file_base or 
+                                  file_base in txt_file_base_lower):
+                                # Make sure it's a significant match (at least 10 chars)
+                                if len(txt_file_base_lower) >= 10 or len(file_base) >= 10:
+                                    part_files.append(filename)
+                
+                # If no part files found using txt_file column, try automatic matching
+                if not part_files:
+                    part_files = self.find_part_files(title, author, txt_dir)
+                
+                # If no part files found, try to find a single file (backward compatibility)
+                txt_file = ''
+                if not part_files:
+                    if txt_file_base and txt_dir:
+                        # Try to find exact match without _part
+                        possible_files = [f for f in os.listdir(txt_dir) 
+                                        if f.endswith('.txt') and 
+                                        '_part' not in f.lower() and
+                                        f.lower().startswith(txt_file_base_lower)]
+                        if possible_files:
+                            txt_file = possible_files[0]
+                    elif title and txt_dir:
+                        # Try to find matching file (non-part files)
+                        possible_files = [f for f in os.listdir(txt_dir) 
+                                        if f.endswith('.txt') and 
+                                        '_part' not in f.lower() and
+                                        title.lower() in f.lower()]
                         if possible_files:
                             txt_file = possible_files[0]
                 
                 ebooks_data.append({
-                    'title': normalized_row.get('title', '') or '',
-                    'author': normalized_row.get('author', '') or '',
+                    'title': title,
+                    'author': author,
                     'source': normalized_row.get('source', '') or '',
                     'language': normalized_row.get('language', '') or '',
                     'date': normalized_row.get('date', '') or '',
                     'link': normalized_row.get('link', '') or '',
-                    'txt_file': txt_file,
+                    'txt_file': txt_file,  # Single file (for backward compatibility)
+                    'part_files': part_files,  # List of part files
                 })
         
         return ebooks_data
