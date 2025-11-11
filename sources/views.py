@@ -10,6 +10,7 @@ from django.db.models.functions import Length
 from django.http import JsonResponse
 from django.conf import settings
 from django.utils.html import json_script
+from django.utils.safestring import mark_safe
 import json
 from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings
 from .forms import SourceForm, ContentForm, SettingsForm
@@ -226,157 +227,150 @@ def source_edit(request, pk):
         try:
             from .youtube_service import get_channel_videos
             from .video_filter_service import is_video_relevant
-            from django.db import transaction
+            import sys
             
-            print(f"\n{'='*60}")
-            print(f"Fetching videos from YouTube channel: {source.name}")
-            print(f"Channel ID: {source.channel_id}")
-            print(f"Include Shorts: {source.include_shorts}")
-            print(f"Filter Videos: {source.filter_videos}")
-            print(f"{'='*60}\n")
+            print(f"\n{'='*60}", flush=True)
+            print(f"Testing: Get Most Recent Video from YouTube channel", flush=True)
+            print(f"Channel: {source.name} (ID: {source.channel_id})", flush=True)
+            print(f"Include Shorts: {source.include_shorts}", flush=True)
+            print(f"Filter Videos: {source.filter_videos}", flush=True)
+            print(f"{'='*60}\n", flush=True)
             
             # Fetch videos from YouTube (fetch details if filtering is enabled)
-            fetch_details = source.filter_videos
-            print("Step 1: Fetching videos from YouTube API...")
-            all_videos = get_channel_videos(
-                channel_id=source.channel_id,
-                include_shorts=source.include_shorts,
-                fetch_details=fetch_details
-            )
+            fetch_details = source.filter_videos or True  # Always fetch details for testing
+            print("Step 1: Fetching most recent video from YouTube API...", flush=True)
+            try:
+                all_videos = get_channel_videos(
+                    channel_id=source.channel_id,
+                    include_shorts=source.include_shorts,
+                    fetch_details=fetch_details
+                )
+            except Exception as e:
+                error_msg = f'Error fetching videos from YouTube API: {str(e)}'
+                print(f"✗ {error_msg}", flush=True)
+                messages.error(request, error_msg)
+                return redirect('sources:source_edit', pk=source.pk)
             
             if not all_videos:
-                messages.info(request, f'No videos found for channel "{source.name}".')
+                messages.error(request, f'No videos found for channel "{source.name}".')
+                print("✗ No videos found\n", flush=True)
                 return redirect('sources:source_edit', pk=source.pk)
             
-            total_found = len(all_videos)
-            print(f"✓ Found {total_found} video(s) from YouTube\n")
+            # Get only the most recent video (first in the list)
+            video = all_videos[0]
+            print(f"✓ Found video: {video['title']}", flush=True)
+            print(f"  Video ID: {video['video_id']}", flush=True)
+            print(f"  Upload Date: {video['upload_date']}", flush=True)
+            print(f"  Duration: {video['duration']} seconds", flush=True)
+            print(f"  Link: {video['link']}", flush=True)
+            if video.get('description'):
+                desc_preview = video['description'][:100] + "..." if len(video['description']) > 100 else video['description']
+                print(f"  Description: {desc_preview}", flush=True)
+            if video.get('tags'):
+                print(f"  Tags: {', '.join(video['tags'][:5])}", flush=True)
+            print("", flush=True)
             
-            # Step 2: Check which videos already exist (BEFORE filtering)
-            print("Step 2: Checking for existing videos in database...")
-            existing_video_ids = set(
-                Content.objects.filter(source=source)
-                .values_list('external_id', flat=True)
-            )
-            
-            # Filter out videos that already exist
-            new_videos = []
-            already_exist_count = 0
-            for video in all_videos:
-                if video['video_id'] in existing_video_ids:
-                    already_exist_count += 1
-                else:
-                    new_videos.append(video)
-            
-            print(f"✓ {already_exist_count} video(s) already exist, {len(new_videos)} new video(s) to process\n")
-            
-            if not new_videos:
-                messages.info(
-                    request,
-                    f'All {total_found} video(s) from "{source.name}" already exist in the database.'
-                )
-                return redirect('sources:source_edit', pk=source.pk)
-            
-            # Step 3: Filter videos if filter_videos is enabled (only filter NEW videos)
-            filtered_count = 0
-            videos_to_create = new_videos
-            if source.filter_videos:
-                print(f"Step 3: Filtering {len(new_videos)} new video(s) using AI...")
-                filtered_videos = []
-                for i, video in enumerate(new_videos, 1):
-                    title_preview = video['title'][:50] + "..." if len(video['title']) > 50 else video['title']
-                    print(f"  [{i}/{len(new_videos)}] Checking: {title_preview}")
-                    
-                    try:
-                        is_relevant = is_video_relevant(
-                            title=video['title'],
-                            description=video.get('description', ''),
-                            tags=video.get('tags', [])
-                        )
-                        if is_relevant:
-                            print(f"    ✓ Relevant - will be added")
-                            filtered_videos.append(video)
-                        else:
-                            print(f"    ✗ Not relevant - filtered out")
-                            filtered_count += 1
-                    except Exception as e:
-                        # If filtering fails, include the video (be permissive)
-                        print(f"    ⚠ Error filtering (including video): {str(e)}")
-                        filtered_videos.append(video)
-                
-                videos_to_create = filtered_videos
-                print(f"\n✓ Filtering complete: {len(filtered_videos)} relevant, {filtered_count} filtered out\n")
-            
-            if not videos_to_create:
-                messages.info(
-                    request, 
-                    f'No relevant new videos found for channel "{source.name}" after filtering. '
-                    f'{filtered_count} video(s) were filtered out, {already_exist_count} already exist.'
-                )
-                return redirect('sources:source_edit', pk=source.pk)
-            
-            # Step 4: Create Content entries for each video
-            print(f"Step 4: Creating {len(videos_to_create)} content entry/entries...")
-            created_count = 0
-            
-            with transaction.atomic():
-                for i, video in enumerate(videos_to_create, 1):
-                    title_preview = video['title'][:50] + "..." if len(video['title']) > 50 else video['title']
-                    print(f"  [{i}/{len(videos_to_create)}] Creating: {title_preview}")
-                    
-                    # Create content entry
-                    Content.objects.create(
-                        source=source,
-                        external_id=video['video_id'],
-                        title=video['title'],
-                        link=video['link'],
-                        content_type='video',
-                        date=video['upload_date'],
-                        content='',  # Empty - will be filled later when processing
-                        processed=False,
-                    )
-                    created_count += 1
-            
-            print(f"\n✓ Successfully created {created_count} content entry/entries")
-            print(f"{'='*60}\n")
-            
-            # Log the activity
-            metadata = {
-                'videos_fetched': created_count,
-                'videos_skipped': already_exist_count,
-                'total_found': total_found
-            }
-            if source.filter_videos:
-                metadata['videos_filtered'] = filtered_count
-            
-            log_activity(
-                'content_created',
-                f'Fetched {created_count} videos from YouTube channel "{source.name}"',
-                user=request.user,
+            # Check if video already exists
+            print("Step 2: Checking if video already exists in database...", flush=True)
+            existing = Content.objects.filter(
                 source=source,
-                metadata=metadata
-            )
+                external_id=video['video_id']
+            ).first()
             
-            if created_count > 0:
-                message = f'Successfully fetched {created_count} video(s) from "{source.name}". '
-                if already_exist_count > 0:
-                    message += f'{already_exist_count} video(s) already exist. '
-                if source.filter_videos and filtered_count > 0:
-                    message += f'{filtered_count} video(s) were filtered out (not relevant to China).'
-                messages.success(request, message)
+            if existing:
+                print(f"✗ Video already exists in database (Content ID: {existing.pk})", flush=True)
+                exists_msg = "Video already exists in database."
             else:
-                messages.info(
-                    request,
-                    f'No new videos to add from "{source.name}".'
-                )
+                print(f"✓ Video is new (not in database)", flush=True)
+                exists_msg = "Video is new (not in database)."
+            
+            # Judge the video if filter_videos is enabled
+            is_relevant = None
+            relevance_msg = ""
+            if source.filter_videos:
+                print("", flush=True)
+                print("Step 3: Judging video relevance using AI...", flush=True)
+                try:
+                    is_relevant = is_video_relevant(
+                        title=video['title'],
+                        description=video.get('description', ''),
+                        tags=video.get('tags', [])
+                    )
+                    if is_relevant:
+                        print(f"✓ AI Result: RELEVANT to China", flush=True)
+                        relevance_msg = "AI Result: ✓ RELEVANT to China"
+                    else:
+                        print(f"✗ AI Result: NOT RELEVANT to China", flush=True)
+                        relevance_msg = "AI Result: ✗ NOT RELEVANT to China"
+                except ConnectionError as e:
+                    error_msg = f"Could not connect to Ollama: {str(e)}"
+                    print(f"⚠ {error_msg}", flush=True)
+                    relevance_msg = f"Connection Error: {str(e)}"
+                except Exception as e:
+                    error_msg = f"Error during AI filtering: {str(e)}"
+                    print(f"⚠ {error_msg}", flush=True)
+                    relevance_msg = error_msg
+            else:
+                print("Step 3: Skipped (filter_videos is disabled)", flush=True)
+                relevance_msg = "Filtering disabled"
+            
+            print(f"\n{'='*60}", flush=True)
+            print("SUMMARY:", flush=True)
+            print(f"  Title: {video['title']}", flush=True)
+            print(f"  Status: {exists_msg}", flush=True)
+            print(f"  Relevance: {relevance_msg}", flush=True)
+            print(f"{'='*60}\n", flush=True)
+            
+            # Create a detailed message for the user
+            result_message = f"<strong>Most Recent Video Test:</strong><br>"
+            result_message += f"<strong>Title:</strong> {video['title']}<br>"
+            result_message += f"<strong>Video ID:</strong> {video['video_id']}<br>"
+            result_message += f"<strong>Link:</strong> <a href='{video['link']}' target='_blank'>{video['link']}</a><br>"
+            result_message += f"<strong>Upload Date:</strong> {video['upload_date']}<br>"
+            result_message += f"<strong>Duration:</strong> {video['duration']} seconds<br>"
+            result_message += f"<strong>Status:</strong> {exists_msg}<br>"
+            result_message += f"<strong>Relevance:</strong> {relevance_msg}<br>"
+            
+            if video.get('description'):
+                desc_display = video['description'][:200] + "..." if len(video['description']) > 200 else video['description']
+                result_message += f"<strong>Description:</strong> {desc_display}<br>"
+            
+            if video.get('tags'):
+                result_message += f"<strong>Tags:</strong> {', '.join(video['tags'][:10])}<br>"
+            
+            # Try to send the response, but handle broken pipe gracefully
+            try:
+                messages.info(request, mark_safe(result_message))
+                print("✓ Response sent successfully", flush=True)
+            except (BrokenPipeError, OSError) as e:
+                # Browser closed connection, but we still log the result
+                print(f"⚠ Client disconnected (broken pipe), but operation completed: {str(e)}", flush=True)
+                # Don't try to redirect if connection is broken
+                return redirect('sources:source_edit', pk=source.pk)
             
         except ImportError as e:
-            messages.error(request, f'YouTube API library not available: {str(e)}')
+            error_msg = f'YouTube API library not available: {str(e)}'
+            print(f"✗ {error_msg}", flush=True)
+            messages.error(request, error_msg)
         except ValueError as e:
-            messages.error(request, f'Error: {str(e)}')
+            error_msg = f'Error: {str(e)}'
+            print(f"✗ {error_msg}", flush=True)
+            messages.error(request, error_msg)
+        except (BrokenPipeError, OSError) as e:
+            # Handle broken pipe gracefully - operation may have completed
+            print(f"⚠ Client disconnected during operation: {str(e)}", flush=True)
+            print("Operation may have completed successfully. Check logs above.", flush=True)
         except Exception as e:
-            messages.error(request, f'Error fetching videos: {str(e)}')
+            error_msg = f'Error fetching videos: {str(e)}'
+            print(f"✗ {error_msg}", flush=True)
+            messages.error(request, error_msg)
         
-        return redirect('sources:source_edit', pk=source.pk)
+        try:
+            return redirect('sources:source_edit', pk=source.pk)
+        except (BrokenPipeError, OSError):
+            # If redirect fails due to broken pipe, just return None
+            # The operation completed, browser just disconnected
+            return None
     
     if request.method == 'POST':
         form = SourceForm(request.POST, instance=source)

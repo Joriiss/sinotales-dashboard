@@ -90,7 +90,7 @@ Relevant?"""
             return False
         else:
             # If unclear, default to False (be conservative)
-            print(f"Unclear AI response for video '{title}': {answer}")
+            print(f"Unclear AI response for video '{title}': {answer}", flush=True)
             return False
             
     except requests.exceptions.ConnectionError:
