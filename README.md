@@ -14,6 +14,10 @@ Django-based dashboard for managing content sources and generating blog posts ab
 - **AI-Powered Tagging**: Automatic content tagging using local LLMs (Ollama) or OpenAI
 - **Vector Embeddings**: Generate embeddings for semantic search using OpenAI's text-embedding-3-small
 - **Content Chunking**: Automatic chunking of long content for efficient embedding and retrieval
+- **Content Processing**: One-click transcript fetching for YouTube videos and content extraction for blog posts
+- **Activity Logging**: Comprehensive logging of content operations (fetching, transcript extraction, filtering)
+- **China Filter**: Automatic filtering of videos for China-related content (configurable per source)
+- **REST API**: Token-based API endpoints for programmatic content management
 
 ## Setup Instructions
 
@@ -186,9 +190,33 @@ The main tables are:
    - Language: Primary language of content
    - Channel ID: (Required for YouTube) YouTube channel ID
    - Include Shorts: (YouTube only) Whether to include Shorts
+   - Filter Videos: (YouTube only) Enable China-relevance filtering
    - Active: Whether source is currently monitored
 
 **Note:** The `link` field is optional for ebook sources since travel books typically don't have URLs.
+
+### Editing Content
+
+When editing content, you have access to several action buttons:
+
+- **Get Transcript** (Videos only): Fetches the transcript from YouTube and replaces the current content
+- **Fetch Content** (Blog posts only): Extracts content from the blog post URL
+- **Add Tags**: Automatically generates and adds tags to the content
+- **Generate Embeddings**: Creates vector embeddings for semantic search
+
+All actions are logged in the activity log, including success and failure states.
+
+### Activity Logging
+
+The dashboard maintains a comprehensive activity log that tracks:
+- Content creation, updates, and deletion
+- Transcript fetching (success/failure)
+- Content extraction (success/failure)
+- China filter results (pass/fail with matched keywords)
+- Tagging and embedding operations
+- Source collection activities
+
+View logs at: http://127.0.0.1:8000/logs/
 
 ### Using Django Admin
 
@@ -222,6 +250,11 @@ DB_PASSWORD=your_password
 DB_HOST=localhost
 DB_PORT=5432
 DJANGO_SECRET_KEY=your-secret-key-here
+API_TOKEN=your-api-token-here
+OPENAI_API_KEY=your-openai-api-key
+OLLAMA_URL=http://localhost:11434
+WEBSHARE_PROXY_USERNAME=your-proxy-username
+WEBSHARE_PROXY_PASSWORD=your-proxy-password
 ```
 
 Variables:
@@ -231,10 +264,13 @@ Variables:
 - `DB_HOST`: Database host (default: 'localhost')
 - `DB_PORT`: Database port (default: '5432')
 - `DJANGO_SECRET_KEY`: Django secret key (default: insecure key for dev only)
+- `API_TOKEN`: Token for API authentication (required for API endpoints)
 - `OPENAI_API_KEY`: OpenAI API key (required for embeddings)
 - `OPENAI_EMBEDDING_MODEL`: Embedding model name (default: 'text-embedding-3-small')
 - `OPENAI_EMBEDDING_DIMENSIONS`: Embedding dimensions (default: 1536)
 - `OLLAMA_URL`: Ollama API URL (default: 'http://localhost:11434')
+- `WEBSHARE_PROXY_USERNAME`: Webshare proxy username (optional, for transcript fetching)
+- `WEBSHARE_PROXY_PASSWORD`: Webshare proxy password (optional, for transcript fetching)
 
 ## CSV File Formats
 
@@ -423,16 +459,168 @@ python manage.py generate_embeddings --source 1
 
 **Note**: Content without tags or without text content will be automatically skipped during processing.
 
-### How Embeddings Work
+## API Endpoints
 
-1. **Content Chunking**: Long content is automatically split into chunks (default: 8000 characters with 200 character overlap)
-2. **Embedding Generation**: Each chunk is embedded using OpenAI's `text-embedding-3-small` model (1536 dimensions)
-3. **Embedding Content**: Each chunk's embedding includes:
-   - Content title
-   - Chunk text content
-   - Associated tags (required - content must have tags to be embedded)
-4. **Storage**: Embeddings are stored in the `content_chunks` table with an HNSW vector index for fast similarity search
-5. **Metadata**: Other fields (source, date, link) are stored as metadata for filtering, not included in embeddings
+The dashboard provides REST API endpoints for programmatic content management. All API endpoints require token-based authentication.
+
+### Authentication
+
+API requests must include an authentication token in one of the following ways:
+
+1. **Authorization Header** (recommended):
+   ```
+   Authorization: Token your-api-token-here
+   ```
+   or
+   ```
+   Authorization: Bearer your-api-token-here
+   ```
+
+2. **Query Parameter**:
+   ```
+   ?token=your-api-token-here
+   ```
+
+Set your API token in the environment variable `API_TOKEN` or in Django settings.
+
+### Get YouTube Channels
+
+**Endpoint**: `GET /api/youtube-channels/`
+
+Returns a list of all YouTube channel sources.
+
+**Example Request**:
+```bash
+curl -H "Authorization: Token your-api-token" \
+     http://127.0.0.1:8000/api/youtube-channels/
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "channels": [
+    {
+      "id": 1,
+      "name": "Channel Name",
+      "channel_id": "UCxxxxx",
+      "filter_videos": true
+    }
+  ]
+}
+```
+
+### Create Video Content
+
+**Endpoint**: `POST /api/video-content/`
+
+Creates a new video content entry. If the source has China filtering enabled, videos will be automatically filtered for China-relevance.
+
+**Request Body**:
+```json
+{
+  "source_id": 1,
+  "external_id": "VIDEO_ID",
+  "title": "Video Title",
+  "link": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "date": "2025-01-15",
+  "description": "Video description (optional, for filtering)",
+  "tags": ["tag1", "tag2"],
+  "auto_process": true
+}
+```
+
+**Required Fields**:
+- `source_id`: ID of the YouTube source
+- `external_id`: YouTube video ID
+- `title`: Video title
+
+**Optional Fields**:
+- `link`: Full YouTube URL (auto-generated if not provided)
+- `date`: Publication date in YYYY-MM-DD format (defaults to today)
+- `description`: Video description (used for China filtering)
+- `tags`: Array of tags or comma-separated string (used for China filtering)
+- `auto_process`: Whether to automatically extract transcript, tag, and embed (default: true)
+
+**Example Request**:
+```bash
+curl -X POST \
+     -H "Authorization: Token your-api-token" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "source_id": 1,
+       "external_id": "VIDEO_ID",
+       "title": "My Video Title",
+       "description": "Video about China travel",
+       "tags": ["china", "travel"]
+     }' \
+     http://127.0.0.1:8000/api/video-content/
+```
+
+**Response (Success)**:
+```json
+{
+  "success": true,
+  "content_id": 123,
+  "message": "Content created successfully",
+  "filtered": false,
+  "processing": {
+    "transcript": true,
+    "tags": true,
+    "embeddings": true
+  }
+}
+```
+
+**Response (Filtered Out)**:
+```json
+{
+  "success": false,
+  "error": "Video was filtered out - not China-related",
+  "filtered": true,
+  "reason": "Video does not appear to be relevant to China based on title, description, and tags",
+  "matched_keywords": []
+}
+```
+
+**Response (Error)**:
+```json
+{
+  "success": false,
+  "error": "Error message here"
+}
+```
+
+### China Filtering
+
+When a source has `filter_videos` enabled, videos added via the API are automatically checked for China-relevance. The filter analyzes:
+- Video title
+- Video description
+- Video tags
+
+If a video doesn't match China-related keywords, it will be rejected with a `filtered: true` response. Filter results (pass/fail and matched keywords) are logged in the activity log.
+
+## Testing Transcript Extraction
+
+A management command is available for testing YouTube transcript extraction:
+
+```bash
+python manage.py test_transcript VIDEO_ID --source-id 1
+```
+
+**Options**:
+- `VIDEO_ID`: YouTube video ID to test
+- `--source-id ID`: Source ID to use (creates one if not provided)
+- `--use-proxy`: Use Webshare proxy for fetching (default: True if configured)
+- `--title TITLE`: Title for the test content (optional)
+- `--keep`: Keep the test content after testing (default: deletes it)
+
+**Example**:
+```bash
+python manage.py test_transcript dQw4w9WgXcQ --source-id 1 --use-proxy
+```
+
+This command helps debug transcript fetching issues, especially related to proxy configuration.
 
 ### Cost Estimation
 
