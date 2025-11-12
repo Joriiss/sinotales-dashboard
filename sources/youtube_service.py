@@ -160,6 +160,111 @@ def is_video_relevant_to_china(title: str, description: str = '', tags: List[str
     return False
 
 
+def is_video_relevant_to_china_with_details(title: str, description: str = '', tags: List[str] = None) -> tuple:
+    """
+    Check if a video is relevant to China based on title, description, and tags.
+    Returns both the result and the matched keywords.
+    
+    Args:
+        title: Video title
+        description: Video description (optional)
+        tags: List of video tags (optional)
+        
+    Returns:
+        Tuple of (is_relevant: bool, matched_keywords: list[str])
+    """
+    if tags is None:
+        tags = []
+    
+    # China-related keywords (case-insensitive)
+    # Single-word keywords that need word boundaries to avoid false positives
+    # (e.g., "ming" in "charming", "han" in "thanks")
+    single_word_keywords = [
+        'china', 'chinese', 'chinois', 'chine',
+        'beijing', 'peking', 'pékin',
+        'shanghai', 'shanghaï',
+        'guangzhou', 'canton',
+        'shenzhen',
+        'yunnan', 'kunming',
+        'sichuan', 'chengdu',
+        'guizhou', 'guiyang',
+        'shandong', 'jinan',
+        'jiangsu', 'nanjing',
+        'zhejiang', 'hangzhou',
+        'anhui', 'hefei',
+        'fujian', 'xiamen',
+        'jiangxi', 'nanchang',
+        'henan', 'zhengzhou',
+        'hubei', 'wuhan',
+        'hunan', 'changsha',
+        'guangxi', 'nanning',
+        'hainan', 'haikou',
+        'taiwan', 'taipei',
+        'tibet', 'tibetan', 'tibetain',
+        'xinjiang', 'xingjiang',
+        'terracotta',
+        'yangtze',
+        'confucius', 'confucian',
+        'buddhism', 'buddhist',
+        'daoism', 'taoism',
+        'mandarin', 'putonghua',
+        'cantonese',
+        'han',  # Word boundary prevents matching "thanks", "hand", etc.
+        'ming',  # Word boundary prevents matching "charming", "coming", etc.
+        'qing',  # Word boundary prevents matching "requesting", etc.
+        'tang',  # Word boundary prevents matching "tangent", etc.
+        'song',  # Word boundary - careful: "song" can be English word too
+        'yuan',  # Word boundary - careful: "yuan" can be currency
+        'mao',
+        'ccp',
+        'panda',
+        'dragon', 'phoenix',
+        'kungfu',
+        'dumpling', 'wonton',
+        'zhongguo', '中国', '中文',
+    ]
+    
+    # Multi-word phrases (can match anywhere in text)
+    multi_word_keywords = [
+        'hong kong', 'hongkong', 'hong-kong',
+        'great wall', 'greatwall',
+        'forbidden city', 'forbiddencity',
+        'terracotta army',
+        'yangtze river',
+        'yellow river', 'huang he',
+        'han chinese',
+        'mao zedong',
+        'communist party',
+        'giant panda',
+        'silk road', 'silkroad',
+        'kung fu', 'martial arts',
+        'dim sum',
+        'tea ceremony', 'chinese tea',
+        'chinese new year', 'lunar new year',
+        'spring festival',
+    ]
+    
+    # Combine all text to search
+    search_text = f"{title} {description} {' '.join(tags)}".lower()
+    
+    matched_keywords = []
+    
+    # Check single-word keywords with word boundaries
+    for keyword in single_word_keywords:
+        # Use word boundaries (\b) to match whole words only
+        pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+        if re.search(pattern, search_text, re.IGNORECASE):
+            matched_keywords.append(keyword)
+    
+    # Check multi-word phrases (can appear anywhere)
+    for keyword in multi_word_keywords:
+        if keyword.lower() in search_text:
+            matched_keywords.append(keyword)
+    
+    is_relevant = len(matched_keywords) > 0
+    return is_relevant, matched_keywords
+
+
 def get_channel_videos(channel_id: str, include_shorts: bool = False, filter_china: bool = False, api_key: Optional[str] = None) -> List[Dict]:
     """
     Retrieves all videos from a YouTube channel.

@@ -305,6 +305,8 @@ class ActivityLog(models.Model):
         ('tags_created', 'Tags Created'),
         ('import_completed', 'Import Completed'),
         ('settings_updated', 'Settings Updated'),
+        ('transcript_fetched', 'Transcript Fetched'),
+        ('content_fetched', 'Content Fetched'),
     ]
     
     activity_type = models.CharField(

@@ -493,12 +493,87 @@ def content_edit(request, pk):
                     messages.success(request, f'Content fetched successfully from {content.link}')
                     # Refresh content from DB to get updated content
                     content.refresh_from_db()
+                    # Log successful content fetch
+                    log_activity(
+                        'content_fetched',
+                        f'Content fetched from "{content.link}" for "{content.title}"',
+                        user=request.user,
+                        content=content,
+                        source=content.source
+                    )
                 else:
                     messages.warning(request, f'Could not extract content from {content.link}. The page might not be accessible or the content structure is not recognized.')
+                    # Log failed content fetch
+                    log_activity(
+                        'content_fetched',
+                        f'Failed to fetch content from "{content.link}" for "{content.title}"',
+                        user=request.user,
+                        content=content,
+                        source=content.source,
+                        metadata={'success': False, 'reason': 'Could not extract content'}
+                    )
             except Exception as e:
                 messages.error(request, f'Error fetching content: {str(e)}')
+                # Log error
+                log_activity(
+                    'content_fetched',
+                    f'Error fetching content from "{content.link}" for "{content.title}": {str(e)}',
+                    user=request.user,
+                    content=content,
+                    source=content.source,
+                    metadata={'success': False, 'error': str(e)}
+                )
         else:
             messages.warning(request, 'Content can only be fetched for blog posts with a valid link.')
+        # Redirect back to edit page to show updated content
+        return redirect('sources:content_edit', pk=content.pk)
+    
+    # Handle get transcript action
+    if request.method == 'POST' and 'get_transcript' in request.POST:
+        if content.content_type == 'video' and (content.external_id or content.link):
+            try:
+                processing_service = ContentProcessingService()
+                # Force re-extraction even if content already exists
+                extracted = processing_service.extract_transcript(content, force=True)
+                if extracted:
+                    messages.success(request, f'Transcript fetched successfully for video "{content.title}"')
+                    # Refresh content from DB to get updated content
+                    content.refresh_from_db()
+                    # Log successful transcript fetch
+                    video_id = content.external_id or 'unknown'
+                    log_activity(
+                        'transcript_fetched',
+                        f'Transcript fetched for video "{content.title}" (ID: {video_id})',
+                        user=request.user,
+                        content=content,
+                        source=content.source
+                    )
+                else:
+                    messages.warning(request, f'Could not extract transcript. The video might not have transcripts available, or they may be disabled.')
+                    # Log failed transcript fetch
+                    video_id = content.external_id or 'unknown'
+                    log_activity(
+                        'transcript_fetched',
+                        f'Failed to fetch transcript for video "{content.title}" (ID: {video_id})',
+                        user=request.user,
+                        content=content,
+                        source=content.source,
+                        metadata={'success': False, 'reason': 'Transcript not available or disabled'}
+                    )
+            except Exception as e:
+                messages.error(request, f'Error fetching transcript: {str(e)}')
+                # Log error
+                video_id = content.external_id or 'unknown'
+                log_activity(
+                    'transcript_fetched',
+                    f'Error fetching transcript for video "{content.title}" (ID: {video_id}): {str(e)}',
+                    user=request.user,
+                    content=content,
+                    source=content.source,
+                    metadata={'success': False, 'error': str(e)}
+                )
+        else:
+            messages.warning(request, 'Transcript can only be fetched for videos with a valid video ID or link.')
         # Redirect back to edit page to show updated content
         return redirect('sources:content_edit', pk=content.pk)
     
@@ -783,6 +858,8 @@ def create_video_content_api(request):
         # Optional fields
         date = data.get('date')  # YYYY-MM-DD format
         auto_process = data.get('auto_process', True)  # Whether to automatically process (extract transcript, tag, embed)
+        description = data.get('description', '')  # Video description (for filtering)
+        tags = data.get('tags', [])  # Video tags (for filtering) - can be list or comma-separated string
         
         # Validate required fields
         if not source_id:
@@ -818,6 +895,88 @@ def create_video_content_api(request):
                 'success': False,
                 'error': f'Video with external_id "{external_id}" already exists for this source'
             }, status=409)
+        
+        # Apply China filter if enabled for this source
+        if source.filter_videos:
+            from .youtube_service import is_video_relevant_to_china_with_details
+            
+            # Normalize tags - handle both list and comma-separated string
+            if isinstance(tags, str):
+                tags_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+            elif isinstance(tags, list):
+                tags_list = tags
+            else:
+                tags_list = []
+            
+            # Check if video is relevant to China
+            print(f"\n{'='*60}", flush=True)
+            print(f"Filtering video via API: {title}", flush=True)
+            print(f"Video ID: {external_id}", flush=True)
+            print(f"Source: {source.name} (Filter enabled: {source.filter_videos})", flush=True)
+            print(f"Title: {title}", flush=True)
+            print(f"Description: {description[:100] if description else '(none)'}...", flush=True)
+            print(f"Tags: {tags_list if tags_list else '(none)'}", flush=True)
+            print(f"{'='*60}\n", flush=True)
+            
+            is_relevant, matched_keywords = is_video_relevant_to_china_with_details(
+                title=title,
+                description=description or '',
+                tags=tags_list
+            )
+            
+            if not is_relevant:
+                # Log the filtering result
+                log_activity(
+                    'content_created',
+                    f'Video "{title}" (ID: {external_id}) was filtered out - not China-related',
+                    user=None,  # API request, no user
+                    source=source,
+                    metadata={
+                        'external_id': external_id,
+                        'filtered': True,
+                        'reason': 'Not China-related',
+                        'title': title,
+                        'description': description[:200] if description else '',
+                        'tags': tags_list,
+                        'matched_keywords': []
+                    }
+                )
+                
+                print(f"  [FILTER] ✗ Video filtered out: Not China-related", flush=True)
+                print(f"  [FILTER] Title: {title}", flush=True)
+                print(f"  [FILTER] No China-related keywords found in title, description, or tags", flush=True)
+                print(f"  [FILTER] Matched keywords: (none)", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Video was filtered out - not China-related',
+                    'filtered': True,
+                    'reason': 'Video does not appear to be relevant to China based on title, description, and tags',
+                    'matched_keywords': []
+                }, status=200)  # 200 because it's not an error, just filtered
+            
+            # Log successful filter pass
+            print(f"  [FILTER] ✓ Video passed filter: China-related", flush=True)
+            print(f"  [FILTER] Title: {title}", flush=True)
+            print(f"  [FILTER] Matched keywords: {', '.join(matched_keywords)}", flush=True)
+            print(f"  [FILTER] Total matches: {len(matched_keywords)}", flush=True)
+            print(f"{'='*60}\n", flush=True)
+            
+            log_activity(
+                'content_created',
+                f'Video "{title}" (ID: {external_id}) passed China filter',
+                user=None,  # API request, no user
+                source=source,
+                metadata={
+                    'external_id': external_id,
+                    'filtered': False,
+                    'filter_passed': True,
+                    'title': title,
+                    'matched_keywords': matched_keywords,
+                    'match_count': len(matched_keywords)
+                }
+            )
         
         # Parse date if provided
         parsed_date = None

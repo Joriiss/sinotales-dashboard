@@ -204,12 +204,6 @@ class ContentProcessingService:
         print(f"  [EXTRACT] Attempting to extract transcript for video {video_id}...", flush=True)
         
         try:
-            # Create API instance with proxy config if available
-            if self._proxy_config:
-                api = YouTubeTranscriptApi(proxy_config=self._proxy_config)
-            else:
-                api = YouTubeTranscriptApi()
-            
             # Get source language for preferred transcript language
             source_language = None
             if content.source and content.source.language:
@@ -240,30 +234,67 @@ class ContentProcessingService:
             transcript = None
             language_used = None
             
-            try:
-                # Try to fetch with language priority
-                if languages_to_try:
-                    print(f"  [EXTRACT] Trying languages: {languages_to_try[:5]}...", flush=True)
-                    transcript = api.fetch(video_id, languages=languages_to_try)
-                    language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'unknown'
-            except (NoTranscriptFound, TranscriptsDisabled):
-                # If that fails, try without specifying languages (auto-detect)
-                print(f"  [EXTRACT] Language-specific fetch failed, trying auto-detect...", flush=True)
-                try:
-                    transcript = api.fetch(video_id)
-                    language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'auto'
-                except (NoTranscriptFound, TranscriptsDisabled) as e:
-                    if isinstance(e, TranscriptsDisabled):
-                        print(f"  [EXTRACT] ERROR: Transcripts are disabled for video {video_id}", flush=True)
-                        return False
-                    print(f"  [EXTRACT] ERROR: No transcript found for video {video_id}", flush=True)
-                    return False
-            except VideoUnavailable:
-                print(f"  [EXTRACT] ERROR: Video {video_id} is unavailable", flush=True)
-                return False
+            # Try with proxy first if configured, then fallback to no proxy on SSL/connection errors
+            api_configs_to_try = []
+            if self._proxy_config:
+                api_configs_to_try.append(('with proxy', YouTubeTranscriptApi(proxy_config=self._proxy_config)))
+            api_configs_to_try.append(('without proxy', YouTubeTranscriptApi()))
             
+            for config_name, api in api_configs_to_try:
+                try:
+                    print(f"  [EXTRACT] Trying {config_name}...", flush=True)
+                    
+                    try:
+                        # Try to fetch with language priority
+                        if languages_to_try:
+                            print(f"  [EXTRACT] Trying languages: {languages_to_try[:5]}...", flush=True)
+                            transcript = api.fetch(video_id, languages=languages_to_try)
+                            language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'unknown'
+                        else:
+                            transcript = api.fetch(video_id)
+                            language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'auto'
+                    except (NoTranscriptFound, TranscriptsDisabled):
+                        # If that fails, try without specifying languages (auto-detect)
+                        print(f"  [EXTRACT] Language-specific fetch failed, trying auto-detect...", flush=True)
+                        try:
+                            transcript = api.fetch(video_id)
+                            language_used = transcript.language_code if hasattr(transcript, 'language_code') else 'auto'
+                        except (NoTranscriptFound, TranscriptsDisabled) as e:
+                            if isinstance(e, TranscriptsDisabled):
+                                print(f"  [EXTRACT] ERROR: Transcripts are disabled for video {video_id}", flush=True)
+                                return False
+                            print(f"  [EXTRACT] ERROR: No transcript found for video {video_id}", flush=True)
+                            return False
+                    except VideoUnavailable:
+                        print(f"  [EXTRACT] ERROR: Video {video_id} is unavailable", flush=True)
+                        return False
+                    
+                    # If we got here, we successfully fetched the transcript
+                    print(f"  [EXTRACT] Successfully fetched transcript {config_name}", flush=True)
+                    break
+                    
+                except Exception as e:
+                    # Check if it's an SSL/connection error that might be proxy-related
+                    error_str = str(e).lower()
+                    is_ssl_error = (
+                        'ssl' in error_str or 
+                        'sslerror' in error_str or 
+                        'connection' in error_str or
+                        'eof' in error_str or
+                        'retries exceeded' in error_str
+                    )
+                    
+                    if is_ssl_error and config_name == 'with proxy' and len(api_configs_to_try) > 1:
+                        # SSL/connection error with proxy, try without proxy
+                        print(f"  [EXTRACT] SSL/Connection error {config_name}, will retry without proxy...", flush=True)
+                        continue
+                    else:
+                        # Re-raise if it's not a proxy-related error or we've already tried both
+                        raise
+            
+            # Check if we successfully got a transcript
             if transcript is None:
-                print(f"  [EXTRACT] ERROR: Transcript is None for video {video_id}", flush=True)
+                print(f"  [EXTRACT] ERROR: Failed to fetch transcript for video {video_id} (tried all configurations)", flush=True)
                 return False
             
             # Extract text from transcript snippets
@@ -276,19 +307,44 @@ class ContentProcessingService:
                 # Save the extracted transcript
                 content.save(update_fields=['content', 'has_content'])
                 print(f"  [EXTRACT] ✓ Successfully extracted transcript for video {video_id} (language: {language_used}, {len(transcript_text)} chars)", flush=True)
+                
+                # Log successful transcript fetch
+                log_activity(
+                    'transcript_fetched',
+                    f'Transcript fetched for video "{content.title}" (ID: {video_id})',
+                    content=content,
+                    source=content.source,
+                    metadata={'video_id': video_id, 'language': language_used, 'char_count': len(transcript_text)}
+                )
+                
                 return True
             else:
                 print(f"  [EXTRACT] ERROR: Empty transcript for video {video_id}", flush=True)
+                # Log failed transcript fetch
+                log_activity(
+                    'transcript_fetched',
+                    f'Failed to fetch transcript for video "{content.title}" (ID: {video_id}): Empty transcript',
+                    content=content,
+                    source=content.source,
+                    metadata={'success': False, 'video_id': video_id, 'reason': 'Empty transcript'}
+                )
                 return False
-                
         except Exception as e:
             # Log error but don't fail
             import traceback
-            print(f"  [EXTRACT] ERROR: Exception extracting transcript for video {video_id}: {str(e)}", flush=True)
+            error_msg = str(e)
+            print(f"  [EXTRACT] ERROR: Exception extracting transcript for video {video_id}: {error_msg}", flush=True)
             print(f"  [EXTRACT] Traceback: {traceback.format_exc()}", flush=True)
+            
+            # Log failed transcript fetch
+            log_activity(
+                'transcript_fetched',
+                f'Error fetching transcript for video "{content.title}" (ID: {video_id}): {error_msg}',
+                content=content,
+                source=content.source,
+                metadata={'success': False, 'video_id': video_id, 'error': error_msg}
+            )
             return False
-        
-        return False
     
     def extract_content(self, content: Content, force: bool = False) -> bool:
         """
@@ -348,13 +404,41 @@ class ContentProcessingService:
                 
                 # Save the extracted content (include has_content in update_fields)
                 content.save(update_fields=['content', 'date', 'has_content'])
+                
+                # Log successful content fetch
+                log_activity(
+                    'content_fetched',
+                    f'Content fetched from "{content.link}" for "{content.title}"',
+                    content=content,
+                    source=content.source,
+                    metadata={'url': content.link, 'char_count': len(content.content)}
+                )
+                
                 return True
+            else:
+                # Log failed content fetch (no result or empty content)
+                log_activity(
+                    'content_fetched',
+                    f'Failed to fetch content from "{content.link}" for "{content.title}": No content extracted',
+                    content=content,
+                    source=content.source,
+                    metadata={'success': False, 'url': content.link, 'reason': 'No content extracted'}
+                )
+                return False
         except Exception as e:
             # Log error but don't fail
-            print(f"Error extracting content from {content.link}: {str(e)}")
+            error_msg = str(e)
+            print(f"Error extracting content from {content.link}: {error_msg}")
+            
+            # Log failed content fetch
+            log_activity(
+                'content_fetched',
+                f'Error fetching content from "{content.link}" for "{content.title}": {error_msg}',
+                content=content,
+                source=content.source,
+                metadata={'success': False, 'url': content.link, 'error': error_msg}
+            )
             return False
-        
-        return False
     
     def translate_content(self, content: Content) -> bool:
         """

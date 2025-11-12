@@ -107,6 +107,17 @@
                                 </button>
                             </form>
                             {% endif %}
+                            {% if content.content_type == 'video' %}
+                                {% if content.external_id or content.link %}
+                                <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" name="get_transcript" class="btn btn-sm btn-outline-primary" 
+                                            onclick="return confirm('This will fetch the transcript from YouTube and replace the current content. Continue?');">
+                                        <i class="bi bi-file-text"></i> Get Transcript
+                                    </button>
+                                </form>
+                                {% endif %}
+                            {% endif %}
                             {% if content.content and content.content.strip %}
                             <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
                                 {% csrf_token %}
