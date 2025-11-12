@@ -12,7 +12,7 @@
 
 <div class="card">
     <div class="card-body">
-        <form method="post">
+        <form method="post" action="{% if action|lower == 'edit' %}{% url 'sources:content_edit' content.pk %}{% else %}{% url 'sources:content_add' %}{% endif %}" id="content-form">
             {% csrf_token %}
             
             <div class="row mb-3">
@@ -97,42 +97,34 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <label for="{{ form.content.id_for_label }}" class="form-label mb-0">Content</label>
                         {% if action|lower == 'edit' and content %}
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2" id="action-buttons-container">
                             {% if content.content_type == 'blog_post' and content.link %}
-                            <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" name="fetch_content" class="btn btn-sm btn-outline-primary" 
-                                        onclick="return confirm('This will replace the current content. Continue?');">
-                                    <i class="bi bi-download"></i> Fetch Content
-                                </button>
-                            </form>
+                            <button type="button" name="fetch_content" class="btn btn-sm btn-outline-primary action-button" 
+                                    data-action="fetch_content"
+                                    onclick="if(confirm('This will replace the current content. Continue?')) { submitAction('fetch_content'); }">
+                                <i class="bi bi-download"></i> Fetch Content
+                            </button>
                             {% endif %}
                             {% if content.content_type == 'video' %}
                                 {% if content.external_id or content.link %}
-                                <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" name="get_transcript" class="btn btn-sm btn-outline-primary" 
-                                            onclick="return confirm('This will fetch the transcript from YouTube and replace the current content. Continue?');">
-                                        <i class="bi bi-file-text"></i> Get Transcript
-                                    </button>
-                                </form>
+                                <button type="button" name="get_transcript" class="btn btn-sm btn-outline-primary action-button" 
+                                        data-action="get_transcript"
+                                        onclick="if(confirm('This will fetch the transcript from YouTube and replace the current content. Continue?')) { submitAction('get_transcript'); }">
+                                    <i class="bi bi-file-text"></i> Get Transcript
+                                </button>
                                 {% endif %}
                             {% endif %}
                             {% if content.content and content.content.strip %}
-                            <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" name="add_tags" class="btn btn-sm btn-outline-info" 
-                                        onclick="return confirm('This will add tags to the content. Continue?');">
-                                    <i class="bi bi-tags"></i> Add Tags
-                                </button>
-                            </form>
-                            <form method="post" action="{% url 'sources:content_edit' content.pk %}" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" name="generate_embeddings" class="btn btn-sm btn-outline-success" 
-                                        onclick="return confirm('This will generate embeddings for the content. Continue?');">
-                                    <i class="bi bi-diagram-3"></i> Generate Embeddings
-                                </button>
-                            </form>
+                            <button type="button" name="add_tags" class="btn btn-sm btn-outline-info action-button" 
+                                    data-action="add_tags"
+                                    onclick="if(confirm('This will add tags to the content. Continue?')) { submitAction('add_tags'); }">
+                                <i class="bi bi-tags"></i> Add Tags
+                            </button>
+                            <button type="button" name="generate_embeddings" class="btn btn-sm btn-outline-success action-button" 
+                                    data-action="generate_embeddings"
+                                    onclick="if(confirm('This will generate embeddings for the content. Continue?')) { submitAction('generate_embeddings'); }">
+                                <i class="bi bi-diagram-3"></i> Generate Embeddings
+                            </button>
                             {% endif %}
                         </div>
                         {% endif %}
@@ -172,7 +164,7 @@
 
             <div class="d-flex justify-content-end gap-2">
                 <a href="{% url 'sources:content_list' %}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" name="save_content" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Save Content
                 </button>
             </div>
@@ -442,6 +434,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial update
     updateExternalIdRequirement();
     filterSources();
+    
+    // Function to submit action buttons (Fetch Content, Get Transcript, etc.)
+    function submitAction(actionName) {
+        const form = document.getElementById('content-form');
+        if (!form) return;
+        
+        // Create a hidden input with the action name
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = actionName;
+        actionInput.value = '1';
+        form.appendChild(actionInput);
+        
+        // Submit the form
+        form.submit();
+    }
+    
+    // Debug form submission
+    const form = document.getElementById('content-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('Form submitting...');
+            const formData = new FormData(form);
+            console.log('Form data:', Object.fromEntries(formData));
+            // Don't prevent default - let it submit normally
+        });
+    }
 });
 </script>
 {% endblock %}

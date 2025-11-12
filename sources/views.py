@@ -638,19 +638,42 @@ def content_edit(request, pk):
         # Redirect back to edit page
         return redirect('sources:content_edit', pk=content.pk)
     
+    # Handle regular form save (when Save Content button is clicked)
+    # Check if this is a regular form submission (not one of the special action buttons)
     if request.method == 'POST':
-        form = ContentForm(request.POST, instance=content)
-        if form.is_valid():
-            content = form.save()
-            log_activity(
-                'content_updated',
-                f'Content "{content.title}" ({content.get_content_type_display()}) was updated',
-                user=request.user,
-                content=content,
-                source=content.source
-            )
-            messages.success(request, f'Content "{content.title}" updated successfully!')
-            return redirect('sources:content_list')
+        is_special_action = any(key in request.POST for key in ['fetch_content', 'get_transcript', 'add_tags', 'generate_embeddings'])
+        
+        if not is_special_action:
+            # This is a regular form save
+            print(f"\n{'='*60}", flush=True)
+            print(f"Processing regular form save for content {content.id}", flush=True)
+            print(f"POST keys: {list(request.POST.keys())}", flush=True)
+            print(f"{'='*60}\n", flush=True)
+            
+            form = ContentForm(request.POST, instance=content)
+            if form.is_valid():
+                content = form.save()
+                log_activity(
+                    'content_updated',
+                    f'Content "{content.title}" ({content.get_content_type_display()}) was updated',
+                    user=request.user,
+                    content=content,
+                    source=content.source
+                )
+                messages.success(request, f'Content "{content.title}" updated successfully!')
+                return redirect('sources:content_list')
+            else:
+                # Form has errors - display them
+                print(f"Form validation failed. Errors: {form.errors}", flush=True)
+                error_messages = []
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        error_messages.append(f"{field}: {error}")
+                if error_messages:
+                    messages.error(request, f'Please correct the following errors: {"; ".join(error_messages)}')
+        else:
+            # This was a special action, form will be created below
+            form = ContentForm(instance=content)
     else:
         form = ContentForm(instance=content)
     
