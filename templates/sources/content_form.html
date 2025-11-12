@@ -173,6 +173,26 @@
 </div>
 
 <script>
+// Function to submit action buttons (Fetch Content, Get Transcript, etc.)
+// Must be in global scope to be accessible from onclick handlers
+function submitAction(actionName) {
+    const form = document.getElementById('content-form');
+    if (!form) {
+        console.error('Form not found!');
+        return;
+    }
+    
+    // Create a hidden input with the action name
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = actionName;
+    actionInput.value = '1';
+    form.appendChild(actionInput);
+    
+    // Submit the form
+    form.submit();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const contentTypeField = document.getElementById('{{ form.content_type.id_for_label }}');
     const externalIdField = document.getElementById('{{ form.external_id.id_for_label }}');
@@ -434,22 +454,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial update
     updateExternalIdRequirement();
     filterSources();
-    
-    // Function to submit action buttons (Fetch Content, Get Transcript, etc.)
-    function submitAction(actionName) {
-        const form = document.getElementById('content-form');
-        if (!form) return;
-        
-        // Create a hidden input with the action name
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = actionName;
-        actionInput.value = '1';
-        form.appendChild(actionInput);
-        
-        // Submit the form
-        form.submit();
-    }
     
     // Debug form submission
     const form = document.getElementById('content-form');
