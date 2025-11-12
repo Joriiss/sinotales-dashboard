@@ -268,6 +268,12 @@ def source_edit(request, pk):
                     )
                     created_count += 1
             
+            # Update last_collected timestamp if any videos were found (even if all were skipped)
+            if videos:
+                from django.utils import timezone
+                source.last_collected = timezone.now()
+                source.save(update_fields=['last_collected'])
+            
             # Log the activity
             log_activity(
                 'content_created',
@@ -401,6 +407,11 @@ def content_add(request):
         form = ContentForm(request.POST)
         if form.is_valid():
             content = form.save()
+            
+            # Update last_collected timestamp on source
+            from django.utils import timezone
+            content.source.last_collected = timezone.now()
+            content.source.save(update_fields=['last_collected'])
             
             # Log content creation BEFORE processing
             log_activity(
@@ -1012,6 +1023,11 @@ def create_video_content_api(request):
             content='',  # Empty - will be filled during processing
             processed=False,
         )
+        
+        # Update last_collected timestamp on source
+        from django.utils import timezone
+        source.last_collected = timezone.now()
+        source.save(update_fields=['last_collected'])
         
         # Log content creation
         log_activity(

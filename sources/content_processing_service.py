@@ -68,10 +68,17 @@ class ContentProcessingService:
         # Load proxy config if requested
         if use_proxy and PROXY_SUPPORT:
             self._proxy_config = self._load_proxy_config()
+            if self._proxy_config:
+                print(f"  [PROXY] Proxy config loaded successfully", flush=True)
+            else:
+                print(f"  [PROXY] Warning: use_proxy=True but proxy config could not be loaded", flush=True)
+        elif use_proxy and not PROXY_SUPPORT:
+            print(f"  [PROXY] Warning: use_proxy=True but proxy support not available (youtube-transcript-api version may be too old)", flush=True)
     
     def _load_proxy_config(self):
         """
         Load Webshare proxy configuration from .env file or environment variables.
+        Uses the same logic as get_transcripts.py for consistency.
         
         Returns:
             WebshareProxyConfig instance or None
@@ -91,15 +98,20 @@ class ContentProcessingService:
             
             if env_file.exists():
                 try:
+                    # Use the same parsing logic as get_transcripts.py
                     with open(env_file, 'r', encoding='utf-8') as f:
                         for line in f:
                             line = line.strip()
+                            # Skip empty lines and comments
                             if not line or line.startswith('#'):
                                 continue
+                            
+                            # Split by = sign, handling quoted values
                             if '=' in line:
                                 key, value = line.split('=', 1)
                                 key = key.strip()
                                 value = value.strip()
+                                
                                 # Remove quotes if present
                                 if value.startswith('"') and value.endswith('"'):
                                     value = value[1:-1]
@@ -111,19 +123,26 @@ class ContentProcessingService:
                                 elif key == 'WEBSHARE_PROXY_PASSWORD':
                                     proxy_password = value
                 except Exception as e:
-                    print(f"Warning: Could not read .env file: {str(e)}")
+                    print(f"  [PROXY] Warning: Could not read .env file: {str(e)}", flush=True)
+            else:
+                print(f"  [PROXY] Warning: .env file not found at {env_file}", flush=True)
         
         if proxy_username and proxy_password:
             try:
-                return WebshareProxyConfig(
+                proxy_config = WebshareProxyConfig(
                     proxy_username=proxy_username,
                     proxy_password=proxy_password
                 )
+                print(f"  [PROXY] Successfully created WebshareProxyConfig", flush=True)
+                return proxy_config
             except Exception as e:
-                print(f"Warning: Could not create proxy config: {str(e)}")
+                print(f"  [PROXY] Error creating proxy config: {str(e)}", flush=True)
+                import traceback
+                print(f"  [PROXY] Traceback: {traceback.format_exc()}", flush=True)
                 return None
-        
-        return None
+        else:
+            print(f"  [PROXY] Warning: Proxy credentials not found (username: {'set' if proxy_username else 'missing'}, password: {'set' if proxy_password else 'missing'})", flush=True)
+            return None
     
     def extract_youtube_video_id(self, url: str) -> Optional[str]:
         """
@@ -237,7 +256,13 @@ class ContentProcessingService:
             # Try with proxy first if configured, then fallback to no proxy on SSL/connection errors
             api_configs_to_try = []
             if self._proxy_config:
-                api_configs_to_try.append(('with proxy', YouTubeTranscriptApi(proxy_config=self._proxy_config)))
+                try:
+                    api_with_proxy = YouTubeTranscriptApi(proxy_config=self._proxy_config)
+                    api_configs_to_try.append(('with proxy', api_with_proxy))
+                    print(f"  [EXTRACT] Proxy config available, will try with proxy first", flush=True)
+                except Exception as e:
+                    print(f"  [EXTRACT] Warning: Failed to create API instance with proxy: {str(e)}", flush=True)
+                    print(f"  [EXTRACT] Will try without proxy only", flush=True)
             api_configs_to_try.append(('without proxy', YouTubeTranscriptApi()))
             
             for config_name, api in api_configs_to_try:
