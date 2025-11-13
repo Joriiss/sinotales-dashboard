@@ -185,13 +185,14 @@ class ContentProcessingService:
         
         return None
     
-    def extract_transcript(self, content: Content, force: bool = False) -> bool:
+    def extract_transcript(self, content: Content, force: bool = False, user=None) -> bool:
         """
         Extract transcript from YouTube video if content is empty and link/external_id is available.
         
         Args:
             content: Content object
             force: If True, extract even if content already exists (for re-fetching)
+            user: Optional user object for activity logging
             
         Returns:
             True if transcript was extracted, False otherwise
@@ -337,6 +338,7 @@ class ContentProcessingService:
                 log_activity(
                     'transcript_fetched',
                     f'Transcript fetched for video "{content.title}" (ID: {video_id})',
+                    user=user,
                     content=content,
                     source=content.source,
                     metadata={'video_id': video_id, 'language': language_used, 'char_count': len(transcript_text)}
@@ -349,6 +351,7 @@ class ContentProcessingService:
                 log_activity(
                     'transcript_fetched',
                     f'Failed to fetch transcript for video "{content.title}" (ID: {video_id}): Empty transcript',
+                    user=user,
                     content=content,
                     source=content.source,
                     metadata={'success': False, 'video_id': video_id, 'reason': 'Empty transcript'}
@@ -365,6 +368,7 @@ class ContentProcessingService:
             log_activity(
                 'transcript_fetched',
                 f'Error fetching transcript for video "{content.title}" (ID: {video_id}): {error_msg}',
+                user=user,
                 content=content,
                 source=content.source,
                 metadata={'success': False, 'video_id': video_id, 'error': error_msg}

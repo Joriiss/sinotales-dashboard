@@ -543,46 +543,20 @@ def content_edit(request, pk):
     if request.method == 'POST' and 'get_transcript' in request.POST:
         if content.content_type == 'video' and (content.external_id or content.link):
             try:
-                processing_service = ContentProcessingService()
+                # Use proxy support like the API endpoint does (important for VPS/cloud IPs)
+                processing_service = ContentProcessingService(use_proxy=True)
                 # Force re-extraction even if content already exists
-                extracted = processing_service.extract_transcript(content, force=True)
+                # Pass user for activity logging (service method handles logging)
+                extracted = processing_service.extract_transcript(content, force=True, user=request.user)
                 if extracted:
                     messages.success(request, f'Transcript fetched successfully for video "{content.title}"')
                     # Refresh content from DB to get updated content
                     content.refresh_from_db()
-                    # Log successful transcript fetch
-                    video_id = content.external_id or 'unknown'
-                    log_activity(
-                        'transcript_fetched',
-                        f'Transcript fetched for video "{content.title}" (ID: {video_id})',
-                        user=request.user,
-                        content=content,
-                        source=content.source
-                    )
                 else:
                     messages.warning(request, f'Could not extract transcript. The video might not have transcripts available, or they may be disabled.')
-                    # Log failed transcript fetch
-                    video_id = content.external_id or 'unknown'
-                    log_activity(
-                        'transcript_fetched',
-                        f'Failed to fetch transcript for video "{content.title}" (ID: {video_id})',
-                        user=request.user,
-                        content=content,
-                        source=content.source,
-                        metadata={'success': False, 'reason': 'Transcript not available or disabled'}
-                    )
             except Exception as e:
                 messages.error(request, f'Error fetching transcript: {str(e)}')
-                # Log error
-                video_id = content.external_id or 'unknown'
-                log_activity(
-                    'transcript_fetched',
-                    f'Error fetching transcript for video "{content.title}" (ID: {video_id}): {str(e)}',
-                    user=request.user,
-                    content=content,
-                    source=content.source,
-                    metadata={'success': False, 'error': str(e)}
-                )
+                # Service method already logs errors, no need to log again here
         else:
             messages.warning(request, 'Transcript can only be fetched for videos with a valid video ID or link.')
         # Redirect back to edit page to show updated content
