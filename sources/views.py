@@ -224,87 +224,114 @@ def source_edit(request, pk):
             messages.error(request, 'Channel ID is required to get videos.')
             return redirect('sources:source_edit', pk=source.pk)
         
-        try:
-            from .youtube_service import get_channel_videos
-            from django.db import transaction
+        # Run video import in background thread to avoid timeout
+        import threading
+        from django.db import connection
+        
+        def import_videos_background():
+            """Import videos in background thread"""
+            # Close the database connection from the main thread
+            connection.close()
             
-            # Fetch videos from YouTube
-            print(f"\n{'='*60}", flush=True)
-            print(f"Get Videos: {source.name} (Channel: {source.channel_id})", flush=True)
-            print(f"Filter China: {source.filter_videos}", flush=True)
-            print(f"{'='*60}\n", flush=True)
-            
-            videos = get_channel_videos(
-                channel_id=source.channel_id,
-                include_shorts=source.include_shorts,
-                filter_china=source.filter_videos
-            )
-            
-            if not videos:
-                messages.info(request, f'No videos found for channel "{source.name}".')
-                return redirect('sources:source_edit', pk=source.pk)
-            
-            # Create Content entries for each video
-            created_count = 0
-            skipped_count = 0
-            
-            with transaction.atomic():
-                for video in videos:
-                    # Check if content already exists (by external_id)
-                    if Content.objects.filter(source=source, external_id=video['video_id']).exists():
-                        skipped_count += 1
-                        continue
-                    
-                    # Create content entry
-                    Content.objects.create(
-                        source=source,
-                        external_id=video['video_id'],
-                        title=video['title'],
-                        link=video['link'],
-                        content_type='video',
-                        date=video['upload_date'],
-                        content='',  # Empty - will be filled later when processing
-                        processed=False,
-                    )
-                    created_count += 1
-            
-            # Update last_collected timestamp if any videos were found (even if all were skipped)
-            if videos:
+            try:
+                from .youtube_service import get_channel_videos
+                from django.db import transaction
                 from django.utils import timezone
-                source.last_collected = timezone.now()
-                source.save(update_fields=['last_collected'])
-            
-            # Log the activity
-            log_activity(
-                'content_created',
-                f'Fetched {created_count} videos from YouTube channel "{source.name}"',
-                user=request.user,
-                source=source,
-                metadata={
-                    'videos_fetched': created_count,
-                    'videos_skipped': skipped_count,
-                    'total_found': len(videos)
-                }
-            )
-            
-            if created_count > 0:
-                messages.success(
-                    request,
-                    f'Successfully fetched {created_count} video(s) from "{source.name}". '
-                    f'{skipped_count} video(s) were skipped (already exist).'
+                
+                # Get fresh source object in this thread
+                source_pk = source.pk
+                source_refresh = Source.objects.get(pk=source_pk)
+                
+                # Fetch videos from YouTube
+                print(f"\n{'='*60}", flush=True)
+                print(f"Get Videos (Background): {source_refresh.name} (Channel: {source_refresh.channel_id})", flush=True)
+                print(f"Filter China: {source_refresh.filter_videos}", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+                videos = get_channel_videos(
+                    channel_id=source_refresh.channel_id,
+                    include_shorts=source_refresh.include_shorts,
+                    filter_china=source_refresh.filter_videos
                 )
-            else:
-                messages.info(
-                    request,
-                    f'All {len(videos)} video(s) from "{source.name}" already exist in the database.'
+                
+                if not videos:
+                    print(f"  [BACKGROUND] No videos found for channel", flush=True)
+                    return
+                
+                print(f"  [BACKGROUND] Found {len(videos)} videos, starting import...", flush=True)
+                
+                # Create Content entries for each video
+                created_count = 0
+                skipped_count = 0
+                
+                with transaction.atomic():
+                    for i, video in enumerate(videos, 1):
+                        # Check if content already exists (by external_id)
+                        if Content.objects.filter(source=source_refresh, external_id=video['video_id']).exists():
+                            skipped_count += 1
+                            if i % 10 == 0:
+                                print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count})...", flush=True)
+                            continue
+                        
+                        # Create content entry
+                        Content.objects.create(
+                            source=source_refresh,
+                            external_id=video['video_id'],
+                            title=video['title'],
+                            link=video['link'],
+                            content_type='video',
+                            date=video['upload_date'],
+                            content='',  # Empty - will be filled later when processing
+                            processed=False,
+                        )
+                        created_count += 1
+                        
+                        if i % 10 == 0:
+                            print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count})...", flush=True)
+                
+                # Update last_collected timestamp if any videos were found (even if all were skipped)
+                if videos:
+                    source_refresh.last_collected = timezone.now()
+                    source_refresh.save(update_fields=['last_collected'])
+                
+                # Log the activity
+                log_activity(
+                    'content_created',
+                    f'Fetched {created_count} videos from YouTube channel "{source_refresh.name}"',
+                    user=None,  # Background task, no user context
+                    source=source_refresh,
+                    metadata={
+                        'videos_fetched': created_count,
+                        'videos_skipped': skipped_count,
+                        'total_found': len(videos)
+                    }
                 )
-            
-        except ImportError as e:
-            messages.error(request, f'YouTube API library not available: {str(e)}')
-        except ValueError as e:
-            messages.error(request, f'Error: {str(e)}')
-        except Exception as e:
-            messages.error(request, f'Error fetching videos: {str(e)}')
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"  [BACKGROUND] ✓ Import completed: {created_count} created, {skipped_count} skipped", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+            except ImportError as e:
+                print(f"  [BACKGROUND] ERROR: YouTube API library not available: {str(e)}", flush=True)
+            except ValueError as e:
+                print(f"  [BACKGROUND] ERROR: {str(e)}", flush=True)
+            except Exception as e:
+                import traceback
+                print(f"  [BACKGROUND] ERROR: {str(e)}", flush=True)
+                print(f"  [BACKGROUND] Traceback: {traceback.format_exc()}", flush=True)
+            finally:
+                # Ensure database connection is closed
+                connection.close()
+        
+        # Start background thread
+        thread = threading.Thread(target=import_videos_background, daemon=True)
+        thread.start()
+        
+        messages.info(
+            request,
+            f'Video import started in the background for "{source.name}". '
+            f'This may take several minutes. Check the logs for progress.'
+        )
         
         return redirect('sources:source_edit', pk=source.pk)
     
