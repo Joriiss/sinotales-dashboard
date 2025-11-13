@@ -263,6 +263,7 @@ def source_edit(request, pk):
                 # Create Content entries for each video
                 created_count = 0
                 skipped_count = 0
+                created_content_ids = []  # Store IDs of newly created content for transcript extraction
                 
                 with transaction.atomic():
                     for i, video in enumerate(videos, 1):
@@ -274,7 +275,7 @@ def source_edit(request, pk):
                             continue
                         
                         # Create content entry
-                        Content.objects.create(
+                        content = Content.objects.create(
                             source=source_refresh,
                             external_id=video['video_id'],
                             title=video['title'],
@@ -285,6 +286,7 @@ def source_edit(request, pk):
                             processed=False,
                         )
                         created_count += 1
+                        created_content_ids.append(content.id)
                         
                         if i % 10 == 0:
                             print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count})...", flush=True)
@@ -293,6 +295,36 @@ def source_edit(request, pk):
                 if videos:
                     source_refresh.last_collected = timezone.now()
                     source_refresh.save(update_fields=['last_collected'])
+                
+                # Extract transcripts for newly created videos
+                if created_content_ids:
+                    print(f"\n  [BACKGROUND] Extracting transcripts for {len(created_content_ids)} videos...", flush=True)
+                    from .content_processing_service import ContentProcessingService
+                    
+                    # Create processing service with proxy support
+                    processing_service = ContentProcessingService(use_proxy=True)
+                    
+                    transcripts_extracted = 0
+                    transcripts_failed = 0
+                    
+                    for idx, content_id in enumerate(created_content_ids, 1):
+                        try:
+                            # Get fresh content object
+                            content = Content.objects.get(pk=content_id)
+                            
+                            # Extract transcript
+                            if processing_service.extract_transcript(content, force=False, user=None):
+                                transcripts_extracted += 1
+                            else:
+                                transcripts_failed += 1
+                            
+                            if idx % 10 == 0:
+                                print(f"  [BACKGROUND] Extracted transcripts for {idx}/{len(created_content_ids)} videos (success: {transcripts_extracted}, failed: {transcripts_failed})...", flush=True)
+                        except Exception as e:
+                            transcripts_failed += 1
+                            print(f"  [BACKGROUND] Error extracting transcript for content {content_id}: {str(e)}", flush=True)
+                    
+                    print(f"  [BACKGROUND] Transcript extraction completed: {transcripts_extracted} extracted, {transcripts_failed} failed", flush=True)
                 
                 # Log the activity
                 log_activity(
