@@ -14,6 +14,10 @@ class SourceForm(forms.ModelForm):
             'channel_id',
             'include_shorts',
             'filter_videos',
+            'xml_feed',
+            'sitemap',
+            'blog_only',
+            'filter_china',
             'is_active',
         ]
         widgets = {
@@ -41,6 +45,20 @@ class SourceForm(forms.ModelForm):
             'filter_videos': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
             }),
+            'xml_feed': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://example.com/feed.xml'
+            }),
+            'sitemap': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://example.com/sitemap.xml'
+            }),
+            'blog_only': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
+            'filter_china': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
             'is_active': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
             }),
@@ -51,19 +69,43 @@ class SourceForm(forms.ModelForm):
         # Make channel_id required for YouTube sources
         source_type = self.data.get('source_type') if self.data else (self.instance.source_type if self.instance.pk else None)
         
-        # Make link optional (especially for ebooks)
-        self.fields['link'].required = False
+        # Make link required for blog sources, optional for others
+        if source_type == 'blog':
+            self.fields['link'].required = True
+            self.fields['sitemap'].required = True
+        else:
+            self.fields['link'].required = False
+            self.fields['sitemap'].required = False
         
         if source_type == 'youtube':
             self.fields['channel_id'].required = True
             self.fields['channel_id'].widget.attrs['placeholder'] = 'UC1UNB6Gy11umcbEj_hqIwhw'
-        else:
+            # Disable blog-specific fields for YouTube sources
+            if self.instance and self.instance.pk:
+                self.fields['xml_feed'].widget.attrs['disabled'] = True
+                self.fields['sitemap'].widget.attrs['disabled'] = True
+                self.fields['blog_only'].widget.attrs['disabled'] = True
+                self.fields['filter_china'].widget.attrs['disabled'] = True
+        elif source_type == 'blog':
+            # Hide channel_id for blog sources - it won't be used
             self.fields['channel_id'].required = False
-            self.fields['channel_id'].widget.attrs['placeholder'] = 'UC1UNB6Gy11umcbEj_hqIwhw'
-            # For non-YouTube sources, disable and clear channel_id
+            # Disable YouTube-specific fields for blog sources
             if self.instance and self.instance.pk:
                 self.fields['channel_id'].widget.attrs['disabled'] = True
                 self.fields['include_shorts'].widget.attrs['disabled'] = True
+                self.fields['filter_videos'].widget.attrs['disabled'] = True
+        else:
+            self.fields['channel_id'].required = False
+            self.fields['channel_id'].widget.attrs['placeholder'] = 'UC1UNB6Gy11umcbEj_hqIwhw'
+            # For non-YouTube, non-blog sources, disable all type-specific fields
+            if self.instance and self.instance.pk:
+                self.fields['channel_id'].widget.attrs['disabled'] = True
+                self.fields['include_shorts'].widget.attrs['disabled'] = True
+                self.fields['filter_videos'].widget.attrs['disabled'] = True
+                self.fields['xml_feed'].widget.attrs['disabled'] = True
+                self.fields['sitemap'].widget.attrs['disabled'] = True
+                self.fields['blog_only'].widget.attrs['disabled'] = True
+                self.fields['filter_china'].widget.attrs['disabled'] = True
     
     def clean(self):
         cleaned_data = super().clean()
@@ -74,11 +116,38 @@ class SourceForm(forms.ModelForm):
         if source_type == 'youtube' and not channel_id:
             self.add_error('channel_id', 'Channel ID is required for YouTube sources.')
         
+        # Validate that link and sitemap are required for blog sources
+        if source_type == 'blog':
+            link = cleaned_data.get('link')
+            sitemap = cleaned_data.get('sitemap')
+            if not link:
+                self.add_error('link', 'Link is required for blog sources.')
+            if not sitemap:
+                self.add_error('sitemap', 'Sitemap is required for blog sources.')
+        
         # Clear channel_id for non-YouTube sources
         if source_type != 'youtube' and channel_id:
             cleaned_data['channel_id'] = ''
             if self.instance and self.instance.pk:
                 self.instance.channel_id = None
+        
+        # Clear blog-specific fields for non-blog sources
+        if source_type != 'blog':
+            if cleaned_data.get('xml_feed'):
+                cleaned_data['xml_feed'] = ''
+            if cleaned_data.get('sitemap'):
+                cleaned_data['sitemap'] = ''
+            if cleaned_data.get('blog_only'):
+                cleaned_data['blog_only'] = False
+            if cleaned_data.get('filter_china'):
+                cleaned_data['filter_china'] = False
+        
+        # Clear YouTube-specific fields for non-YouTube sources
+        if source_type != 'youtube':
+            if cleaned_data.get('include_shorts'):
+                cleaned_data['include_shorts'] = False
+            if cleaned_data.get('filter_videos'):
+                cleaned_data['filter_videos'] = False
         
         return cleaned_data
 

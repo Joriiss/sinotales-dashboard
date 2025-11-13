@@ -420,8 +420,479 @@ def source_edit(request, pk):
         thread.start()
         
         messages.info(
-            request,
+                    request,
             f'Video import started in the background for "{source.name}". '
+            f'This may take several minutes. Check the logs for progress.'
+        )
+        
+        return redirect('sources:source_edit', pk=source.pk)
+    
+    # Handle get_posts action for blog sources
+    if request.method == 'POST' and 'get_posts' in request.POST:
+        if source.source_type != 'blog':
+            messages.error(request, 'Get Posts is only available for blog sources.')
+            return redirect('sources:source_edit', pk=source.pk)
+        
+        if not source.sitemap:
+            messages.error(request, 'Sitemap URL is required to get posts.')
+            return redirect('sources:source_edit', pk=source.pk)
+        
+        # Run post import in background thread to avoid timeout
+        import threading
+        from django.db import connection
+        
+        def import_posts_background():
+            """Import blog posts in background thread"""
+            # Close the database connection from the main thread
+            connection.close()
+            
+            try:
+                from django.db import transaction
+                from django.utils import timezone
+                from urllib.parse import urlparse
+                import requests
+                from bs4 import BeautifulSoup
+                import time
+                import subprocess
+                
+                # Try to import dateutil for date parsing
+                try:
+                    from dateutil import parser as date_parser
+                except ImportError:
+                    date_parser = None
+                
+                # Get fresh source object in this thread
+                source_pk = source.pk
+                source_refresh = Source.objects.get(pk=source_pk)
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"Get Posts (Background): {source_refresh.name}", flush=True)
+                print(f"Sitemap: {source_refresh.sitemap}", flush=True)
+                print(f"Filter China: {source_refresh.filter_china}", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+                # Helper function to fetch sitemap with multiple approaches
+                def fetch_sitemap(sitemap_url, base_url=None):
+                    """Fetch sitemap using multiple approaches"""
+                    if not base_url:
+                        parsed = urlparse(sitemap_url)
+                        base_url = f"{parsed.scheme}://{parsed.netloc}"
+                    
+                    response = None
+                    
+                    # Approach 1: Use curl first (most reliable)
+                    try:
+                        print(f"    [BACKGROUND] Trying Approach 1: Using curl...", flush=True)
+                        result = subprocess.run(
+                            ['curl', '-s', '-L', '--max-time', '30', sitemap_url],
+                            capture_output=True,
+                            text=True,
+                            timeout=35
+                        )
+                        print(f"    [BACKGROUND] Curl return code: {result.returncode}", flush=True)
+                        if result.returncode == 0 and result.stdout:
+                            # Validate it's XML, not HTML
+                            content_str = result.stdout[:200].lower()
+                            if '<html' in content_str or 'cloudflare' in content_str or 'challenge' in content_str:
+                                print(f"    [BACKGROUND] ✗ Curl returned HTML/Cloudflare challenge, trying next approach...", flush=True)
+                            elif '<urlset' in content_str or '<sitemapindex' in content_str or '<?xml' in content_str:
+                                print(f"    [BACKGROUND] ✓ Success with curl (got {len(result.stdout)} bytes, valid XML)", flush=True)
+                                class MockResponse:
+                                    def __init__(self, content, status_code=200):
+                                        self.content = content.encode('utf-8') if isinstance(content, str) else content
+                                        self.text = content if isinstance(content, str) else content.decode('utf-8', errors='ignore')
+                                        self.status_code = status_code
+                                        self.headers = {'Content-Type': 'application/xml'}
+                                return MockResponse(result.stdout, 200)
+                            else:
+                                print(f"    [BACKGROUND] ✗ Curl content doesn't appear to be XML, trying next approach...", flush=True)
+                        else:
+                            if result.stderr:
+                                print(f"    [BACKGROUND] ✗ Curl failed: {result.stderr[:200]}", flush=True)
+                            else:
+                                print(f"    [BACKGROUND] ✗ Curl failed: return code {result.returncode}, no output", flush=True)
+                    except FileNotFoundError:
+                        print(f"    [BACKGROUND] ✗ Curl not found in PATH, trying next approach...", flush=True)
+                    except subprocess.TimeoutExpired:
+                        print(f"    [BACKGROUND] ✗ Curl timeout, trying next approach...", flush=True)
+                    except Exception as e:
+                        print(f"    [BACKGROUND] ✗ Curl failed: {type(e).__name__}: {str(e)}, trying next approach...", flush=True)
+                    
+                    # Approach 2: Full headers with session
+                    if not response:
+                        try:
+                            print(f"    [BACKGROUND] Trying Approach 2: Full headers with session...", flush=True)
+                            headers = {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                'Accept-Language': 'en-US,en;q=0.9',
+                                'Referer': f"{base_url}/",
+                            }
+                            session = requests.Session()
+                            session.headers.update(headers)
+                            session.get(base_url, timeout=10, allow_redirects=True)
+                            time.sleep(1.0)
+                            response = session.get(sitemap_url, timeout=30, allow_redirects=True)
+                            print(f"    [BACKGROUND] Approach 2 response: HTTP {response.status_code}", flush=True)
+                            if response.status_code in (200, 202):
+                                # Check if content is actually present and is XML (not HTML/Cloudflare challenge)
+                                if hasattr(response, 'content') and response.content and len(response.content) > 0:
+                                    content_str = response.content.decode('utf-8', errors='ignore')[:200].lower()
+                                    # Check if it's HTML/Cloudflare challenge instead of XML
+                                    if '<html' in content_str or 'cloudflare' in content_str or 'challenge' in content_str:
+                                        print(f"    [BACKGROUND] ✗ Approach 2 returned HTML/Cloudflare challenge, trying next approach...", flush=True)
+                                    elif '<urlset' in content_str or '<sitemapindex' in content_str or '<?xml' in content_str:
+                                        print(f"    [BACKGROUND] ✓ Success with Approach 2 (content: {len(response.content)} bytes, valid XML)", flush=True)
+                                        return response
+                                    else:
+                                        print(f"    [BACKGROUND] ✗ Approach 2 content doesn't appear to be XML, trying next approach...", flush=True)
+                                else:
+                                    print(f"    [BACKGROUND] ✗ Approach 2 returned {response.status_code} but content is empty, trying next approach...", flush=True)
+                            else:
+                                print(f"    [BACKGROUND] ✗ Approach 2 failed: HTTP {response.status_code}", flush=True)
+                        except Exception as e:
+                            print(f"    [BACKGROUND] ✗ Approach 2 failed: {type(e).__name__}: {str(e)}", flush=True)
+                    
+                    # Approach 3: Minimal headers
+                    if not response or (hasattr(response, 'status_code') and response.status_code not in (200, 202)):
+                        try:
+                            print(f"    [BACKGROUND] Trying Approach 3: Minimal headers...", flush=True)
+                            minimal_headers = {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                'Accept': 'application/xml, text/xml, */*',
+                            }
+                            response = requests.get(sitemap_url, headers=minimal_headers, timeout=30, allow_redirects=True)
+                            print(f"    [BACKGROUND] Approach 3 response: HTTP {response.status_code}", flush=True)
+                            if response.status_code in (200, 202):
+                                # Check if content is actually present and is XML (not HTML/Cloudflare challenge)
+                                if hasattr(response, 'content') and response.content and len(response.content) > 0:
+                                    content_str = response.content.decode('utf-8', errors='ignore')[:200].lower()
+                                    # Check if it's HTML/Cloudflare challenge instead of XML
+                                    if '<html' in content_str or 'cloudflare' in content_str or 'challenge' in content_str:
+                                        print(f"    [BACKGROUND] ✗ Approach 3 returned HTML/Cloudflare challenge", flush=True)
+                                    elif '<urlset' in content_str or '<sitemapindex' in content_str or '<?xml' in content_str:
+                                        print(f"    [BACKGROUND] ✓ Success with Approach 3 (content: {len(response.content)} bytes, valid XML)", flush=True)
+                                        return response
+                                    else:
+                                        print(f"    [BACKGROUND] ✗ Approach 3 content doesn't appear to be XML", flush=True)
+                                else:
+                                    print(f"    [BACKGROUND] ✗ Approach 3 returned {response.status_code} but content is empty", flush=True)
+                            else:
+                                print(f"    [BACKGROUND] ✗ Approach 3 failed: HTTP {response.status_code}", flush=True)
+                        except Exception as e:
+                            print(f"    [BACKGROUND] ✗ Approach 3 failed: {type(e).__name__}: {str(e)}", flush=True)
+                    
+                    return response
+                
+                # Helper function to check if sitemap is for posts
+                def is_post_sitemap(sitemap_url):
+                    sitemap_lower = sitemap_url.lower()
+                    return ('post-sitemap' in sitemap_lower or 'article' in sitemap_lower)
+                
+                # Helper function to parse sitemap recursively
+                def parse_sitemap(sitemap_url, base_url=None):
+                    """Parse sitemap and return list of posts"""
+                    posts = []
+                    
+                    if not base_url:
+                        parsed = urlparse(sitemap_url)
+                        base_url = f"{parsed.scheme}://{parsed.netloc}"
+                    
+                    print(f"  [BACKGROUND] Fetching sitemap: {sitemap_url}", flush=True)
+                    response = fetch_sitemap(sitemap_url, base_url)
+                    
+                    if not response or response.status_code not in (200, 202):
+                        status_code = response.status_code if (response and hasattr(response, 'status_code')) else 'No response'
+                        print(f"  [BACKGROUND] ✗ Failed to fetch sitemap: {sitemap_url} (HTTP {status_code})", flush=True)
+                        return posts
+                    
+                    # Validate response content
+                    if not hasattr(response, 'content') or not response.content:
+                        print(f"  [BACKGROUND] ✗ Sitemap response has no content", flush=True)
+                        return posts
+                    
+                    # Debug: Check content length and preview
+                    content_length = len(response.content) if hasattr(response, 'content') else 0
+                    print(f"  [BACKGROUND] Response content length: {content_length} bytes", flush=True)
+                    
+                    if content_length == 0:
+                        print(f"  [BACKGROUND] ✗ Sitemap response has empty content", flush=True)
+                        return posts
+                    
+                    # Debug: Show first 500 chars of content
+                    content_preview = response.content[:500].decode('utf-8', errors='ignore') if isinstance(response.content, bytes) else str(response.content)[:500]
+                    print(f"  [BACKGROUND] Content preview (first 500 chars): {content_preview[:200]}...", flush=True)
+                    
+                    # Parse XML
+                    try:
+                        soup = BeautifulSoup(response.content, 'xml')
+                    except Exception as e:
+                        print(f"  [BACKGROUND] ✗ Failed to parse XML: {type(e).__name__}: {str(e)}", flush=True)
+                        return posts
+                    
+                    # Check if it's a sitemap index (try both with and without namespace)
+                    sitemapindex = soup.find('sitemapindex') or soup.find('sitemapindex', xmlns='http://www.sitemaps.org/schemas/sitemap/0.9')
+                    
+                    # Debug: Check what tags we found
+                    all_tags = [tag.name for tag in soup.find_all()]
+                    print(f"  [BACKGROUND] Found XML tags: {set(all_tags)}", flush=True)
+                    
+                    if sitemapindex:
+                        print(f"  [BACKGROUND] Found sitemap index, filtering for post sitemaps...", flush=True)
+                        sitemap_urls = []
+                        for sitemap_tag in soup.find_all('sitemap'):
+                            loc = sitemap_tag.find('loc')
+                            if loc and loc.text:
+                                sitemap_urls.append(loc.text.strip())
+                        
+                        print(f"  [BACKGROUND] Found {len(sitemap_urls)} total sitemap(s) in index", flush=True)
+                        if sitemap_urls:
+                            print(f"  [BACKGROUND] Sitemap URLs found: {sitemap_urls[:3]}..." if len(sitemap_urls) > 3 else f"  [BACKGROUND] Sitemap URLs found: {sitemap_urls}", flush=True)
+                        
+                        post_sitemaps = [url for url in sitemap_urls if is_post_sitemap(url)]
+                        print(f"  [BACKGROUND] Filtered to {len(post_sitemaps)} post-related sitemap(s)", flush=True)
+                        
+                        if not post_sitemaps:
+                            print(f"  [BACKGROUND] ⚠️  No post-related sitemaps found in index", flush=True)
+                            print(f"  [BACKGROUND] All sitemap URLs: {sitemap_urls}", flush=True)
+                            return posts
+                        
+                        for i, post_sitemap_url in enumerate(post_sitemaps, 1):
+                            print(f"  [BACKGROUND] Parsing post sitemap {i}/{len(post_sitemaps)}: {post_sitemap_url}", flush=True)
+                            nested_posts = parse_sitemap(post_sitemap_url, base_url)
+                            posts.extend(nested_posts)
+                            print(f"  [BACKGROUND] Extracted {len(nested_posts)} posts from this sitemap", flush=True)
+                            if i < len(post_sitemaps):
+                                time.sleep(0.5)
+                    else:
+                        # Regular sitemap with URLs
+                        print(f"  [BACKGROUND] Parsing regular sitemap (not an index)...", flush=True)
+                        url_tags = soup.find_all('url')
+                        print(f"  [BACKGROUND] Found {len(url_tags)} <url> tags", flush=True)
+                        
+                        for url_tag in url_tags:
+                            loc = url_tag.find('loc')
+                            if not loc or not loc.text:
+                                continue
+                            
+                            url = loc.text.strip()
+                            
+                            # Extract lastmod (date)
+                            lastmod = url_tag.find('lastmod')
+                            date_str = lastmod.text.strip() if lastmod and lastmod.text else ''
+                            
+                            # Generate title from URL if not in sitemap
+                            # Extract the slug from URL and convert to title
+                            parsed = urlparse(url)
+                            path = parsed.path.strip('/')
+                            # Get the last part of the path (slug)
+                            slug = path.split('/')[-1] if path else ''
+                            # Convert slug to title (replace hyphens with spaces, title case)
+                            if slug:
+                                title = slug.replace('-', ' ').replace('_', ' ').title()
+                            else:
+                                title = url
+                            
+                            posts.append({
+                                'url': url,
+                                'title': title,
+                                'date': date_str
+                            })
+                        
+                        print(f"  [BACKGROUND] Extracted {len(posts)} posts from sitemap", flush=True)
+                    
+                    return posts
+                
+                # Parse the sitemap
+                posts = parse_sitemap(source_refresh.sitemap)
+                
+                if not posts:
+                    print(f"  [BACKGROUND] No posts found in sitemap", flush=True)
+                    return
+                
+                print(f"  [BACKGROUND] Found {len(posts)} posts in sitemap, checking which are new...", flush=True)
+                
+                # Get existing post URLs to skip duplicates
+                existing_urls = set(
+                    Content.objects.filter(source=source_refresh)
+                    .values_list('link', flat=True)
+                )
+                print(f"  [BACKGROUND] {len(existing_urls)} posts already exist in database", flush=True)
+                
+                # Create Content entries for each post
+                created_count = 0
+                skipped_count = 0
+                created_content_ids = []  # Store content IDs for processing
+                
+                with transaction.atomic():
+                    for i, post in enumerate(posts, 1):
+                        post_url = post['url']
+                        
+                        # Check if content already exists (by exact URL)
+                        if post_url in existing_urls:
+                            skipped_count += 1
+                            if i % 50 == 0:
+                                print(f"  [BACKGROUND] Processed {i}/{len(posts)} posts (created: {created_count}, skipped: {skipped_count})...", flush=True)
+                            continue
+                        
+                        # Parse date from ISO format (e.g., "2025-11-13T09:45:26+00:00")
+                        post_date = None
+                        if post.get('date'):
+                            date_str = post['date'].strip()
+                            if date_parser:
+                                try:
+                                    post_date = date_parser.parse(date_str)
+                                except Exception as e:
+                                    print(f"    [BACKGROUND] Failed to parse date '{date_str}': {str(e)}", flush=True)
+                            else:
+                                # Fallback: try to parse ISO format manually
+                                try:
+                                    from datetime import datetime
+                                    # Handle ISO format with timezone (e.g., "2025-11-13T09:45:26+00:00")
+                                    if 'T' in date_str:
+                                        # Normalize timezone format
+                                        normalized = date_str.replace('Z', '+00:00')
+                                        post_date = datetime.fromisoformat(normalized)
+                                except Exception as e:
+                                    print(f"    [BACKGROUND] Fallback date parsing failed for '{date_str}': {str(e)}", flush=True)
+                        
+                        # If no date, use current time
+                        if not post_date:
+                            post_date = timezone.now()
+                        
+                        # Create content entry
+                        content = Content.objects.create(
+                            source=source_refresh,
+                            external_id=post_url,  # Use URL as external_id for blog posts
+                            title=post.get('title', post_url),
+                            link=post_url,
+                            content_type='blog_post',  # Fixed: should be 'blog_post' not 'blog'
+                            date=post_date,
+                            content='',  # Empty - will be filled later when processing
+                            processed=False,
+                        )
+                        created_count += 1
+                        created_content_ids.append(content.id)
+                        
+                        if i % 50 == 0:
+                            print(f"  [BACKGROUND] Processed {i}/{len(posts)} posts (created: {created_count}, skipped: {skipped_count})...", flush=True)
+                
+                # Update last_collected timestamp
+                if posts:
+                    source_refresh.last_collected = timezone.now()
+                    source_refresh.save(update_fields=['last_collected'])
+                
+                # Process each created post: extract content, translate, tag, embed
+                extracted_count = 0
+                extracted_failed = 0
+                translated_count = 0
+                translated_failed = 0
+                tagged_count = 0
+                tagged_failed = 0
+                embedded_count = 0
+                embedded_failed = 0
+                processed_count = 0
+                
+                if created_content_ids:
+                    print(f"\n  [BACKGROUND] Processing {len(created_content_ids)} posts (extract, translate, tag, embed)...", flush=True)
+                    from .content_processing_service import ContentProcessingService
+                    
+                    processing_service = ContentProcessingService()
+                    
+                    for idx, content_id in enumerate(created_content_ids, 1):
+                        try:
+                            # Get fresh content object
+                            content = Content.objects.get(pk=content_id)
+                            
+                            # Step 1: Extract content
+                            print(f"  [BACKGROUND] [{idx}/{len(created_content_ids)}] Processing: {content.title[:60]}...", flush=True)
+                            if processing_service.extract_content(content, force=False):
+                                extracted_count += 1
+                                content.refresh_from_db()
+                                
+                                # Step 2: Translate (if source language is not English)
+                                if content.source.language != 'en' and content.content and content.content.strip():
+                                    if processing_service.translate_content(content):
+                                        translated_count += 1
+                                        content.refresh_from_db()
+                                    else:
+                                        translated_failed += 1
+                                
+                                # Step 3: Tag (only if we have content)
+                                if content.content and content.content.strip():
+                                    if processing_service.add_tags(content):
+                                        tagged_count += 1
+                                        content.refresh_from_db()
+                                    else:
+                                        tagged_failed += 1
+                                    
+                                    # Step 4: Embed (only if it has tags)
+                                    if content.tags.exists():
+                                        if processing_service.generate_embeddings(content):
+                                            embedded_count += 1
+                                            content.processed = True
+                                            content.save(update_fields=['processed'])
+                                            processed_count += 1
+                                        else:
+                                            embedded_failed += 1
+                                    else:
+                                        print(f"    [BACKGROUND] Skipping embedding (no tags)", flush=True)
+                            else:
+                                extracted_failed += 1
+                            
+                            if idx % 10 == 0:
+                                print(f"  [BACKGROUND] Progress: {idx}/{len(created_content_ids)} (extracted: {extracted_count}, translated: {translated_count}, tagged: {tagged_count}, embedded: {embedded_count})...", flush=True)
+                        except Exception as e:
+                            import traceback
+                            print(f"  [BACKGROUND] Error processing content {content_id}: {str(e)}", flush=True)
+                            print(f"  [BACKGROUND] Traceback: {traceback.format_exc()}", flush=True)
+                    
+                    print(f"\n  [BACKGROUND] Processing completed:", flush=True)
+                    print(f"    - Content extracted: {extracted_count} succeeded, {extracted_failed} failed", flush=True)
+                    print(f"    - Translated: {translated_count} succeeded, {translated_failed} failed", flush=True)
+                    print(f"    - Tagged: {tagged_count} succeeded, {tagged_failed} failed", flush=True)
+                    print(f"    - Embedded: {embedded_count} succeeded, {embedded_failed} failed", flush=True)
+                    print(f"    - Fully processed: {processed_count}", flush=True)
+                
+                # Log the activity
+                log_activity(
+                    'content_created',
+                    f'Fetched {created_count} blog posts from sitemap "{source_refresh.name}"',
+                    user=None,  # Background task, no user context
+                    source=source_refresh,
+                    metadata={
+                        'posts_fetched': created_count,
+                        'posts_skipped': skipped_count,
+                        'total_found': len(posts),
+                        'extracted': extracted_count,
+                        'translated': translated_count,
+                        'tagged': tagged_count,
+                        'embedded': embedded_count,
+                        'processed': processed_count,
+                    }
+                )
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"  [BACKGROUND] ✓ Import completed: {created_count} created, {skipped_count} skipped", flush=True)
+                if created_content_ids:
+                    print(f"  [BACKGROUND] ✓ Processing completed: {processed_count} fully processed", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+            except Exception as e:
+                import traceback
+                print(f"  [BACKGROUND] ERROR: {str(e)}", flush=True)
+                print(f"  [BACKGROUND] Traceback: {traceback.format_exc()}", flush=True)
+            finally:
+                # Ensure database connection is closed
+                connection.close()
+        
+        # Start background thread
+        thread = threading.Thread(target=import_posts_background, daemon=True)
+        thread.start()
+        
+        messages.info(
+            request,
+            f'Blog post import started in the background for "{source.name}". '
             f'This may take several minutes. Check the logs for progress.'
         )
         

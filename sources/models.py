@@ -56,16 +56,11 @@ class Source(models.Model):
         ('youtube', 'YouTube Channel'),
         ('blog', 'Blog'),
         ('ebook', 'Ebook'),
-        ('rss', 'RSS Feed'),
     ]
     
     LANGUAGE_CHOICES = [
         ('en', 'English'),
         ('fr', 'French'),
-        ('zh', 'Chinese'),
-        ('es', 'Spanish'),
-        ('de', 'German'),
-        ('other', 'Other'),
     ]
     
     # Basic information
@@ -106,6 +101,30 @@ class Source(models.Model):
         help_text="Filter videos to only include those relevant to China (YouTube sources only)"
     )
     
+    # Blog-specific fields
+    xml_feed = models.URLField(
+        max_length=500,
+        validators=[URLValidator()],
+        blank=True,
+        null=True,
+        help_text="RSS/XML feed URL (optional, for blog sources)"
+    )
+    sitemap = models.URLField(
+        max_length=500,
+        validators=[URLValidator()],
+        blank=True,
+        null=True,
+        help_text="Sitemap URL (for blog sources)"
+    )
+    blog_only = models.BooleanField(
+        default=False,
+        help_text="Only collect blog posts, exclude other content types (blog sources only)"
+    )
+    filter_china = models.BooleanField(
+        default=False,
+        help_text="Filter blog posts to only include those relevant to China (blog sources only)"
+    )
+    
     # Metadata
     metadata = models.JSONField(
         default=dict,
@@ -141,7 +160,7 @@ class Source(models.Model):
         return f"{self.name} ({self.get_source_type_display()})"
     
     def clean(self):
-        """Validate that YouTube-specific fields are used only for YouTube sources"""
+        """Validate that source-specific fields are used only for appropriate source types"""
         from django.core.exceptions import ValidationError
         
         if self.source_type == 'youtube' and not self.channel_id:
@@ -153,6 +172,19 @@ class Source(models.Model):
                 self.channel_id = None
             if self.include_shorts:
                 self.include_shorts = False
+            if self.filter_videos:
+                self.filter_videos = False
+        
+        if self.source_type != 'blog':
+            # Clear blog-specific fields for non-blog sources
+            if self.xml_feed:
+                self.xml_feed = None
+            if self.sitemap:
+                self.sitemap = None
+            if self.blog_only:
+                self.blog_only = False
+            if self.filter_china:
+                self.filter_china = False
 
 
 class Content(models.Model):
