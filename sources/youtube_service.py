@@ -197,6 +197,7 @@ def _fetch_transcript(video_id: str, proxy_config=None) -> Tuple[Optional[str], 
             
             # Extract text from transcript snippets
             transcript_text = '\n'.join([snippet.text for snippet in transcript.snippets])
+            print(f"  [FILTER] ✓ Successfully fetched transcript {config_name}", flush=True)
             return transcript_text, None
             
         except TranscriptsDisabled:
@@ -208,6 +209,7 @@ def _fetch_transcript(video_id: str, proxy_config=None) -> Tuple[Optional[str], 
         except Exception as e:
             # Check if it's an SSL/connection error that might be proxy-related
             error_str = str(e).lower()
+            error_type = type(e).__name__
             is_ssl_error = (
                 'ssl' in error_str or 
                 'sslerror' in error_str or 
@@ -215,20 +217,28 @@ def _fetch_transcript(video_id: str, proxy_config=None) -> Tuple[Optional[str], 
                 'eof' in error_str or
                 'retries exceeded' in error_str or
                 'blocking' in error_str or
-                'ip' in error_str
+                'ip' in error_str or
+                'proxy' in error_str or
+                'timeout' in error_str or
+                'certificate' in error_str
             )
             
             last_error = str(e)
+            print(f"  [FILTER] ✗ Failed {config_name}: {error_type}: {str(e)[:200]}...", flush=True)
             
             if is_ssl_error and config_name == 'with proxy' and len(api_configs_to_try) > 1:
                 # SSL/connection error with proxy, try without proxy
+                print(f"  [FILTER] Retrying without proxy...", flush=True)
                 continue
             elif config_name == 'without proxy' or len(api_configs_to_try) == 1:
                 # Last attempt or no proxy available, return error
-                return None, f"Error fetching transcript: {last_error}"
-    
+                # Truncate very long error messages
+                error_msg = last_error[:500] if len(last_error) > 500 else last_error
+                return None, f"Error fetching transcript: {error_msg}"
+        
     # If we get here, all attempts failed
-    return None, f"Error fetching transcript: {last_error or 'Unknown error'}"
+    error_msg = last_error[:500] if last_error and len(last_error) > 500 else (last_error or 'Unknown error')
+    return None, f"Error fetching transcript: {error_msg}"
 
 
 def _check_relevance_with_ollama(

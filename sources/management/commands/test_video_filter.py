@@ -417,19 +417,25 @@ class Command(BaseCommand):
             try:
                 api_with_proxy = YouTubeTranscriptApi(proxy_config=self._proxy_config)
                 api_configs_to_try.append(('with proxy', api_with_proxy))
-            except Exception:
-                pass  # If proxy config fails, try without proxy
+                self.stdout.write(f'  [TRANSCRIPT] Attempting with proxy...', style=self.style.SUCCESS)
+            except Exception as e:
+                self.stdout.write(f'  [TRANSCRIPT] Warning: Failed to create API with proxy: {str(e)}', style=self.style.WARNING)
+                # If proxy config fails, try without proxy
+        else:
+            self.stdout.write(f'  [TRANSCRIPT] No proxy config, attempting without proxy...', style=self.style.WARNING)
         api_configs_to_try.append(('without proxy', YouTubeTranscriptApi()))
         
         last_error = None
         for config_name, api in api_configs_to_try:
             try:
                 # Try to fetch transcript (auto-detect language)
+                self.stdout.write(f'  [TRANSCRIPT] Fetching transcript {config_name}...', style=self.style.SUCCESS)
                 transcript = api.fetch(video_id)
                 
                 # Extract text from transcript snippets
                 # transcript.snippets is a list of objects with .text attribute
                 transcript_text = '\n'.join([snippet.text for snippet in transcript.snippets])
+                self.stdout.write(f'  [TRANSCRIPT] ✓ Successfully fetched transcript {config_name}', style=self.style.SUCCESS)
                 return transcript_text, None
                 
             except TranscriptsDisabled:
@@ -441,6 +447,7 @@ class Command(BaseCommand):
             except Exception as e:
                 # Check if it's an SSL/connection error that might be proxy-related
                 error_str = str(e).lower()
+                error_type = type(e).__name__
                 is_ssl_error = (
                     'ssl' in error_str or 
                     'sslerror' in error_str or 
@@ -448,13 +455,17 @@ class Command(BaseCommand):
                     'eof' in error_str or
                     'retries exceeded' in error_str or
                     'blocking' in error_str or
-                    'ip' in error_str
+                    'ip' in error_str or
+                    'proxy' in error_str or
+                    'timeout' in error_str
                 )
                 
                 last_error = str(e)
+                self.stdout.write(f'  [TRANSCRIPT] ✗ Failed {config_name}: {error_type}: {str(e)[:200]}...', style=self.style.ERROR)
                 
                 if is_ssl_error and config_name == 'with proxy' and len(api_configs_to_try) > 1:
                     # SSL/connection error with proxy, try without proxy
+                    self.stdout.write(f'  [TRANSCRIPT] Retrying without proxy...', style=self.style.WARNING)
                     continue
                 elif config_name == 'without proxy' or len(api_configs_to_try) == 1:
                     # Last attempt or no proxy available, return error
