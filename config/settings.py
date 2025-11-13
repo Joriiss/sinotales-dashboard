@@ -7,10 +7,6 @@ from dotenv import load_dotenv
 import os
 import logging.config
 
-LOG_DIR = os.path.join(BASE_DIR, "logs")
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
-
 env_path = Path('/srv/china_blog_dashboard/.env')
 load_dotenv(env_path)
 
@@ -170,6 +166,9 @@ GOOGLE_CSE_ID = os.environ.get('GOOGLE_CSE_ID', None)
 # API Token for external API access
 API_TOKEN = os.environ.get('API_TOKEN', '')
 
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
 
 LOGGING = {
     "version": 1,
