@@ -297,6 +297,11 @@ class ContentProcessingService:
                     
                     # If we got here, we successfully fetched the transcript
                     print(f"  [EXTRACT] Successfully fetched transcript {config_name}", flush=True)
+                    
+                    # Add a small delay after successful fetch to avoid overwhelming proxy/YouTube
+                    import time
+                    time.sleep(0.5)  # 500ms delay between requests
+                    
                     break
                     
                 except Exception as e:

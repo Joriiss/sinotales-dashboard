@@ -198,6 +198,11 @@ def _fetch_transcript(video_id: str, proxy_config=None) -> Tuple[Optional[str], 
             # Extract text from transcript snippets
             transcript_text = '\n'.join([snippet.text for snippet in transcript.snippets])
             print(f"  [FILTER] ✓ Successfully fetched transcript {config_name}", flush=True)
+            
+            # Add a small delay after successful fetch to avoid overwhelming proxy/YouTube
+            import time
+            time.sleep(0.5)  # 500ms delay between requests
+            
             return transcript_text, None
             
         except TranscriptsDisabled:

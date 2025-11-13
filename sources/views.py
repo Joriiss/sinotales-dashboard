@@ -242,42 +242,71 @@ def source_edit(request, pk):
                 source_pk = source.pk
                 source_refresh = Source.objects.get(pk=source_pk)
                 
-                # Fetch videos from YouTube
+                # Fetch videos from YouTube (without filtering first - we'll filter only new videos)
                 print(f"\n{'='*60}", flush=True)
                 print(f"Get Videos (Background): {source_refresh.name} (Channel: {source_refresh.channel_id})", flush=True)
                 print(f"Filter China: {source_refresh.filter_videos}", flush=True)
                 print(f"{'='*60}\n", flush=True)
                 
+                # Get all videos without filtering (filtering will happen per-video for new ones only)
                 videos = get_channel_videos(
                     channel_id=source_refresh.channel_id,
                     include_shorts=source_refresh.include_shorts,
-                    filter_china=source_refresh.filter_videos
+                    filter_china=False  # Don't filter here - we'll filter only new videos
                 )
                 
                 if not videos:
                     print(f"  [BACKGROUND] No videos found for channel", flush=True)
                     return
                 
-                print(f"  [BACKGROUND] Found {len(videos)} videos, starting import...", flush=True)
+                print(f"  [BACKGROUND] Found {len(videos)} videos from YouTube, checking which are new...", flush=True)
+                
+                # Get existing video IDs to skip filtering for videos already in DB
+                existing_video_ids = set(
+                    Content.objects.filter(source=source_refresh)
+                    .values_list('external_id', flat=True)
+                )
+                print(f"  [BACKGROUND] {len(existing_video_ids)} videos already exist in database", flush=True)
+                
+                # Import filtering function
+                from .youtube_service import is_video_relevant_to_china
                 
                 # Create Content entries for each video
                 created_count = 0
                 skipped_count = 0
+                filtered_count = 0
                 created_content_ids = []  # Store IDs of newly created content for transcript extraction
                 
                 with transaction.atomic():
                     for i, video in enumerate(videos, 1):
+                        video_id = video['video_id']
+                        
                         # Check if content already exists (by external_id)
-                        if Content.objects.filter(source=source_refresh, external_id=video['video_id']).exists():
+                        if video_id in existing_video_ids:
                             skipped_count += 1
                             if i % 10 == 0:
-                                print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count})...", flush=True)
+                                print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count}, filtered: {filtered_count})...", flush=True)
                             continue
+                        
+                        # Filter China-related videos if enabled (only for new videos)
+                        if source_refresh.filter_videos:
+                            is_relevant = is_video_relevant_to_china(
+                                video['title'], 
+                                video.get('description', ''), 
+                                video.get('tags', []), 
+                                video_id
+                            )
+                            if not is_relevant:
+                                filtered_count += 1
+                                print(f"  [BACKGROUND] Filtered out (not China-related): {video['title'][:60]}...", flush=True)
+                                if i % 10 == 0:
+                                    print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count}, filtered: {filtered_count})...", flush=True)
+                                continue
                         
                         # Create content entry
                         content = Content.objects.create(
                             source=source_refresh,
-                            external_id=video['video_id'],
+                            external_id=video_id,
                             title=video['title'],
                             link=video['link'],
                             content_type='video',
@@ -289,7 +318,7 @@ def source_edit(request, pk):
                         created_content_ids.append(content.id)
                         
                         if i % 10 == 0:
-                            print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count})...", flush=True)
+                            print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count}, filtered: {filtered_count})...", flush=True)
                 
                 # Update last_collected timestamp if any videos were found (even if all were skipped)
                 if videos:
@@ -335,12 +364,13 @@ def source_edit(request, pk):
                     metadata={
                         'videos_fetched': created_count,
                         'videos_skipped': skipped_count,
+                        'videos_filtered': filtered_count,
                         'total_found': len(videos)
                     }
                 )
                 
                 print(f"\n{'='*60}", flush=True)
-                print(f"  [BACKGROUND] ✓ Import completed: {created_count} created, {skipped_count} skipped", flush=True)
+                print(f"  [BACKGROUND] ✓ Import completed: {created_count} created, {skipped_count} skipped, {filtered_count} filtered out", flush=True)
                 print(f"{'='*60}\n", flush=True)
                 
             except ImportError as e:
