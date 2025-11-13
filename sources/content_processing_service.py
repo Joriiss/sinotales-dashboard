@@ -185,7 +185,7 @@ class ContentProcessingService:
         
         return None
     
-    def extract_transcript(self, content: Content, force: bool = False, user=None) -> bool:
+    def extract_transcript(self, content: Content, force: bool = False, user=None, transcript_text: Optional[str] = None) -> bool:
         """
         Extract transcript from YouTube video if content is empty and link/external_id is available.
         
@@ -206,6 +206,25 @@ class ContentProcessingService:
         if not force and content.content and content.content.strip():
             print(f"  [EXTRACT] Skipping: content already exists for video {content.external_id}", flush=True)
             return False
+        
+        # If transcript_text is provided, use it directly (no need to fetch)
+        if transcript_text:
+            print(f"  [EXTRACT] Using pre-fetched transcript for video {content.external_id}...", flush=True)
+            content.content = transcript_text
+            content.has_content = True
+            content.save(update_fields=['content', 'has_content'])
+            
+            # Log activity
+            log_activity(
+                'transcript_extracted',
+                f'Extracted transcript for video "{content.title}" (pre-fetched)',
+                user=user,
+                content=content,
+                metadata={'video_id': content.external_id, 'chars': len(transcript_text)}
+            )
+            
+            print(f"  [EXTRACT] ✓ Successfully saved pre-fetched transcript for video {content.external_id} ({len(transcript_text)} chars)", flush=True)
+            return True
         
         # Check if YouTube Transcript API is available
         if not YOUTUBE_TRANSCRIPT_AVAILABLE:

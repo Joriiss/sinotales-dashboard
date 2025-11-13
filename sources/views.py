@@ -224,6 +224,9 @@ def source_edit(request, pk):
             messages.error(request, 'Channel ID is required to get videos.')
             return redirect('sources:source_edit', pk=source.pk)
         
+        # Check if test mode is enabled (limit to 5 videos) - capture before background thread
+        test_mode = request.POST.get('test_mode') == '1'
+        
         # Run video import in background thread to avoid timeout
         import threading
         from django.db import connection
@@ -246,6 +249,8 @@ def source_edit(request, pk):
                 print(f"\n{'='*60}", flush=True)
                 print(f"Get Videos (Background): {source_refresh.name} (Channel: {source_refresh.channel_id})", flush=True)
                 print(f"Filter China: {source_refresh.filter_videos}", flush=True)
+                if test_mode:
+                    print(f"TEST MODE: Enabled (5 videos only)", flush=True)
                 print(f"{'='*60}\n", flush=True)
                 
                 # Get all videos without filtering (filtering will happen per-video for new ones only)
@@ -258,6 +263,11 @@ def source_edit(request, pk):
                 if not videos:
                     print(f"  [BACKGROUND] No videos found for channel", flush=True)
                     return
+                
+                # Limit to 5 videos if test mode is enabled
+                if test_mode:
+                    videos = videos[:5]
+                    print(f"  [BACKGROUND] TEST MODE: Limiting to 5 videos", flush=True)
                 
                 print(f"  [BACKGROUND] Found {len(videos)} videos from YouTube, checking which are new...", flush=True)
                 
@@ -275,7 +285,7 @@ def source_edit(request, pk):
                 created_count = 0
                 skipped_count = 0
                 filtered_count = 0
-                created_content_ids = []  # Store IDs of newly created content for transcript extraction
+                created_content_data = []  # Store (content_id, transcript_text) tuples for processing
                 
                 with transaction.atomic():
                     for i, video in enumerate(videos, 1):
@@ -289,8 +299,9 @@ def source_edit(request, pk):
                             continue
                         
                         # Filter China-related videos if enabled (only for new videos)
+                        transcript_text = None
                         if source_refresh.filter_videos:
-                            is_relevant = is_video_relevant_to_china(
+                            is_relevant, transcript_text = is_video_relevant_to_china(
                                 video['title'], 
                                 video.get('description', ''), 
                                 video.get('tags', []), 
@@ -315,7 +326,7 @@ def source_edit(request, pk):
                             processed=False,
                         )
                         created_count += 1
-                        created_content_ids.append(content.id)
+                        created_content_data.append((content.id, transcript_text))
                         
                         if i % 10 == 0:
                             print(f"  [BACKGROUND] Processed {i}/{len(videos)} videos (created: {created_count}, skipped: {skipped_count}, filtered: {filtered_count})...", flush=True)
@@ -325,9 +336,9 @@ def source_edit(request, pk):
                     source_refresh.last_collected = timezone.now()
                     source_refresh.save(update_fields=['last_collected'])
                 
-                # Extract transcripts for newly created videos
-                if created_content_ids:
-                    print(f"\n  [BACKGROUND] Extracting transcripts for {len(created_content_ids)} videos...", flush=True)
+                # Extract transcripts, tag, and embed newly created videos
+                if created_content_data:
+                    print(f"\n  [BACKGROUND] Processing {len(created_content_data)} videos (transcript, tag, embed)...", flush=True)
                     from .content_processing_service import ContentProcessingService
                     
                     # Create processing service with proxy support
@@ -335,25 +346,44 @@ def source_edit(request, pk):
                     
                     transcripts_extracted = 0
                     transcripts_failed = 0
+                    tagged_count = 0
+                    embedded_count = 0
                     
-                    for idx, content_id in enumerate(created_content_ids, 1):
+                    for idx, (content_id, transcript_text) in enumerate(created_content_data, 1):
                         try:
                             # Get fresh content object
                             content = Content.objects.get(pk=content_id)
                             
-                            # Extract transcript
-                            if processing_service.extract_transcript(content, force=False, user=None):
+                            # Extract transcript (using pre-fetched if available)
+                            if processing_service.extract_transcript(content, force=False, user=None, transcript_text=transcript_text):
                                 transcripts_extracted += 1
+                                
+                                # Refresh to get the saved transcript
+                                content.refresh_from_db()
+                                
+                                # Tag and embed if we have content
+                                if content.content and content.content.strip():
+                                    # Tag the content
+                                    if processing_service.add_tags(content):
+                                        tagged_count += 1
+                                        content.refresh_from_db()
+                                    
+                                    # Embed the content (only if it has tags)
+                                    if content.tags.exists():
+                                        if processing_service.generate_embeddings(content):
+                                            embedded_count += 1
+                                            content.processed = True
+                                            content.save(update_fields=['processed'])
                             else:
                                 transcripts_failed += 1
                             
                             if idx % 10 == 0:
-                                print(f"  [BACKGROUND] Extracted transcripts for {idx}/{len(created_content_ids)} videos (success: {transcripts_extracted}, failed: {transcripts_failed})...", flush=True)
+                                print(f"  [BACKGROUND] Processed {idx}/{len(created_content_data)} videos (transcripts: {transcripts_extracted}, tagged: {tagged_count}, embedded: {embedded_count}, failed: {transcripts_failed})...", flush=True)
                         except Exception as e:
                             transcripts_failed += 1
-                            print(f"  [BACKGROUND] Error extracting transcript for content {content_id}: {str(e)}", flush=True)
+                            print(f"  [BACKGROUND] Error processing content {content_id}: {str(e)}", flush=True)
                     
-                    print(f"  [BACKGROUND] Transcript extraction completed: {transcripts_extracted} extracted, {transcripts_failed} failed", flush=True)
+                    print(f"  [BACKGROUND] Processing completed: {transcripts_extracted} transcripts, {tagged_count} tagged, {embedded_count} embedded, {transcripts_failed} failed", flush=True)
                 
                 # Log the activity
                 log_activity(
@@ -1015,7 +1045,7 @@ def create_video_content_api(request):
             print(f"Tags: {tags_list if tags_list else '(none)'}", flush=True)
             print(f"{'='*60}\n", flush=True)
             
-            is_relevant, matched_keywords = is_video_relevant_to_china_with_details(
+            is_relevant, matched_keywords, _ = is_video_relevant_to_china_with_details(
                 title=title,
                 description=description or '',
                 tags=tags_list,

@@ -79,7 +79,7 @@ def get_youtube_api_key() -> Optional[str]:
     return api_key
 
 
-def is_video_relevant_to_china(title: str, description: str = '', tags: List[str] = None, video_id: Optional[str] = None) -> bool:
+def is_video_relevant_to_china(title: str, description: str = '', tags: List[str] = None, video_id: Optional[str] = None) -> tuple:
     """
     Check if a video is relevant to China using Ollama AI with transcript analysis.
     Falls back to keyword-based filtering if transcript is unavailable.
@@ -91,10 +91,12 @@ def is_video_relevant_to_china(title: str, description: str = '', tags: List[str
         video_id: YouTube video ID (required for transcript fetching)
         
     Returns:
+        Tuple of (is_relevant: bool, transcript_text: str or None)
         True if video appears to be about China, False otherwise
+        transcript_text is the fetched transcript if available, None otherwise
     """
-    is_relevant, _ = is_video_relevant_to_china_with_details(title, description, tags, video_id)
-    return is_relevant
+    is_relevant, _, transcript_text = is_video_relevant_to_china_with_details(title, description, tags, video_id)
+    return is_relevant, transcript_text
 
 
 def _load_proxy_config():
@@ -381,9 +383,9 @@ def is_video_relevant_to_china_with_details(title: str, description: str = '', t
         video_id: YouTube video ID (required for transcript fetching)
         
     Returns:
-        Tuple of (is_relevant: bool, matched_keywords: list[str] or reasoning: str)
-        If Ollama is used: (is_relevant: bool, reasoning: str)
-        If keyword fallback: (is_relevant: bool, matched_keywords: list[str])
+        Tuple of (is_relevant: bool, matched_keywords: list[str] or reasoning: str, transcript_text: str or None)
+        If Ollama is used: (is_relevant: bool, reasoning: str, transcript_text: str or None)
+        If keyword fallback: (is_relevant: bool, matched_keywords: list[str], None)
     """
     if tags is None:
         tags = []
@@ -415,15 +417,17 @@ def is_video_relevant_to_china_with_details(title: str, description: str = '', t
                     is_relevant, reasoning = _check_relevance_with_ollama(
                         title, description, tags, transcript_text, ollama_model
                     )
-                    # Return with reasoning as the "matched_keywords" field for compatibility
-                    return is_relevant, [reasoning] if reasoning else []
+                    # Return with reasoning as the "matched_keywords" field for compatibility, and transcript text
+                    return is_relevant, [reasoning] if reasoning else [], transcript_text
                 except Exception as e:
                     # If Ollama fails, fall back to keyword-based
                     print(f"  [FILTER] Ollama analysis failed: {str(e)}, falling back to keyword-based filtering", flush=True)
+                    # Still return transcript text even if Ollama failed
+                    transcript_text_for_fallback = transcript_text
             else:
                 # Transcript unavailable - treat as not relevant
                 print(f"  [FILTER] Transcript unavailable: {error_msg}, marking as not relevant", flush=True)
-                return False, [f"Transcript unavailable: {error_msg}"]
+                return False, [f"Transcript unavailable: {error_msg}"], None
         except Exception as e:
             # If anything fails, fall back to keyword-based
             print(f"  [FILTER] Error in Ollama filtering: {str(e)}, falling back to keyword-based filtering", flush=True)
@@ -513,7 +517,7 @@ def is_video_relevant_to_china_with_details(title: str, description: str = '', t
             matched_keywords.append(keyword)
     
     is_relevant = len(matched_keywords) > 0
-    return is_relevant, matched_keywords
+    return is_relevant, matched_keywords, None
 
 
 def get_channel_videos(channel_id: str, include_shorts: bool = False, filter_china: bool = False, api_key: Optional[str] = None) -> List[Dict]:

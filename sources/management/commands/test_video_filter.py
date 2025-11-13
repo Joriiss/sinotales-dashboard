@@ -147,7 +147,7 @@ class Command(BaseCommand):
                 tags = video.get('tags', [])
 
                 # Check relevance using keyword-based method (same as actual filter)
-                is_relevant_keyword = is_video_relevant_to_china(title, description_full, tags)
+                is_relevant_keyword, _ = is_video_relevant_to_china(title, description_full, tags)
                 matched_keywords = self._find_matched_keywords(title, description_full, tags)
 
                 # Fetch transcript and check with Ollama if requested
