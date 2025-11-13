@@ -929,10 +929,14 @@ def create_video_content_api(request):
             is_relevant, matched_keywords = is_video_relevant_to_china_with_details(
                 title=title,
                 description=description or '',
-                tags=tags_list
+                tags=tags_list,
+                video_id=external_id
             )
             
             if not is_relevant:
+                # Extract reason from matched_keywords (may contain Ollama reasoning or be empty)
+                reason_text = matched_keywords[0] if matched_keywords and len(matched_keywords) > 0 else 'Not China-related'
+                
                 # Log the filtering result
                 log_activity(
                     'content_created',
@@ -942,18 +946,25 @@ def create_video_content_api(request):
                     metadata={
                         'external_id': external_id,
                         'filtered': True,
-                        'reason': 'Not China-related',
+                        'reason': reason_text,
                         'title': title,
                         'description': description[:200] if description else '',
                         'tags': tags_list,
-                        'matched_keywords': []
+                        'matched_keywords': matched_keywords
                     }
                 )
                 
                 print(f"  [FILTER] ✗ Video filtered out: Not China-related", flush=True)
                 print(f"  [FILTER] Title: {title}", flush=True)
-                print(f"  [FILTER] No China-related keywords found in title, description, or tags", flush=True)
-                print(f"  [FILTER] Matched keywords: (none)", flush=True)
+                if matched_keywords and len(matched_keywords) > 0:
+                    # If Ollama was used, matched_keywords contains reasoning
+                    if 'transcript' in matched_keywords[0].lower() or 'ollama' in matched_keywords[0].lower() or len(matched_keywords[0]) > 50:
+                        print(f"  [FILTER] Reason: {matched_keywords[0][:200]}...", flush=True)
+                    else:
+                        print(f"  [FILTER] Matched keywords: {', '.join(matched_keywords)}", flush=True)
+                else:
+                    print(f"  [FILTER] No China-related keywords found in title, description, or tags", flush=True)
+                    print(f"  [FILTER] Matched keywords: (none)", flush=True)
                 print(f"{'='*60}\n", flush=True)
                 
                 return JsonResponse({
