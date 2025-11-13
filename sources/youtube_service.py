@@ -181,8 +181,12 @@ def _fetch_transcript(video_id: str, proxy_config=None) -> Tuple[Optional[str], 
         try:
             api_with_proxy = YouTubeTranscriptApi(proxy_config=proxy_config)
             api_configs_to_try.append(('with proxy', api_with_proxy))
-        except Exception:
-            pass  # If proxy config fails, try without proxy
+            print(f"  [FILTER] Attempting transcript fetch with proxy...", flush=True)
+        except Exception as e:
+            print(f"  [FILTER] Warning: Failed to create API instance with proxy: {str(e)}", flush=True)
+            print(f"  [FILTER] Will try without proxy", flush=True)
+    else:
+        print(f"  [FILTER] No proxy config available, attempting transcript fetch without proxy...", flush=True)
     api_configs_to_try.append(('without proxy', YouTubeTranscriptApi()))
     
     last_error = None
@@ -382,6 +386,10 @@ def is_video_relevant_to_china_with_details(title: str, description: str = '', t
             
             # Load proxy config
             proxy_config = _load_proxy_config()
+            if proxy_config:
+                print(f"  [FILTER] Proxy configuration loaded for transcript fetching", flush=True)
+            else:
+                print(f"  [FILTER] Warning: No proxy configuration found - transcript fetching may fail on VPS/cloud IPs", flush=True)
             
             # Fetch transcript
             transcript_text, error_msg = _fetch_transcript(video_id, proxy_config)
