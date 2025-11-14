@@ -179,13 +179,6 @@ class Command(BaseCommand):
             self.stdout.write('  Fetching proxy list from Webshare API...')
             api_url = 'https://proxy.webshare.io/api/v2/proxy/list/'
             
-            # Get proxy list (limit to 1 for testing, you can increase this)
-            params = {
-                'mode': 'direct',  # direct, backconnect, or datacenter
-                'page': 1,
-                'page_size': 1,  # Get just one proxy for testing
-            }
-            
             # Webshare API v2 uses token-based authentication
             # Use API token if available, otherwise use username as token
             headers = {
@@ -196,25 +189,55 @@ class Command(BaseCommand):
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             
-            # Try with SSL verification first
-            try:
-                response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=True)
-            except requests.exceptions.SSLError as ssl_error:
-                # If SSL verification fails, try without verification (with warning)
-                self.stdout.write(self.style.WARNING('  ⚠️  SSL verification failed, retrying without verification...'))
-                response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
+            # Try different proxy modes - residential proxies don't support 'direct' mode
+            # Try without mode parameter first (works for residential), then try other modes
+            modes_to_try = [None, 'backconnect', 'datacenter', 'direct']
+            response = None
             
-            # If token auth fails and we have username/password, try basic auth as fallback
+            for mode in modes_to_try:
+                params = {
+                    'page': 1,
+                    'page_size': 1,  # Get just one proxy for testing
+                }
+                if mode:
+                    params['mode'] = mode
+                    self.stdout.write(f'  Trying mode: {mode}...')
+                else:
+                    self.stdout.write('  Trying without mode parameter (for residential proxies)...')
+                
+                # Try with SSL verification first
+                try:
+                    test_response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=True)
+                except requests.exceptions.SSLError as ssl_error:
+                    # If SSL verification fails, try without verification
+                    test_response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
+                
+                if test_response.status_code == 200:
+                    response = test_response
+                    if mode:
+                        self.stdout.write(f'  ✅ Success with mode: {mode}')
+                    else:
+                        self.stdout.write('  ✅ Success (residential proxies)')
+                    break
+                elif test_response.status_code == 400:
+                    # Try next mode
+                    continue
+                else:
+                    # Other error, try next mode
+                    continue
+            
+            # If all modes failed and we have username/password, try basic auth as fallback
             # (Only if we're not using an API token, since API tokens don't work with basic auth)
-            if response.status_code == 401 and not api_token and proxy_username and proxy_password:
+            if (not response or (hasattr(response, 'status_code') and response.status_code != 200)) and not api_token and proxy_username and proxy_password:
                 self.stdout.write('  Token auth failed, trying basic auth...')
+                params = {'page': 1, 'page_size': 1}  # Try without mode for basic auth
                 try:
                     auth = (proxy_username, proxy_password)
                     response = requests.get(api_url, auth=auth, params=params, timeout=10, verify=False)
                 except requests.exceptions.SSLError:
                     pass
             
-            if response.status_code == 200:
+            if response and hasattr(response, 'status_code') and response.status_code == 200:
                 data = response.json()
                 results = data.get('results', [])
                 
