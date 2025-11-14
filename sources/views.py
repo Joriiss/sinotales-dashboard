@@ -678,8 +678,24 @@ def source_edit(request, pk):
                             url = loc.text.strip()
                             
                             # Extract lastmod (date)
+                            # BeautifulSoup with 'xml' parser should handle namespaces automatically
                             lastmod = url_tag.find('lastmod')
-                            date_str = lastmod.text.strip() if lastmod and lastmod.text else ''
+                            
+                            date_str = ''
+                            if lastmod:
+                                # Try multiple ways to get the text content
+                                if hasattr(lastmod, 'get_text'):
+                                    date_str = lastmod.get_text(strip=True)
+                                elif hasattr(lastmod, 'text') and lastmod.text:
+                                    date_str = str(lastmod.text).strip()
+                                elif hasattr(lastmod, 'string') and lastmod.string:
+                                    date_str = str(lastmod.string).strip()
+                                elif hasattr(lastmod, 'contents') and lastmod.contents:
+                                    date_str = ''.join(str(c).strip() for c in lastmod.contents if c and str(c).strip())
+                            
+                            # Debug: log first few dates to verify extraction
+                            if len(posts) < 3:
+                                print(f"    [BACKGROUND] Sample post {len(posts)+1}: URL={url[:60]}..., date_str='{date_str}'", flush=True)
                             
                             # Generate title from URL if not in sitemap
                             # Extract the slug from URL and convert to title
@@ -737,28 +753,50 @@ def source_edit(request, pk):
                         
                         # Parse date from ISO format (e.g., "2025-11-13T09:45:26+00:00")
                         post_date = None
-                        if post.get('date'):
-                            date_str = post['date'].strip()
+                        date_str = post.get('date', '').strip() if post.get('date') else ''
+                        
+                        if date_str:
+                            # Debug: log first few date parsing attempts
+                            if created_count < 3:
+                                print(f"    [BACKGROUND] Parsing date for post {created_count+1}: '{date_str}'", flush=True)
+                            
                             if date_parser:
                                 try:
                                     post_date = date_parser.parse(date_str)
+                                    if created_count < 3:
+                                        print(f"    [BACKGROUND] ✓ Parsed date with dateutil: {post_date}", flush=True)
                                 except Exception as e:
-                                    print(f"    [BACKGROUND] Failed to parse date '{date_str}': {str(e)}", flush=True)
+                                    print(f"    [BACKGROUND] ✗ Failed to parse date '{date_str}' with dateutil: {str(e)}", flush=True)
                             else:
                                 # Fallback: try to parse ISO format manually
                                 try:
                                     from datetime import datetime
                                     # Handle ISO format with timezone (e.g., "2025-11-13T09:45:26+00:00")
                                     if 'T' in date_str:
-                                        # Normalize timezone format
+                                        # Normalize timezone format: replace Z with +00:00, ensure timezone format
                                         normalized = date_str.replace('Z', '+00:00')
+                                        # Handle case where timezone might be missing
+                                        if '+' not in normalized and normalized.count(':') == 2:
+                                            normalized = normalized + '+00:00'
                                         post_date = datetime.fromisoformat(normalized)
+                                        if created_count < 3:
+                                            print(f"    [BACKGROUND] ✓ Parsed date with fromisoformat: {post_date}", flush=True)
+                                    else:
+                                        # Try parsing date-only format
+                                        post_date = datetime.fromisoformat(date_str)
+                                        if created_count < 3:
+                                            print(f"    [BACKGROUND] ✓ Parsed date-only format: {post_date}", flush=True)
                                 except Exception as e:
-                                    print(f"    [BACKGROUND] Fallback date parsing failed for '{date_str}': {str(e)}", flush=True)
+                                    print(f"    [BACKGROUND] ✗ Fallback date parsing failed for '{date_str}': {str(e)}", flush=True)
+                        else:
+                            if created_count < 3:
+                                print(f"    [BACKGROUND] ⚠️  No date string found for post, will use current time", flush=True)
                         
                         # If no date, use current time
                         if not post_date:
                             post_date = timezone.now()
+                            if created_count < 3:
+                                print(f"    [BACKGROUND] Using current time: {post_date}", flush=True)
                         
                         # Create content entry
                         content = Content.objects.create(
