@@ -253,10 +253,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     {% if source.source_type == 'blog' and source.sitemap %}
                     <form method="post" action="{% url 'sources:source_edit' source.pk %}" style="display: inline;">
                         {% csrf_token %}
-                        <button type="submit" name="get_posts" class="btn btn-outline-success" 
-                                onclick="return confirm('This will fetch all blog posts from the sitemap and create content entries. Continue?');">
-                            <i class="bi bi-rss"></i> Get Posts
-                        </button>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="test_mode" id="test_mode_posts" value="1">
+                                <label class="form-check-label" for="test_mode_posts" style="font-size: 0.9rem;">
+                                    Test mode (10 posts only)
+                                </label>
+                            </div>
+                            <button type="submit" name="get_posts" class="btn btn-outline-success" 
+                                    onclick="return confirm('This will fetch blog posts from the sitemap and create content entries. Continue?');">
+                                <i class="bi bi-rss"></i> Get Posts
+                            </button>
+                        </div>
                     </form>
                     {% endif %}
                 </div>

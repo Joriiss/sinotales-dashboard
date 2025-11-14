@@ -55,13 +55,26 @@
                     <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
                 </select>
             </div>
-            <div class="col-12 col-md-3 d-flex align-items-end gap-2">
+            <div class="col-12 col-md-2">
+                <label for="sort" class="form-label">Sort By</label>
+                <select name="sort" id="sort" class="form-select">
+                    <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="type" {% if sort_by == 'type' %}selected{% endif %}>Type</option>
+                    <option value="language" {% if sort_by == 'language' %}selected{% endif %}>Language</option>
+                    <option value="last_collected_desc" {% if sort_by == 'last_collected_desc' %}selected{% endif %}>Last Collected (Newest)</option>
+                    <option value="last_collected_asc" {% if sort_by == 'last_collected_asc' %}selected{% endif %}>Last Collected (Oldest)</option>
+                    <option value="contents_desc" {% if sort_by == 'contents_desc' %}selected{% endif %}>Contents (Most)</option>
+                    <option value="contents_asc" {% if sort_by == 'contents_asc' %}selected{% endif %}>Contents (Least)</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-1 d-flex align-items-end gap-2">
                 <button type="submit" class="btn btn-primary flex-fill">
-                    <i class="bi bi-funnel me-1"></i> <span class="d-none d-md-inline">Apply</span><span class="d-md-none">Filter</span>
+                    <i class="bi bi-funnel me-1"></i> <span class="d-none d-lg-inline">Apply</span><span class="d-lg-none">Filter</span>
                 </button>
-                {% if source_type_filter or language_filter or status_filter or search_query %}
+                {% if source_type_filter or language_filter or status_filter or search_query or sort_by != 'name_asc' %}
                 <a href="{% url 'sources:source_list' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-x-circle"></i> <span class="d-none d-md-inline">Clear</span>
+                    <i class="bi bi-x-circle"></i> <span class="d-none d-lg-inline">Clear</span>
                 </a>
                 {% endif %}
             </div>

@@ -156,6 +156,28 @@ def source_list(request):
     if search_query:
         sources = sources.filter(name__icontains=search_query)
     
+    # Apply sorting (default: alphabetical by name)
+    sort_by = request.GET.get('sort', 'name_asc').strip()
+    if sort_by == 'name_asc':
+        sources = sources.order_by('name')
+    elif sort_by == 'name_desc':
+        sources = sources.order_by('-name')
+    elif sort_by == 'type':
+        sources = sources.order_by('source_type', 'name')
+    elif sort_by == 'language':
+        sources = sources.order_by('language', 'name')
+    elif sort_by == 'last_collected_desc':
+        sources = sources.order_by('-last_collected', 'name')
+    elif sort_by == 'last_collected_asc':
+        sources = sources.order_by('last_collected', 'name')
+    elif sort_by == 'contents_desc':
+        sources = sources.order_by('-total_contents', 'name')
+    elif sort_by == 'contents_asc':
+        sources = sources.order_by('total_contents', 'name')
+    else:
+        # Default: alphabetical by name
+        sources = sources.order_by('name')
+    
     # Get filter choices - only show types and languages that exist in the database
     existing_source_types = Source.objects.values_list('source_type', flat=True).distinct().order_by('source_type')
     existing_languages = Source.objects.values_list('language', flat=True).distinct().order_by('language')
@@ -180,6 +202,7 @@ def source_list(request):
         'language_filter': language_filter,
         'status_filter': status_filter,
         'search_query': search_query,
+        'sort_by': sort_by,
     }
     return render(request, 'sources/source_list.html', context)
 
@@ -437,6 +460,9 @@ def source_edit(request, pk):
             messages.error(request, 'Sitemap URL is required to get posts.')
             return redirect('sources:source_edit', pk=source.pk)
         
+        # Check for test mode
+        test_mode = request.POST.get('test_mode') == '1'
+        
         # Run post import in background thread to avoid timeout
         import threading
         from django.db import connection
@@ -469,6 +495,8 @@ def source_edit(request, pk):
                 print(f"Get Posts (Background): {source_refresh.name}", flush=True)
                 print(f"Sitemap: {source_refresh.sitemap}", flush=True)
                 print(f"Filter China: {source_refresh.filter_china}", flush=True)
+                if test_mode:
+                    print(f"TEST MODE: Enabled (10 posts only)", flush=True)
                 print(f"{'='*60}\n", flush=True)
                 
                 # Helper function to fetch sitemap with multiple approaches
@@ -761,6 +789,11 @@ def source_edit(request, pk):
                 if not posts:
                     print(f"  [BACKGROUND] No posts found in sitemap", flush=True)
                     return
+                
+                # Limit to 10 posts if test mode is enabled
+                if test_mode:
+                    posts = posts[:10]
+                    print(f"  [BACKGROUND] TEST MODE: Limiting to 10 posts", flush=True)
                 
                 print(f"  [BACKGROUND] Found {len(posts)} posts in sitemap, checking which are new...", flush=True)
                 
