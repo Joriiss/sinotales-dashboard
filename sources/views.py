@@ -211,7 +211,7 @@ def source_list(request):
 def source_add(request):
     """Add a new source"""
     if request.method == 'POST':
-        form = SourceForm(request.POST)
+        form = SourceForm(request.POST, request.FILES)
         if form.is_valid():
             source = form.save()
             log_activity(
@@ -450,6 +450,325 @@ def source_edit(request, pk):
         
         return redirect('sources:source_edit', pk=source.pk)
     
+    # Handle import_ebook action for ebook sources
+    if request.method == 'POST' and 'import_ebook' in request.POST:
+        if source.source_type != 'ebook':
+            messages.error(request, 'Import Ebook is only available for ebook sources.')
+            return redirect('sources:source_edit', pk=source.pk)
+        
+        if not source.ebook_file:
+            messages.error(request, 'Ebook file is required to import ebook.')
+            return redirect('sources:source_edit', pk=source.pk)
+        
+        if not source.publication_date:
+            messages.error(request, 'Publication date is required to import ebook.')
+            return redirect('sources:source_edit', pk=source.pk)
+        
+        # Run ebook import in background thread to avoid timeout
+        import threading
+        from django.db import connection
+        
+        def import_ebook_background():
+            """Import ebook chunks in background thread"""
+            # Close the database connection from the main thread
+            connection.close()
+            
+            try:
+                from django.db import transaction
+                from django.utils import timezone
+                import re
+                
+                # Get fresh source object in this thread
+                source_pk = source.pk
+                source_refresh = Source.objects.get(pk=source_pk)
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"Import Ebook (Background): {source_refresh.name}", flush=True)
+                print(f"Publication Date: {source_refresh.publication_date}", flush=True)
+                print(f"Language: {source_refresh.language}", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+                # Helper function to find sentence boundary (from split_ebooks.py)
+                def find_sentence_boundary(text, start_pos, target_length, max_search=500):
+                    target_end = start_pos + target_length
+                    sentence_pattern = r'[.!?][\s\n]|\.$'
+                    search_start = max(start_pos, target_end - max_search)
+                    search_end = min(len(text), target_end + max_search)
+                    search_text = text[search_start:search_end]
+                    matches = list(re.finditer(sentence_pattern, search_text))
+                    
+                    if matches:
+                        best_match = None
+                        best_distance = float('inf')
+                        for match in matches:
+                            match_pos = search_start + match.end()
+                            distance = abs(match_pos - target_end)
+                            if distance < best_distance and match_pos > start_pos:
+                                best_distance = distance
+                                best_match = match_pos
+                        if best_match:
+                            return best_match
+                    
+                    # Fallback to word boundary
+                    return find_word_boundary(text, start_pos, target_length, max_search)
+                
+                def find_word_boundary(text, start_pos, target_length, max_search=200):
+                    target_end = start_pos + target_length
+                    search_start = max(start_pos, target_end - max_search)
+                    search_end = min(len(text), target_end + max_search)
+                    search_text = text[search_start:search_end]
+                    word_pattern = r'\s+'
+                    matches = list(re.finditer(word_pattern, search_text))
+                    
+                    if matches:
+                        best_match = None
+                        best_distance = float('inf')
+                        for match in matches:
+                            match_pos = search_start + match.start()
+                            distance = abs(match_pos - target_end)
+                            if distance < best_distance and match_pos > start_pos:
+                                best_distance = distance
+                                best_match = match_pos
+                        if best_match:
+                            return best_match
+                    
+                    return target_end
+                
+                def split_text_into_chunks(text, chunk_size=5000):
+                    """Split text into chunks of approximately chunk_size characters"""
+                    chunks = []
+                    current_pos = 0
+                    text_length = len(text)
+                    
+                    while current_pos < text_length:
+                        remaining = text_length - current_pos
+                        if remaining <= chunk_size:
+                            chunks.append(text[current_pos:])
+                            break
+                        
+                        split_pos = find_sentence_boundary(text, current_pos, chunk_size)
+                        chunk = text[current_pos:split_pos].strip()
+                        
+                        if chunk:
+                            chunks.append(chunk)
+                        
+                        current_pos = split_pos
+                        while current_pos < text_length and text[current_pos].isspace():
+                            current_pos += 1
+                    
+                    return chunks
+                
+                # Read ebook file
+                print(f"  [BACKGROUND] Reading ebook file...", flush=True)
+                try:
+                    ebook_file = source_refresh.ebook_file
+                    if not ebook_file:
+                        print(f"  [BACKGROUND] ✗ No ebook file found", flush=True)
+                        return
+                    
+                    # Open file with UTF-8 encoding
+                    try:
+                        ebook_file.open('r')
+                        text = ebook_file.read()
+                        ebook_file.close()
+                    except UnicodeDecodeError:
+                        # If UTF-8 fails, try with latin-1 or errors='replace'
+                        ebook_file.open('rb')
+                        try:
+                            raw_bytes = ebook_file.read()
+                            # Try UTF-8 with error handling
+                            text = raw_bytes.decode('utf-8', errors='replace')
+                        finally:
+                            ebook_file.close()
+                    
+                    if not text or not text.strip():
+                        print(f"  [BACKGROUND] ✗ Ebook file is empty", flush=True)
+                        return
+                    
+                    print(f"  [BACKGROUND] ✓ Read {len(text):,} characters from ebook", flush=True)
+                except Exception as e:
+                    print(f"  [BACKGROUND] ✗ Error reading ebook file: {str(e)}", flush=True)
+                    import traceback
+                    print(f"  [BACKGROUND] Traceback: {traceback.format_exc()}", flush=True)
+                    return
+                
+                # Split into chunks
+                print(f"  [BACKGROUND] Splitting ebook into ~5000 character chunks...", flush=True)
+                chunks = split_text_into_chunks(text, chunk_size=5000)
+                print(f"  [BACKGROUND] ✓ Created {len(chunks)} chunks", flush=True)
+                
+                if not chunks:
+                    print(f"  [BACKGROUND] ✗ No chunks created", flush=True)
+                    return
+                
+                # Create Content objects for each chunk
+                print(f"  [BACKGROUND] Creating content entries...", flush=True)
+                created_count = 0
+                skipped_count = 0
+                created_content_ids = []
+                
+                with transaction.atomic():
+                    for i, chunk in enumerate(chunks, 1):
+                        # Generate title for chunk
+                        chunk_title = f"{source_refresh.name} - Part {i}/{len(chunks)}"
+                        
+                        # Generate external_id (slugify the source name and add part number)
+                        from django.utils.text import slugify
+                        source_slug = slugify(source_refresh.name)
+                        if not source_slug:
+                            source_slug = f"ebook-{source_refresh.pk}"
+                        external_id = f"{source_slug}-part-{i:03d}"
+                        
+                        # Ensure uniqueness by checking if it exists
+                        base_external_id = external_id
+                        counter = 0
+                        while Content.objects.filter(
+                            source=source_refresh,
+                            external_id=external_id
+                        ).exists():
+                            counter += 1
+                            external_id = f"{base_external_id}-{counter}"
+                        
+                        # Check if content already exists (with the final external_id)
+                        existing = Content.objects.filter(
+                            source=source_refresh,
+                            external_id=external_id
+                        ).first()
+                        
+                        if existing:
+                            skipped_count += 1
+                            if i <= 3:
+                                print(f"  [BACKGROUND] Skipped chunk {i} (already exists): {chunk_title}", flush=True)
+                            continue
+                        
+                        # Create content entry
+                        content = Content.objects.create(
+                            source=source_refresh,
+                            external_id=external_id,
+                            title=chunk_title,
+                            link=None,  # Ebooks don't have links
+                            content_type='ebook',
+                            date=source_refresh.publication_date,
+                            content=chunk,
+                            processed=False,
+                            has_content=True,
+                        )
+                        created_count += 1
+                        created_content_ids.append(content.id)
+                        
+                        if i % 10 == 0:
+                            print(f"  [BACKGROUND] Created {i}/{len(chunks)} chunks...", flush=True)
+                
+                # Update last_collected timestamp
+                if chunks:
+                    source_refresh.last_collected = timezone.now()
+                    source_refresh.save(update_fields=['last_collected'])
+                
+                print(f"  [BACKGROUND] ✓ Created {created_count} content entries, skipped {skipped_count}", flush=True)
+                
+                # Process each created chunk: translate, tag, embed
+                translated_count = 0
+                translated_failed = 0
+                tagged_count = 0
+                tagged_failed = 0
+                embedded_count = 0
+                embedded_failed = 0
+                processed_count = 0
+                
+                if created_content_ids:
+                    print(f"\n  [BACKGROUND] Processing {len(created_content_ids)} chunks (translate, tag, embed)...", flush=True)
+                    from .content_processing_service import ContentProcessingService
+                    
+                    processing_service = ContentProcessingService()
+                    
+                    for idx, content_id in enumerate(created_content_ids, 1):
+                        try:
+                            # Get fresh content object
+                            content = Content.objects.get(pk=content_id)
+                            
+                            print(f"  [BACKGROUND] [{idx}/{len(created_content_ids)}] Processing: {content.title[:60]}...", flush=True)
+                            
+                            # Step 1: Translate (if source language is not English)
+                            if content.source.language != 'en' and content.content and content.content.strip():
+                                if processing_service.translate_content(content):
+                                    translated_count += 1
+                                    content.refresh_from_db()
+                                else:
+                                    translated_failed += 1
+                            
+                            # Step 2: Tag (only if we have content)
+                            if content.content and content.content.strip():
+                                if processing_service.add_tags(content):
+                                    tagged_count += 1
+                                    content.refresh_from_db()
+                                else:
+                                    tagged_failed += 1
+                                
+                                # Step 3: Embed (only if it has tags)
+                                if content.tags.exists():
+                                    if processing_service.generate_embeddings(content):
+                                        embedded_count += 1
+                                        content.processed = True
+                                        content.save(update_fields=['processed'])
+                                        processed_count += 1
+                                    else:
+                                        embedded_failed += 1
+                                else:
+                                    print(f"    [BACKGROUND] Skipping embedding (no tags)", flush=True)
+                            
+                        except Exception as e:
+                            print(f"    [BACKGROUND] ✗ Error processing chunk {idx}: {str(e)}", flush=True)
+                            import traceback
+                            print(f"    [BACKGROUND] Traceback: {traceback.format_exc()[:300]}", flush=True)
+                    
+                    print(f"\n  [BACKGROUND] Processing completed:", flush=True)
+                    print(f"    - Translated: {translated_count} succeeded, {translated_failed} failed", flush=True)
+                    print(f"    - Tagged: {tagged_count} succeeded, {tagged_failed} failed", flush=True)
+                    print(f"    - Embedded: {embedded_count} succeeded, {embedded_failed} failed", flush=True)
+                    print(f"    - Fully processed: {processed_count}", flush=True)
+                
+                # Log the activity
+                log_activity(
+                    'content_created',
+                    f'Imported ebook "{source_refresh.name}" - created {created_count} chunks',
+                    user=None,
+                    source=source_refresh,
+                    metadata={
+                        'chunks_created': created_count,
+                        'chunks_skipped': skipped_count,
+                        'total_chunks': len(chunks),
+                        'translated': translated_count,
+                        'tagged': tagged_count,
+                        'embedded': embedded_count,
+                        'fully_processed': processed_count
+                    }
+                )
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"  [BACKGROUND] ✓ Import completed: {created_count} created, {skipped_count} skipped", flush=True)
+                print(f"  [BACKGROUND] ✓ Processing completed: {processed_count} fully processed", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+            except Exception as e:
+                import traceback
+                print(f"  [BACKGROUND] ERROR: {str(e)}", flush=True)
+                print(f"  [BACKGROUND] Traceback: {traceback.format_exc()}", flush=True)
+            finally:
+                # Ensure database connection is closed
+                connection.close()
+        
+        # Start background thread
+        thread = threading.Thread(target=import_ebook_background, daemon=True)
+        thread.start()
+        
+        messages.info(
+            request,
+            f'Ebook import started in the background for "{source.name}". '
+            f'This may take several minutes. Check the logs for progress.'
+        )
+        
+        return redirect('sources:source_edit', pk=source.pk)
+    
     # Handle get_posts action for blog sources
     if request.method == 'POST' and 'get_posts' in request.POST:
         if source.source_type != 'blog':
@@ -480,6 +799,8 @@ def source_edit(request, pk):
                 import xml.etree.ElementTree as ET
                 import time
                 import subprocess
+                import os
+                from pathlib import Path
                 
                 # Try to import dateutil for date parsing
                 try:
@@ -499,8 +820,141 @@ def source_edit(request, pk):
                     print(f"TEST MODE: Enabled (10 posts only)", flush=True)
                 print(f"{'='*60}\n", flush=True)
                 
+                # Helper function to load proxy configuration
+                def load_proxy_config():
+                    """Load Webshare proxy configuration and fetch proxy list"""
+                    # Try to get from environment variables first
+                    api_token = os.environ.get('WEBSHARE_API_TOKEN', '').strip()
+                    proxy_username = os.environ.get('WEBSHARE_PROXY_USERNAME', '').strip()
+                    proxy_password = os.environ.get('WEBSHARE_PROXY_PASSWORD', '').strip()
+                    
+                    # If not in environment, try to load from .env file
+                    if not api_token and (not proxy_username or not proxy_password):
+                        base_dir = Path(settings.BASE_DIR)
+                        env_file = base_dir / '.env'
+                        
+                        if env_file.exists():
+                            try:
+                                with open(env_file, 'r', encoding='utf-8') as f:
+                                    for line in f:
+                                        line = line.strip()
+                                        if not line or line.startswith('#'):
+                                            continue
+                                        
+                                        if '=' in line:
+                                            key, value = line.split('=', 1)
+                                            key = key.strip()
+                                            value = value.strip()
+                                            
+                                            # Remove quotes if present
+                                            if value.startswith('"') and value.endswith('"'):
+                                                value = value[1:-1]
+                                            elif value.startswith("'") and value.endswith("'"):
+                                                value = value[1:-1]
+                                            
+                                            if key == 'WEBSHARE_API_TOKEN':
+                                                api_token = value
+                                            elif key == 'WEBSHARE_PROXY_USERNAME':
+                                                proxy_username = value
+                                            elif key == 'WEBSHARE_PROXY_PASSWORD':
+                                                proxy_password = value
+                            except Exception as e:
+                                print(f"  [BACKGROUND] ⚠️  Could not read .env file: {str(e)}", flush=True)
+                    
+                    # Use API token if available, otherwise use username/password
+                    if not api_token and (not proxy_username or not proxy_password):
+                        print(f"  [BACKGROUND] ⚠️  Webshare credentials not found, proceeding without proxy", flush=True)
+                        return None
+                    
+                    # Use API token if available, otherwise username will be used as token
+                    token_to_use = api_token if api_token else proxy_username
+                    
+                    if not token_to_use or not token_to_use.strip():
+                        print(f"  [BACKGROUND] ⚠️  Token is empty, proceeding without proxy", flush=True)
+                        return None
+                    
+                    # Fetch proxy list from Webshare API
+                    try:
+                        print(f"  [BACKGROUND] Loading proxy configuration...", flush=True)
+                        api_url = 'https://proxy.webshare.io/api/v2/proxy/list/'
+                        
+                        headers = {
+                            'Authorization': f'Token {token_to_use}'
+                        }
+                        
+                        # Disable SSL warnings
+                        import urllib3
+                        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                        
+                        # Try backbone mode first, then fallback to other modes
+                        modes_to_try = ['backbone', None, 'backconnect', 'datacenter', 'direct']
+                        response = None
+                        
+                        for mode in modes_to_try:
+                            params = {
+                                'page': 1,
+                                'page_size': 25,  # Fetch multiple proxies for rotation
+                            }
+                            if mode:
+                                params['mode'] = mode
+                            
+                            try:
+                                test_response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
+                            except requests.exceptions.SSLError:
+                                test_response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
+                            
+                            if test_response.status_code == 200:
+                                response = test_response
+                                break
+                            elif test_response.status_code == 400:
+                                continue
+                            else:
+                                continue
+                        
+                        # If all modes failed and we have username/password, try basic auth as fallback
+                        if (not response or (hasattr(response, 'status_code') and response.status_code != 200)) and not api_token and proxy_username and proxy_password:
+                            params = {'page': 1, 'page_size': 25}
+                            try:
+                                auth = (proxy_username, proxy_password)
+                                response = requests.get(api_url, auth=auth, params=params, timeout=10, verify=False)
+                            except:
+                                pass
+                        
+                        if response and hasattr(response, 'status_code') and response.status_code == 200:
+                            data = response.json()
+                            results = data.get('results', [])
+                            
+                            if results:
+                                import random
+                                # Select a random proxy from the list for better distribution
+                                proxy = random.choice(results)
+                                proxy_address = proxy.get('proxy_address')
+                                port = proxy.get('port')
+                                username = proxy.get('username')
+                                password = proxy.get('password')
+                                
+                                # For backbone proxies, proxy_address can be null, use p.webshare.io as default
+                                if not proxy_address:
+                                    proxy_address = 'p.webshare.io'
+                                
+                                if proxy_address and port and username and password:
+                                    proxy_url = f'http://{username}:{password}@{proxy_address}:{port}'
+                                    proxies = {
+                                        'http': proxy_url,
+                                        'https': proxy_url
+                                    }
+                                    print(f"  [BACKGROUND] ✅ Loaded proxy: {proxy_address}:{port} (selected from {len(results)} available)", flush=True)
+                                    return proxies
+                    except Exception as e:
+                        print(f"  [BACKGROUND] ⚠️  Error loading proxy: {str(e)}, proceeding without proxy", flush=True)
+                    
+                    return None
+                
+                # Load proxy configuration
+                proxies = load_proxy_config()
+                
                 # Helper function to fetch sitemap with multiple approaches
-                def fetch_sitemap(sitemap_url, base_url=None):
+                def fetch_sitemap(sitemap_url, base_url=None, proxies=None):
                     """Fetch sitemap using multiple approaches"""
                     if not base_url:
                         parsed = urlparse(sitemap_url)
@@ -511,13 +965,29 @@ def source_edit(request, pk):
                     # Approach 1: Use curl first (most reliable)
                     try:
                         print(f"    [BACKGROUND] Trying Approach 1: Using curl...", flush=True)
+                        curl_cmd = ['curl', '-s', '-L', '--max-time', '30']
+                        
+                        # Add proxy if available
+                        if proxies and proxies.get('http'):
+                            proxy_url = proxies['http']
+                            curl_cmd.extend(['--proxy', proxy_url])
+                            # Skip SSL verification for proxy connections (common with proxies)
+                            curl_cmd.extend(['-k', '--proxy-insecure'])
+                        
+                        curl_cmd.append(sitemap_url)
+                        
                         result = subprocess.run(
-                            ['curl', '-s', '-L', '--max-time', '30', sitemap_url],
+                            curl_cmd,
                             capture_output=True,
                             text=True,
+                            encoding='utf-8',
+                            errors='replace',  # Replace invalid UTF-8 sequences instead of failing
                             timeout=35
                         )
                         print(f"    [BACKGROUND] Curl return code: {result.returncode}", flush=True)
+                        if result.returncode != 0:
+                            if result.stderr:
+                                print(f"    [BACKGROUND] Curl stderr: {result.stderr[:300]}", flush=True)
                         if result.returncode == 0 and result.stdout:
                             # Validate it's XML, not HTML
                             content_str = result.stdout[:200].lower()
@@ -558,9 +1028,9 @@ def source_edit(request, pk):
                             }
                             session = requests.Session()
                             session.headers.update(headers)
-                            session.get(base_url, timeout=10, allow_redirects=True)
+                            session.get(base_url, timeout=10, allow_redirects=True, proxies=proxies)
                             time.sleep(1.0)
-                            response = session.get(sitemap_url, timeout=30, allow_redirects=True)
+                            response = session.get(sitemap_url, timeout=30, allow_redirects=True, proxies=proxies)
                             print(f"    [BACKGROUND] Approach 2 response: HTTP {response.status_code}", flush=True)
                             if response.status_code in (200, 202):
                                 # Check if content is actually present and is XML (not HTML/Cloudflare challenge)
@@ -589,7 +1059,7 @@ def source_edit(request, pk):
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                                 'Accept': 'application/xml, text/xml, */*',
                             }
-                            response = requests.get(sitemap_url, headers=minimal_headers, timeout=30, allow_redirects=True)
+                            response = requests.get(sitemap_url, headers=minimal_headers, timeout=30, allow_redirects=True, proxies=proxies)
                             print(f"    [BACKGROUND] Approach 3 response: HTTP {response.status_code}", flush=True)
                             if response.status_code in (200, 202):
                                 # Check if content is actually present and is XML (not HTML/Cloudflare challenge)
@@ -618,7 +1088,7 @@ def source_edit(request, pk):
                     return ('post-sitemap' in sitemap_lower or 'article' in sitemap_lower)
                 
                 # Helper function to parse sitemap recursively
-                def parse_sitemap(sitemap_url, base_url=None):
+                def parse_sitemap(sitemap_url, base_url=None, proxies=None):
                     """Parse sitemap and return list of posts"""
                     posts = []
                     
@@ -627,7 +1097,7 @@ def source_edit(request, pk):
                         base_url = f"{parsed.scheme}://{parsed.netloc}"
                     
                     print(f"  [BACKGROUND] Fetching sitemap: {sitemap_url}", flush=True)
-                    response = fetch_sitemap(sitemap_url, base_url)
+                    response = fetch_sitemap(sitemap_url, base_url, proxies=proxies)
                     
                     if not response or response.status_code not in (200, 202):
                         status_code = response.status_code if (response and hasattr(response, 'status_code')) else 'No response'
@@ -727,7 +1197,7 @@ def source_edit(request, pk):
                         
                         for i, post_sitemap_url in enumerate(post_sitemaps, 1):
                             print(f"  [BACKGROUND] Parsing post sitemap {i}/{len(post_sitemaps)}: {post_sitemap_url}", flush=True)
-                            nested_posts = parse_sitemap(post_sitemap_url, base_url)
+                            nested_posts = parse_sitemap(post_sitemap_url, base_url, proxies=proxies)
                             posts.extend(nested_posts)
                             print(f"  [BACKGROUND] Extracted {len(nested_posts)} posts from this sitemap", flush=True)
                             if i < len(post_sitemaps):
@@ -784,7 +1254,7 @@ def source_edit(request, pk):
                     return posts
                 
                 # Parse the sitemap
-                posts = parse_sitemap(source_refresh.sitemap)
+                posts = parse_sitemap(source_refresh.sitemap, proxies=proxies)
                 
                 if not posts:
                     print(f"  [BACKGROUND] No posts found in sitemap", flush=True)
@@ -904,7 +1374,8 @@ def source_edit(request, pk):
                     print(f"\n  [BACKGROUND] Processing {len(created_content_ids)} posts (extract, translate, tag, embed)...", flush=True)
                     from .content_processing_service import ContentProcessingService
                     
-                    processing_service = ContentProcessingService()
+                    # Use proxy support for content extraction (same as sitemap fetching)
+                    processing_service = ContentProcessingService(use_proxy=True)
                     
                     for idx, content_id in enumerate(created_content_ids, 1):
                         try:
@@ -1015,7 +1486,7 @@ def source_edit(request, pk):
         return redirect('sources:source_edit', pk=source.pk)
     
     if request.method == 'POST':
-        form = SourceForm(request.POST, instance=source)
+        form = SourceForm(request.POST, request.FILES, instance=source)
         if form.is_valid():
             source = form.save()
             log_activity(
@@ -1203,13 +1674,15 @@ def content_edit(request, pk):
     if request.method == 'POST' and 'fetch_content' in request.POST:
         if content.content_type == 'blog_post' and content.link:
             try:
-                processing_service = ContentProcessingService()
+                # Use proxy support for content extraction (includes curl fallback and UTF-8 encoding)
+                processing_service = ContentProcessingService(use_proxy=True)
                 # Force re-extraction even if content already exists
                 extracted = processing_service.extract_content(content, force=True)
                 if extracted:
-                    messages.success(request, f'Content fetched successfully from {content.link}')
                     # Refresh content from DB to get updated content
                     content.refresh_from_db()
+                    content_length = len(content.content) if content.content else 0
+                    messages.success(request, f'Content fetched successfully from {content.link} ({content_length:,} characters)')
                     # Log successful content fetch
                     log_activity(
                         'content_fetched',
@@ -1219,7 +1692,9 @@ def content_edit(request, pk):
                         source=content.source
                     )
                 else:
-                    messages.warning(request, f'Could not extract content from {content.link}. The page might not be accessible or the content structure is not recognized.')
+                    # Get more detailed error message if available
+                    error_msg = 'Could not extract content. The page might not be accessible, blocked by Cloudflare, or the content structure is not recognized.'
+                    messages.warning(request, f'Could not extract content from {content.link}. {error_msg}')
                     # Log failed content fetch
                     log_activity(
                         'content_fetched',

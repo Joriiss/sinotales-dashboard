@@ -189,15 +189,14 @@ class Command(BaseCommand):
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             
-            # Try different proxy modes - residential proxies don't support 'direct' mode
-            # Try without mode parameter first (works for residential), then try other modes
-            modes_to_try = [None, 'backconnect', 'datacenter', 'direct']
+            # Try backbone mode first (as shown in working example), then fallback to other modes
+            modes_to_try = ['backbone', None, 'backconnect', 'datacenter', 'direct']
             response = None
             
             for mode in modes_to_try:
                 params = {
                     'page': 1,
-                    'page_size': 1,  # Get just one proxy for testing
+                    'page_size': 25,  # Fetch multiple proxies
                 }
                 if mode:
                     params['mode'] = mode
@@ -230,7 +229,7 @@ class Command(BaseCommand):
             # (Only if we're not using an API token, since API tokens don't work with basic auth)
             if (not response or (hasattr(response, 'status_code') and response.status_code != 200)) and not api_token and proxy_username and proxy_password:
                 self.stdout.write('  Token auth failed, trying basic auth...')
-                params = {'page': 1, 'page_size': 1}  # Try without mode for basic auth
+                params = {'page': 1, 'page_size': 25}  # Try without mode for basic auth
                 try:
                     auth = (proxy_username, proxy_password)
                     response = requests.get(api_url, auth=auth, params=params, timeout=10, verify=False)
@@ -242,12 +241,17 @@ class Command(BaseCommand):
                 results = data.get('results', [])
                 
                 if results:
-                    # Get the first proxy
-                    proxy = results[0]
+                    import random
+                    # Select a random proxy from the list for better distribution
+                    proxy = random.choice(results)
                     proxy_address = proxy.get('proxy_address')
                     port = proxy.get('port')
                     username = proxy.get('username')
                     password = proxy.get('password')
+                    
+                    # For backbone proxies, proxy_address can be null, use p.webshare.io as default
+                    if not proxy_address:
+                        proxy_address = 'p.webshare.io'
                     
                     if proxy_address and port and username and password:
                         # Format proxy URL for requests library
@@ -256,7 +260,7 @@ class Command(BaseCommand):
                             'http': proxy_url,
                             'https': proxy_url
                         }
-                        self.stdout.write(self.style.SUCCESS(f'  ✅ Loaded proxy: {proxy_address}:{port}'))
+                        self.stdout.write(self.style.SUCCESS(f'  ✅ Loaded proxy: {proxy_address}:{port} (selected from {len(results)} available)'))
                         return proxies
                     else:
                         self.stdout.write(self.style.WARNING('  ⚠️  Proxy data incomplete'))

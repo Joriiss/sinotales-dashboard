@@ -64,6 +64,7 @@ class ContentProcessingService:
         self.embedding_service = EmbeddingService()
         self.use_proxy = use_proxy
         self._proxy_config = None
+        self._requests_proxies = None  # For requests library (blog posts, sitemaps)
         
         # Load proxy config if requested
         if use_proxy and PROXY_SUPPORT:
@@ -74,6 +75,12 @@ class ContentProcessingService:
                 print(f"  [PROXY] Warning: use_proxy=True but proxy config could not be loaded", flush=True)
         elif use_proxy and not PROXY_SUPPORT:
             print(f"  [PROXY] Warning: use_proxy=True but proxy support not available (youtube-transcript-api version may be too old)", flush=True)
+        
+        # Also load requests-format proxies for blog post extraction
+        if use_proxy:
+            self._requests_proxies = self._load_requests_proxies()
+            if self._requests_proxies:
+                print(f"  [PROXY] Requests proxies loaded successfully", flush=True)
     
     def _load_proxy_config(self):
         """
@@ -143,6 +150,136 @@ class ContentProcessingService:
         else:
             print(f"  [PROXY] Warning: Proxy credentials not found (username: {'set' if proxy_username else 'missing'}, password: {'set' if proxy_password else 'missing'})", flush=True)
             return None
+    
+    def _load_requests_proxies(self):
+        """
+        Load Webshare proxy configuration in requests library format.
+        Uses Webshare API v2 to fetch proxy list.
+        
+        Returns:
+            Dict with 'http' and 'https' proxy URLs for requests library, or None
+        """
+        # Try to get from environment variables first
+        api_token = os.environ.get('WEBSHARE_API_TOKEN', '').strip()
+        proxy_username = os.environ.get('WEBSHARE_PROXY_USERNAME', '').strip()
+        proxy_password = os.environ.get('WEBSHARE_PROXY_PASSWORD', '').strip()
+        
+        # If not in environment, try to load from .env file
+        if not api_token and (not proxy_username or not proxy_password):
+            base_dir = Path(settings.BASE_DIR)
+            env_file = base_dir / '.env'
+            
+            if env_file.exists():
+                try:
+                    with open(env_file, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#'):
+                                continue
+                            
+                            if '=' in line:
+                                key, value = line.split('=', 1)
+                                key = key.strip()
+                                value = value.strip()
+                                
+                                # Remove quotes if present
+                                if value.startswith('"') and value.endswith('"'):
+                                    value = value[1:-1]
+                                elif value.startswith("'") and value.endswith("'"):
+                                    value = value[1:-1]
+                                
+                                if key == 'WEBSHARE_API_TOKEN':
+                                    api_token = value
+                                elif key == 'WEBSHARE_PROXY_USERNAME':
+                                    proxy_username = value
+                                elif key == 'WEBSHARE_PROXY_PASSWORD':
+                                    proxy_password = value
+                except Exception:
+                    pass
+        
+        # Use API token if available, otherwise use username/password
+        if not api_token and (not proxy_username or not proxy_password):
+            return None
+        
+        # Use API token if available, otherwise username will be used as token
+        token_to_use = api_token if api_token else proxy_username
+        
+        if not token_to_use or not token_to_use.strip():
+            return None
+        
+        # Fetch proxy list from Webshare API
+        try:
+            import requests
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            
+            api_url = 'https://proxy.webshare.io/api/v2/proxy/list/'
+            headers = {
+                'Authorization': f'Token {token_to_use}'
+            }
+            
+            # Try backbone mode first, then fallback to other modes
+            modes_to_try = ['backbone', None, 'backconnect', 'datacenter', 'direct']
+            response = None
+            
+            for mode in modes_to_try:
+                params = {
+                    'page': 1,
+                    'page_size': 25,  # Fetch multiple proxies for rotation
+                }
+                if mode:
+                    params['mode'] = mode
+                
+                try:
+                    test_response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
+                except requests.exceptions.SSLError:
+                    test_response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
+                
+                if test_response.status_code == 200:
+                    response = test_response
+                    break
+                elif test_response.status_code == 400:
+                    continue
+                else:
+                    continue
+            
+            # If all modes failed and we have username/password, try basic auth as fallback
+            if (not response or (hasattr(response, 'status_code') and response.status_code != 200)) and not api_token and proxy_username and proxy_password:
+                params = {'page': 1, 'page_size': 25}
+                try:
+                    auth = (proxy_username, proxy_password)
+                    response = requests.get(api_url, auth=auth, params=params, timeout=10, verify=False)
+                except:
+                    pass
+            
+            if response and hasattr(response, 'status_code') and response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                
+                if results:
+                    import random
+                    # Select a random proxy from the list for better distribution
+                    proxy = random.choice(results)
+                    proxy_address = proxy.get('proxy_address')
+                    port = proxy.get('port')
+                    username = proxy.get('username')
+                    password = proxy.get('password')
+                    
+                    # For backbone proxies, proxy_address can be null, use p.webshare.io as default
+                    if not proxy_address:
+                        proxy_address = 'p.webshare.io'
+                    
+                    if proxy_address and port and username and password:
+                        proxy_url = f'http://{username}:{password}@{proxy_address}:{port}'
+                        proxies = {
+                            'http': proxy_url,
+                            'https': proxy_url
+                        }
+                        return proxies
+        except Exception:
+            pass
+        
+        return None
     
     def extract_youtube_video_id(self, url: str) -> Optional[str]:
         """
@@ -433,8 +570,23 @@ class ContentProcessingService:
             parsed_url = urlparse(content.link)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             
-            # Extract content
-            result = extract_article_content(content.link, base_url)
+            # Extract content (pass proxies if available)
+            print(f"  [EXTRACT] Starting content extraction for: {content.link}", flush=True)
+            result = extract_article_content(content.link, base_url, proxies=self._requests_proxies)
+            
+            # Check for errors in result
+            if result and result.get('error'):
+                error_msg = result.get('error', 'Unknown error')
+                print(f"  [EXTRACT] ✗ Extraction failed: {error_msg}", flush=True)
+                # Log failed content fetch with detailed error
+                log_activity(
+                    'content_fetched',
+                    f'Failed to fetch content from "{content.link}" for "{content.title}": {error_msg}',
+                    content=content,
+                    source=content.source,
+                    metadata={'success': False, 'url': content.link, 'error': error_msg, 'status_code': result.get('status_code')}
+                )
+                return False
             
             if result and result.get('content'):
                 content.content = result['content']

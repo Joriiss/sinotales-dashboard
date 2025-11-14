@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from typing import Dict, Optional
 from datetime import datetime
+import subprocess
+import time
 
 
 # Headers to use for requests
@@ -164,36 +166,196 @@ def extract_date_from_content(soup):
     return None
 
 
-def extract_article_content(url: str, base_url: Optional[str] = None) -> Optional[Dict[str, str]]:
+def extract_article_content(url: str, base_url: Optional[str] = None, proxies: Optional[Dict[str, str]] = None) -> Optional[Dict[str, str]]:
     """
     Extract main article content from an HTML page using multiple methods.
     
     Args:
         url: URL of the post page
         base_url: Optional base URL for Referer header
+        proxies: Optional proxy dict with 'http' and 'https' keys for requests library
         
     Returns:
         Dict with 'content' (main text), 'excerpt' (first paragraph), and 'date' (ISO format) or None
     """
     try:
-        headers = REQUEST_HEADERS.copy()
-        if base_url:
-            headers['Referer'] = base_url
+        print(f"  [EXTRACT] Fetching URL: {url}", flush=True)
+        if proxies:
+            print(f"  [EXTRACT] Using proxy: Yes", flush=True)
+        else:
+            print(f"  [EXTRACT] Using proxy: No", flush=True)
         
-        response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
-        if response.status_code != 200:
-            return None
+        response = None
         
+        # Approach 1: Use curl first (most reliable, especially with proxies)
+        try:
+            print(f"  [EXTRACT] Approach 1: Using curl...", flush=True)
+            curl_cmd = ['curl', '-s', '-L', '--max-time', '30']
+            
+            # Add proxy if available
+            if proxies and proxies.get('http'):
+                proxy_url = proxies['http']
+                curl_cmd.extend(['--proxy', proxy_url])
+                # Skip SSL verification for proxy connections (common with proxies)
+                curl_cmd.extend(['-k', '--proxy-insecure'])
+            
+            curl_cmd.append(url)
+            
+            result = subprocess.run(
+                curl_cmd,
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='replace',  # Replace invalid UTF-8 sequences instead of failing
+                timeout=35
+            )
+            
+            if result.returncode != 0:
+                if result.stderr:
+                    print(f"  [EXTRACT] Curl stderr: {result.stderr[:300]}", flush=True)
+            
+            if result.returncode == 0 and result.stdout:
+                # Validate it's HTML, not a challenge page
+                content_str = result.stdout[:200].lower()
+                if 'cloudflare' in content_str or 'challenge' in content_str:
+                    print(f"  [EXTRACT] ✗ Curl returned Cloudflare challenge, trying next approach...", flush=True)
+                elif '<html' in content_str or '<!doctype' in content_str:
+                    print(f"  [EXTRACT] ✓ Success with curl (got {len(result.stdout)} bytes, valid HTML)", flush=True)
+                    class MockResponse:
+                        def __init__(self, content, status_code=200):
+                            self.content = content.encode('utf-8') if isinstance(content, str) else content
+                            self.text = content if isinstance(content, str) else content.decode('utf-8', errors='ignore')
+                            self.status_code = status_code
+                            self.headers = {'Content-Type': 'text/html'}
+                    response = MockResponse(result.stdout, 200)
+                else:
+                    print(f"  [EXTRACT] ✗ Curl content doesn't appear to be HTML, trying next approach...", flush=True)
+            else:
+                if result.stderr:
+                    print(f"  [EXTRACT] ✗ Curl failed: {result.stderr[:200]}", flush=True)
+                else:
+                    print(f"  [EXTRACT] ✗ Curl failed: return code {result.returncode}, no output", flush=True)
+        except FileNotFoundError:
+            print(f"  [EXTRACT] ✗ Curl not found in PATH, trying next approach...", flush=True)
+        except subprocess.TimeoutExpired:
+            print(f"  [EXTRACT] ✗ Curl timeout, trying next approach...", flush=True)
+        except Exception as e:
+            print(f"  [EXTRACT] ✗ Curl failed: {type(e).__name__}: {str(e)}, trying next approach...", flush=True)
+        
+        # Approach 2: Full headers with session (visit homepage first)
+        if not response:
+            try:
+                print(f"  [EXTRACT] Approach 2: Full headers with session...", flush=True)
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Referer': f"{base_url}/" if base_url else None,
+                }
+                if not headers['Referer']:
+                    del headers['Referer']
+                
+                session = requests.Session()
+                session.headers.update(headers)
+                
+                # Visit homepage first to establish session/cookies
+                if base_url:
+                    try:
+                        print(f"  [EXTRACT]   Visiting homepage to establish session...", flush=True)
+                        session.get(base_url, timeout=10, allow_redirects=True, proxies=proxies)
+                        time.sleep(1.0)
+                    except Exception as e:
+                        print(f"  [EXTRACT]   Homepage visit failed: {str(e)}", flush=True)
+                
+                response = session.get(url, timeout=30, allow_redirects=True, proxies=proxies)
+                print(f"  [EXTRACT]   Approach 2 response: HTTP {response.status_code}", flush=True)
+                
+                if response.status_code == 200:
+                    content_str = response.text[:200].lower() if hasattr(response, 'text') else ''
+                    if 'cloudflare' in content_str or 'challenge' in content_str:
+                        print(f"  [EXTRACT] ✗ Approach 2 returned Cloudflare challenge, trying next approach...", flush=True)
+                        response = None
+                    elif '<html' in content_str or '<!doctype' in content_str:
+                        print(f"  [EXTRACT] ✓ Success with Approach 2 (content: {len(response.content)} bytes, valid HTML)", flush=True)
+                    else:
+                        print(f"  [EXTRACT] ✗ Approach 2 content doesn't appear to be HTML, trying next approach...", flush=True)
+                        response = None
+                else:
+                    print(f"  [EXTRACT] ✗ Approach 2 failed: HTTP {response.status_code}", flush=True)
+                    response = None
+            except Exception as e:
+                print(f"  [EXTRACT] ✗ Approach 2 failed: {type(e).__name__}: {str(e)}", flush=True)
+                response = None
+        
+        # Approach 3: Minimal headers
+        if not response:
+            try:
+                print(f"  [EXTRACT] Approach 3: Minimal headers...", flush=True)
+                minimal_headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                }
+                if base_url:
+                    minimal_headers['Referer'] = f"{base_url}/"
+                
+                response = requests.get(url, headers=minimal_headers, timeout=30, allow_redirects=True, proxies=proxies)
+                print(f"  [EXTRACT]   Approach 3 response: HTTP {response.status_code}", flush=True)
+                
+                if response.status_code == 200:
+                    content_str = response.text[:200].lower() if hasattr(response, 'text') else ''
+                    if 'cloudflare' in content_str or 'challenge' in content_str:
+                        print(f"  [EXTRACT] ✗ Approach 3 returned Cloudflare challenge", flush=True)
+                        response = None
+                    elif '<html' in content_str or '<!doctype' in content_str:
+                        print(f"  [EXTRACT] ✓ Success with Approach 3 (content: {len(response.content)} bytes, valid HTML)", flush=True)
+                    else:
+                        print(f"  [EXTRACT] ✗ Approach 3 content doesn't appear to be HTML", flush=True)
+                        response = None
+                else:
+                    print(f"  [EXTRACT] ✗ Approach 3 failed: HTTP {response.status_code}", flush=True)
+                    response = None
+            except Exception as e:
+                print(f"  [EXTRACT] ✗ Approach 3 failed: {type(e).__name__}: {str(e)}", flush=True)
+                response = None
+        
+        # Final check - if all approaches failed
+        if not response or (hasattr(response, 'status_code') and response.status_code != 200):
+            status_code = response.status_code if (response and hasattr(response, 'status_code')) else 'No response'
+            print(f"  [EXTRACT] ✗ All approaches failed: HTTP {status_code}", flush=True)
+            
+            if response and hasattr(response, 'text'):
+                content_preview = response.text[:500].lower()
+                if 'cloudflare' in content_preview or 'challenge' in content_preview:
+                    return {'error': f'Cloudflare challenge (HTTP {status_code})', 'status_code': status_code}
+                elif '<html' in content_preview:
+                    return {'error': f'HTML error page (HTTP {status_code})', 'status_code': status_code}
+            
+            return {'error': f'HTTP {status_code}', 'status_code': status_code}
+        
+        # Check if response content is valid HTML
+        if not response.content or len(response.content) == 0:
+            print(f"  [EXTRACT] ✗ Error: Empty response content", flush=True)
+            return {'error': 'Empty response content'}
+        
+        content_preview = response.text[:200].lower() if hasattr(response, 'text') else ''
+        if 'cloudflare' in content_preview or 'challenge' in content_preview:
+            print(f"  [EXTRACT] ✗ Error: Cloudflare challenge detected in content", flush=True)
+            return {'error': 'Cloudflare challenge in content'}
+        
+        print(f"  [EXTRACT] Response size: {len(response.content)} bytes", flush=True)
         soup = BeautifulSoup(response.content, 'html.parser')
         
         # Extract date from content (before removing elements)
         extracted_date = extract_date_from_content(soup)
+        if extracted_date:
+            print(f"  [EXTRACT] Found date: {extracted_date}", flush=True)
         
         # Remove script and style elements
         for script in soup(["script", "style", "nav", "header", "footer", "aside", "advertisement"]):
             script.decompose()
         
         # Method 1: Try common article/content selectors
+        print(f"  [EXTRACT] Method 1: Trying common article/content selectors...", flush=True)
         article_selectors = [
             {'tag': 'article'},
             {'class': re.compile(r'article|content|post-content|entry-content|post-body|article-body', re.I)},
@@ -203,22 +365,31 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
         ]
         
         content_element = None
-        for selector in article_selectors:
+        for i, selector in enumerate(article_selectors, 1):
             if 'tag' in selector:
                 content_element = soup.find(selector['tag'])
+                selector_desc = f"tag: {selector['tag']}"
             elif 'class' in selector:
                 content_element = soup.find(class_=selector['class'])
+                selector_desc = f"class: {selector['class'].pattern}"
             elif 'id' in selector:
                 content_element = soup.find(id=selector['id'])
+                selector_desc = f"id: {selector['id'].pattern}"
             elif 'itemprop' in selector:
                 content_element = soup.find(itemprop=selector['itemprop'])
+                selector_desc = f"itemprop: {selector['itemprop']}"
             
             if content_element:
+                print(f"  [EXTRACT] ✓ Method 1: Found content element using {selector_desc}", flush=True)
                 break
+            else:
+                print(f"  [EXTRACT]   Method 1.{i}: No match for {selector_desc}", flush=True)
         
         # Method 2: Try JSON-LD structured data
         if not content_element:
+            print(f"  [EXTRACT] Method 2: Trying JSON-LD structured data...", flush=True)
             json_scripts = soup.find_all('script', type='application/ld+json')
+            print(f"  [EXTRACT]   Found {len(json_scripts)} JSON-LD scripts", flush=True)
             for script in json_scripts:
                 try:
                     data = json.loads(script.string)
@@ -228,6 +399,7 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
                     if isinstance(data, dict):
                         article_body = data.get('articleBody') or data.get('description') or data.get('text')
                         if article_body:
+                            print(f"  [EXTRACT] ✓ Method 2: Found content in JSON-LD structured data", flush=True)
                             return {
                                 'content': clean_text(article_body),
                                 'excerpt': clean_text(article_body[:500]),
@@ -235,15 +407,21 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
                             }
                 except (json.JSONDecodeError, AttributeError, IndexError):
                     continue
+            print(f"  [EXTRACT]   Method 2: No content found in JSON-LD structured data", flush=True)
         
         # Method 3: Try to find main content area
         if not content_element:
+            print(f"  [EXTRACT] Method 3: Trying main content area...", flush=True)
             main_content = soup.find('main') or soup.find('div', role='main')
             if main_content:
                 content_element = main_content
+                print(f"  [EXTRACT] ✓ Method 3: Found main content area", flush=True)
+            else:
+                print(f"  [EXTRACT]   Method 3: No main content area found", flush=True)
         
         # Method 4: Try WordPress/Common CMS patterns
         if not content_element:
+            print(f"  [EXTRACT] Method 4: Trying WordPress/CMS patterns...", flush=True)
             wp_patterns = [
                 'entry-content', 'post-content', 'article-content',
                 'post-body', 'entry-body', 'content-area'
@@ -251,10 +429,14 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
             for pattern in wp_patterns:
                 content_element = soup.find(class_=re.compile(pattern, re.I))
                 if content_element:
+                    print(f"  [EXTRACT] ✓ Method 4: Found content using pattern: {pattern}", flush=True)
                     break
+            if not content_element:
+                print(f"  [EXTRACT]   Method 4: No WordPress/CMS patterns matched", flush=True)
         
         # Method 4.5: Look for content before footer (common pattern)
         if not content_element:
+            print(f"  [EXTRACT] Method 4.5: Looking for content before footer...", flush=True)
             # Find footer first
             footer = soup.find('footer') or soup.find(class_=re.compile(r'footer', re.I)) or soup.find(id=re.compile(r'footer', re.I))
             if footer:
@@ -280,11 +462,16 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
                             headings = div.find_all(['h1', 'h2', 'h3'])
                             if headings:
                                 content_element = div
+                                print(f"  [EXTRACT] ✓ Method 4.5: Found content before footer", flush=True)
                                 break
+            if not content_element:
+                print(f"  [EXTRACT]   Method 4.5: No content found before footer", flush=True)
         
         # Method 5: Fallback - find largest text container with better filtering
         if not content_element:
+            print(f"  [EXTRACT] Method 5: Finding largest text container...", flush=True)
             divs = soup.find_all('div')
+            print(f"  [EXTRACT]   Found {len(divs)} div elements to evaluate", flush=True)
             if divs:
                 scored_divs = []
                 for div in divs:
@@ -334,6 +521,10 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
                     # Sort by score (highest first)
                     scored_divs.sort(reverse=True, key=lambda x: x[0])
                     content_element = scored_divs[0][2]  # Get the div element
+                    top_score, top_words, _ = scored_divs[0]
+                    print(f"  [EXTRACT] ✓ Method 5: Found best content element (score: {top_score}, words: {top_words})", flush=True)
+                else:
+                    print(f"  [EXTRACT]   Method 5: No suitable div elements found", flush=True)
         
         # Extract text from found element
         if content_element:
@@ -414,14 +605,22 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
                     if len(excerpt) > 500:
                         excerpt = excerpt[:500] + '...'
                     
+                    print(f"  [EXTRACT] ✓ Successfully extracted content ({len(full_content)} chars, {len(cleaned_lines)} lines)", flush=True)
                     return {
                         'content': full_content,
                         'excerpt': clean_text(excerpt),
                         'date': extracted_date
                     }
+                else:
+                    content_len = len(full_content.strip()) if full_content else 0
+                    print(f"  [EXTRACT]   Content too short: {content_len} chars (minimum: 100)", flush=True)
         
         # Method 6: Last resort - extract all paragraph text and list items with better filtering
+        if not content_element:
+            print(f"  [EXTRACT] Method 6: Last resort - extracting all paragraphs/list items...", flush=True)
         content_elements = soup.find_all(['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li'])
+        if content_elements:
+            print(f"  [EXTRACT]   Found {len(content_elements)} content elements", flush=True)
         if content_elements:
             text_parts = []
             seen_texts = set()
@@ -486,14 +685,36 @@ def extract_article_content(url: str, base_url: Optional[str] = None) -> Optiona
                     if len(excerpt) > 500:
                         excerpt = excerpt[:500] + '...'
                     
+                    print(f"  [EXTRACT] ✓ Method 6: Successfully extracted content ({len(full_content)} chars, {len(cleaned_lines)} lines)", flush=True)
                     return {
                         'content': full_content,
                         'excerpt': clean_text(excerpt),
                         'date': extracted_date
                     }
+                else:
+                    content_len = len(full_content.strip()) if full_content else 0
+                    print(f"  [EXTRACT]   Method 6: Content too short: {content_len} chars (minimum: 100)", flush=True)
+        else:
+            print(f"  [EXTRACT]   Method 6: No content elements found", flush=True)
         
+        # If we get here, no content was extracted
+        print(f"  [EXTRACT] ✗ Failed: No content could be extracted using any method", flush=True)
+        return {'error': 'No content could be extracted - all extraction methods failed'}
+        
+    except requests.exceptions.Timeout:
+        error_msg = 'Request timeout'
+        print(f"  [EXTRACT] ✗ Error: {error_msg}", flush=True)
+        return {'error': error_msg}
+    except requests.exceptions.ConnectionError as e:
+        error_msg = f'Connection error: {str(e)}'
+        print(f"  [EXTRACT] ✗ Error: {error_msg}", flush=True)
+        return {'error': error_msg}
     except Exception as e:
-        return None
+        error_msg = f'Exception: {type(e).__name__}: {str(e)}'
+        print(f"  [EXTRACT] ✗ Error: {error_msg}", flush=True)
+        import traceback
+        print(f"  [EXTRACT] Traceback: {traceback.format_exc()[:500]}", flush=True)
+        return {'error': error_msg}
     
-    return None
+    return {'error': 'Unknown error'}
 

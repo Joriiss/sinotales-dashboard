@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const youtubeFields = document.getElementById('youtube-fields');
     const blogFields = document.getElementById('blog-fields');
     const blogCheckboxes = document.getElementById('blog-checkboxes');
+    const ebookFields = document.getElementById('ebook-fields');
     
     function updateFields() {
         const sourceType = sourceTypeSelect.value;
@@ -59,8 +60,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sourceType === 'youtube') {
                 document.getElementById('link-help').textContent = 'e.g., https://www.youtube.com/@channelname/';
             } else {
-                document.getElementById('link-help').textContent = 'URL to the source';
+                document.getElementById('link-help').textContent = 'URL to the source (optional for ebooks)';
             }
+        }
+        
+        // Show/hide ebook-specific fields
+        if (sourceType === 'ebook') {
+            ebookFields.style.display = 'block';
+        } else {
+            ebookFields.style.display = 'none';
         }
     }
     
@@ -86,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <div class="card border-0 shadow-sm">
     <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
             <div class="row mb-3">
@@ -136,6 +144,34 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="text-danger small">{{ form.channel_id.errors }}</div>
                     {% endif %}
                     <small class="form-text text-muted" id="channel_id_help">YouTube channel ID (required for YouTube sources)</small>
+                </div>
+            </div>
+
+            <!-- Ebook-specific fields -->
+            <div class="row mb-3" id="ebook-fields" style="display: none;">
+                <div class="col-md-6">
+                    <label for="{{ form.publication_date.id_for_label }}" class="form-label">
+                        Publication Date <span class="text-danger">*</span>
+                    </label>
+                    {{ form.publication_date }}
+                    {% if form.publication_date.errors %}
+                        <div class="text-danger small">{{ form.publication_date.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">Publication date of the ebook</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="{{ form.ebook_file.id_for_label }}" class="form-label">
+                        Ebook File <span class="text-danger">*</span>
+                    </label>
+                    {{ form.ebook_file }}
+                    {% if form.ebook_file.errors %}
+                        <div class="text-danger small">{{ form.ebook_file.errors }}</div>
+                    {% endif %}
+                    {% if source and source.ebook_file %}
+                        <small class="form-text text-muted">Current file: <a href="{{ source.ebook_file.url }}" target="_blank">{{ source.ebook_file.name }}</a></small>
+                    {% else %}
+                        <small class="form-text text-muted">Upload a .txt file containing the ebook text</small>
+                    {% endif %}
                 </div>
             </div>
 
@@ -265,6 +301,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <i class="bi bi-rss"></i> Get Posts
                             </button>
                         </div>
+                    </form>
+                    {% endif %}
+                    {% if source.source_type == 'ebook' and source.ebook_file %}
+                    <form method="post" action="{% url 'sources:source_edit' source.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" name="import_ebook" class="btn btn-outline-info" 
+                                onclick="return confirm('This will split the ebook into chunks and create content entries. Each chunk will be translated (if French), tagged, and embedded. Continue?');">
+                            <i class="bi bi-book"></i> Import Ebook
+                        </button>
                     </form>
                     {% endif %}
                 </div>

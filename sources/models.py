@@ -125,6 +125,19 @@ class Source(models.Model):
         help_text="Filter blog posts to only include those relevant to China (blog sources only)"
     )
     
+    # Ebook-specific fields
+    ebook_file = models.FileField(
+        upload_to='ebooks/',
+        blank=True,
+        null=True,
+        help_text="Upload ebook text file (for ebook sources)"
+    )
+    publication_date = models.DateField(
+        blank=True,
+        null=True,
+        help_text="Publication date of the ebook (for ebook sources)"
+    )
+    
     # Metadata
     metadata = models.JSONField(
         default=dict,
@@ -185,6 +198,15 @@ class Source(models.Model):
                 self.blog_only = False
             if self.filter_china:
                 self.filter_china = False
+        
+        if self.source_type != 'ebook':
+            # Clear ebook-specific fields for non-ebook sources
+            if self.ebook_file:
+                # Note: We don't delete the file here to avoid data loss
+                # File will be cleared on save if source_type changes
+                pass
+            if self.publication_date:
+                self.publication_date = None
 
 
 class Content(models.Model):

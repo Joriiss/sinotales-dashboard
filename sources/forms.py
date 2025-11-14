@@ -1,6 +1,7 @@
 from django import forms
 from django.utils.text import slugify
 from .models import Source, Content, Settings
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 
 class SourceForm(forms.ModelForm):
@@ -11,6 +12,7 @@ class SourceForm(forms.ModelForm):
             'source_type',
             'link',
             'language',
+            'publication_date',
             'channel_id',
             'include_shorts',
             'filter_videos',
@@ -18,6 +20,7 @@ class SourceForm(forms.ModelForm):
             'sitemap',
             'blog_only',
             'filter_china',
+            'ebook_file',
             'is_active',
         ]
         widgets = {
@@ -34,6 +37,14 @@ class SourceForm(forms.ModelForm):
             }),
             'language': forms.Select(attrs={
                 'class': 'form-control',
+            }),
+            'publication_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'ebook_file': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.txt'
             }),
             'channel_id': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -77,6 +88,19 @@ class SourceForm(forms.ModelForm):
             self.fields['link'].required = False
             self.fields['sitemap'].required = False
         
+        # Make ebook_file and publication_date required for ebook sources
+        if source_type == 'ebook':
+            # ebook_file is only required if it doesn't already exist
+            if not (self.instance and self.instance.pk and self.instance.ebook_file):
+                self.fields['ebook_file'].required = True
+            else:
+                self.fields['ebook_file'].required = False
+            self.fields['publication_date'].required = True
+            self.fields['link'].required = False
+        else:
+            self.fields['ebook_file'].required = False
+            self.fields['publication_date'].required = False
+        
         if source_type == 'youtube':
             self.fields['channel_id'].required = True
             self.fields['channel_id'].widget.attrs['placeholder'] = 'UC1UNB6Gy11umcbEj_hqIwhw'
@@ -94,10 +118,10 @@ class SourceForm(forms.ModelForm):
                 self.fields['channel_id'].widget.attrs['disabled'] = True
                 self.fields['include_shorts'].widget.attrs['disabled'] = True
                 self.fields['filter_videos'].widget.attrs['disabled'] = True
-        else:
+        elif source_type == 'ebook':
+            # Hide channel_id and blog fields for ebook sources
             self.fields['channel_id'].required = False
-            self.fields['channel_id'].widget.attrs['placeholder'] = 'UC1UNB6Gy11umcbEj_hqIwhw'
-            # For non-YouTube, non-blog sources, disable all type-specific fields
+            # Disable YouTube and blog-specific fields for ebook sources
             if self.instance and self.instance.pk:
                 self.fields['channel_id'].widget.attrs['disabled'] = True
                 self.fields['include_shorts'].widget.attrs['disabled'] = True
@@ -106,6 +130,20 @@ class SourceForm(forms.ModelForm):
                 self.fields['sitemap'].widget.attrs['disabled'] = True
                 self.fields['blog_only'].widget.attrs['disabled'] = True
                 self.fields['filter_china'].widget.attrs['disabled'] = True
+        else:
+            self.fields['channel_id'].required = False
+            self.fields['channel_id'].widget.attrs['placeholder'] = 'UC1UNB6Gy11umcbEj_hqIwhw'
+            # For non-YouTube, non-blog, non-ebook sources, disable all type-specific fields
+            if self.instance and self.instance.pk:
+                self.fields['channel_id'].widget.attrs['disabled'] = True
+                self.fields['include_shorts'].widget.attrs['disabled'] = True
+                self.fields['filter_videos'].widget.attrs['disabled'] = True
+                self.fields['xml_feed'].widget.attrs['disabled'] = True
+                self.fields['sitemap'].widget.attrs['disabled'] = True
+                self.fields['blog_only'].widget.attrs['disabled'] = True
+                self.fields['filter_china'].widget.attrs['disabled'] = True
+                self.fields['ebook_file'].widget.attrs['disabled'] = True
+                self.fields['publication_date'].widget.attrs['disabled'] = True
     
     def clean(self):
         cleaned_data = super().clean()
@@ -124,6 +162,22 @@ class SourceForm(forms.ModelForm):
                 self.add_error('link', 'Link is required for blog sources.')
             if not sitemap:
                 self.add_error('sitemap', 'Sitemap is required for blog sources.')
+        
+        # Validate that ebook_file and publication_date are required for ebook sources
+        if source_type == 'ebook':
+            ebook_file = cleaned_data.get('ebook_file')
+            publication_date = cleaned_data.get('publication_date')
+            # Check if file is being uploaded (new file) or already exists (existing source)
+            # For new sources, file is required. For existing sources, file is optional if already uploaded.
+            if not ebook_file:
+                if not self.instance or not self.instance.pk:
+                    # New source - file is required
+                    self.add_error('ebook_file', 'Ebook file is required for ebook sources.')
+                elif not self.instance.ebook_file:
+                    # Existing source but no file uploaded yet - file is required
+                    self.add_error('ebook_file', 'Ebook file is required for ebook sources.')
+            if not publication_date:
+                self.add_error('publication_date', 'Publication date is required for ebook sources.')
         
         # Clear channel_id for non-YouTube sources
         if source_type != 'youtube' and channel_id:
