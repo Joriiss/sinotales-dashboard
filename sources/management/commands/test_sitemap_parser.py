@@ -150,13 +150,29 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.WARNING(f'  ⚠️  Could not read .env file: {str(e)}'))
         
+        # Debug: Show what credentials we found (without revealing values)
+        self.stdout.write(f'  ℹ️  Credentials check: api_token={"set" if api_token else "not set"}, username={"set" if proxy_username else "not set"}, password={"set" if proxy_password else "not set"}')
+        
         # Use API token if available, otherwise use username/password
         if not api_token and (not proxy_username or not proxy_password):
             self.stdout.write(self.style.WARNING('  ⚠️  Webshare credentials not found (need WEBSHARE_API_TOKEN or WEBSHARE_PROXY_USERNAME/PASSWORD)'))
+            self.stdout.write('  ℹ️  Make sure your .env file contains one of:')
+            self.stdout.write('      - WEBSHARE_API_TOKEN=your_token_here')
+            self.stdout.write('      - OR WEBSHARE_PROXY_USERNAME=your_username AND WEBSHARE_PROXY_PASSWORD=your_password')
             return None
         
         # Use API token if available, otherwise username will be used as token
         token_to_use = api_token if api_token else proxy_username
+        
+        if not token_to_use or not token_to_use.strip():
+            self.stdout.write(self.style.WARNING('  ⚠️  Token is empty or whitespace only'))
+            return None
+        
+        # Debug: Show what we're using (without revealing the actual value)
+        if api_token:
+            self.stdout.write(f'  ℹ️  Using WEBSHARE_API_TOKEN (length: {len(token_to_use)})')
+        elif proxy_username:
+            self.stdout.write(f'  ℹ️  Using WEBSHARE_PROXY_USERNAME as token (length: {len(token_to_use)})')
         
         # Fetch proxy list from Webshare API
         try:
@@ -176,24 +192,26 @@ class Command(BaseCommand):
                 'Authorization': f'Token {token_to_use}'
             }
             
+            # Disable SSL warnings for cleaner output
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            
             # Try with SSL verification first
             try:
                 response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=True)
             except requests.exceptions.SSLError as ssl_error:
                 # If SSL verification fails, try without verification (with warning)
                 self.stdout.write(self.style.WARNING('  ⚠️  SSL verification failed, retrying without verification...'))
-                import urllib3
-                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
                 response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
             
-            # If token auth fails and we have password, try basic auth as fallback
-            if response.status_code == 401 and proxy_password:
+            # If token auth fails and we have username/password, try basic auth as fallback
+            # (Only if we're not using an API token, since API tokens don't work with basic auth)
+            if response.status_code == 401 and not api_token and proxy_username and proxy_password:
                 self.stdout.write('  Token auth failed, trying basic auth...')
                 try:
                     auth = (proxy_username, proxy_password)
                     response = requests.get(api_url, auth=auth, params=params, timeout=10, verify=False)
                 except requests.exceptions.SSLError:
-                    # Already disabled warnings above
                     pass
             
             if response.status_code == 200:
