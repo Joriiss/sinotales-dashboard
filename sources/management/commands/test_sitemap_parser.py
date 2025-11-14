@@ -10,6 +10,9 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import subprocess
+import os
+from pathlib import Path
+from django.conf import settings
 
 
 class Command(BaseCommand):
@@ -27,18 +30,35 @@ class Command(BaseCommand):
             default=None,
             help='Base URL for Referer header (helps bypass 403 errors)'
         )
+        parser.add_argument(
+            '--use-proxy',
+            action='store_true',
+            help='Use Webshare proxies for requests (helps bypass Cloudflare)'
+        )
 
     def handle(self, *args, **options):
         sitemap_url = options['sitemap_url']
         base_url = options.get('base_url')
+        use_proxy = options.get('use_proxy', False)
+        
+        # Load proxy configuration if requested
+        proxies = None
+        if use_proxy:
+            proxies = self._load_proxy_config()
+            if proxies:
+                self.stdout.write(self.style.SUCCESS('✅ Proxy configuration loaded'))
+            else:
+                self.stdout.write(self.style.WARNING('⚠️  Proxy requested but configuration not found'))
         
         self.stdout.write(self.style.SUCCESS(f'\n{"="*60}'))
         self.stdout.write(self.style.SUCCESS(f'Testing Sitemap Parser'))
         self.stdout.write(self.style.SUCCESS(f'{"="*60}\n'))
         self.stdout.write(f'Sitemap URL: {sitemap_url}\n')
+        if proxies:
+            self.stdout.write(f'Using proxy: Yes\n')
         
         # Parse the sitemap
-        posts = self.parse_sitemap(sitemap_url, base_url=base_url)
+        posts = self.parse_sitemap(sitemap_url, base_url=base_url, proxies=proxies)
         
         # Display results
         if posts:
@@ -84,6 +104,155 @@ class Command(BaseCommand):
         
         return headers
 
+    def _load_proxy_config(self):
+        """
+        Load Webshare proxy configuration and fetch proxy list.
+        
+        Returns:
+            Dict with 'http' and 'https' proxy URLs for requests library, or None
+        """
+        # Try to get from environment variables first
+        # Check for API token first (Webshare API v2 uses token auth)
+        api_token = os.environ.get('WEBSHARE_API_TOKEN', '').strip()
+        proxy_username = os.environ.get('WEBSHARE_PROXY_USERNAME', '').strip()
+        proxy_password = os.environ.get('WEBSHARE_PROXY_PASSWORD', '').strip()
+        
+        # If not in environment, try to load from .env file
+        if not api_token and (not proxy_username or not proxy_password):
+            base_dir = Path(settings.BASE_DIR)
+            env_file = base_dir / '.env'
+            
+            if env_file.exists():
+                try:
+                    with open(env_file, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#'):
+                                continue
+                            
+                            if '=' in line:
+                                key, value = line.split('=', 1)
+                                key = key.strip()
+                                value = value.strip()
+                                
+                                # Remove quotes if present
+                                if value.startswith('"') and value.endswith('"'):
+                                    value = value[1:-1]
+                                elif value.startswith("'") and value.endswith("'"):
+                                    value = value[1:-1]
+                                
+                                if key == 'WEBSHARE_API_TOKEN':
+                                    api_token = value
+                                elif key == 'WEBSHARE_PROXY_USERNAME':
+                                    proxy_username = value
+                                elif key == 'WEBSHARE_PROXY_PASSWORD':
+                                    proxy_password = value
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f'  ⚠️  Could not read .env file: {str(e)}'))
+        
+        # Use API token if available, otherwise use username/password
+        if not api_token and (not proxy_username or not proxy_password):
+            self.stdout.write(self.style.WARNING('  ⚠️  Webshare credentials not found (need WEBSHARE_API_TOKEN or WEBSHARE_PROXY_USERNAME/PASSWORD)'))
+            return None
+        
+        # Use API token if available, otherwise username will be used as token
+        token_to_use = api_token if api_token else proxy_username
+        
+        # Fetch proxy list from Webshare API
+        try:
+            self.stdout.write('  Fetching proxy list from Webshare API...')
+            api_url = 'https://proxy.webshare.io/api/v2/proxy/list/'
+            
+            # Get proxy list (limit to 1 for testing, you can increase this)
+            params = {
+                'mode': 'direct',  # direct, backconnect, or datacenter
+                'page': 1,
+                'page_size': 1,  # Get just one proxy for testing
+            }
+            
+            # Webshare API v2 uses token-based authentication
+            # Use API token if available, otherwise use username as token
+            headers = {
+                'Authorization': f'Token {token_to_use}'
+            }
+            
+            # Try with SSL verification first
+            try:
+                response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=True)
+            except requests.exceptions.SSLError as ssl_error:
+                # If SSL verification fails, try without verification (with warning)
+                self.stdout.write(self.style.WARNING('  ⚠️  SSL verification failed, retrying without verification...'))
+                import urllib3
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=False)
+            
+            # If token auth fails and we have password, try basic auth as fallback
+            if response.status_code == 401 and proxy_password:
+                self.stdout.write('  Token auth failed, trying basic auth...')
+                try:
+                    auth = (proxy_username, proxy_password)
+                    response = requests.get(api_url, auth=auth, params=params, timeout=10, verify=False)
+                except requests.exceptions.SSLError:
+                    # Already disabled warnings above
+                    pass
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                
+                if results:
+                    # Get the first proxy
+                    proxy = results[0]
+                    proxy_address = proxy.get('proxy_address')
+                    port = proxy.get('port')
+                    username = proxy.get('username')
+                    password = proxy.get('password')
+                    
+                    if proxy_address and port and username and password:
+                        # Format proxy URL for requests library
+                        proxy_url = f'http://{username}:{password}@{proxy_address}:{port}'
+                        proxies = {
+                            'http': proxy_url,
+                            'https': proxy_url
+                        }
+                        self.stdout.write(self.style.SUCCESS(f'  ✅ Loaded proxy: {proxy_address}:{port}'))
+                        return proxies
+                    else:
+                        self.stdout.write(self.style.WARNING('  ⚠️  Proxy data incomplete'))
+                else:
+                    self.stdout.write(self.style.WARNING('  ⚠️  No proxies found in Webshare account'))
+            else:
+                self.stdout.write(self.style.WARNING(f'  ⚠️  Failed to fetch proxy list: HTTP {response.status_code}'))
+                if response.status_code == 401:
+                    self.stdout.write('  ℹ️  Authentication failed - check your Webshare API token')
+                    self.stdout.write('  ℹ️  Make sure you have WEBSHARE_API_TOKEN or WEBSHARE_PROXY_USERNAME set correctly')
+                    try:
+                        error_detail = response.json()
+                        if 'detail' in error_detail:
+                            self.stdout.write(f'  ℹ️  API response: {error_detail["detail"]}')
+                    except:
+                        pass
+                elif response.status_code == 403:
+                    self.stdout.write('  ℹ️  Access forbidden - check your API token permissions')
+                else:
+                    try:
+                        error_detail = response.text[:200]
+                        self.stdout.write(f'  ℹ️  Response: {error_detail}')
+                    except:
+                        pass
+        except requests.exceptions.SSLError as ssl_error:
+            self.stdout.write(self.style.WARNING(f'  ⚠️  SSL error: {str(ssl_error)}'))
+            self.stdout.write('  ℹ️  This might be due to network/firewall SSL interception')
+        except requests.exceptions.ConnectionError as conn_error:
+            self.stdout.write(self.style.WARNING(f'  ⚠️  Connection error: {str(conn_error)}'))
+            self.stdout.write('  ℹ️  Check your internet connection and firewall settings')
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'  ⚠️  Error fetching proxy list: {str(e)}'))
+            import traceback
+            self.stdout.write(f'  ℹ️  Traceback: {traceback.format_exc()[:300]}')
+        
+        return None
+
     def is_valid_sitemap(self, content, content_type=None):
         """Check if content is a valid sitemap XML"""
         if content_type and 'html' in content_type.lower():
@@ -111,7 +280,7 @@ class Command(BaseCommand):
         
         return False
 
-    def parse_sitemap(self, sitemap_url, base_url=None):
+    def parse_sitemap(self, sitemap_url, base_url=None, proxies=None):
         """
         Parse sitemap and extract post URLs with dates.
         
@@ -139,14 +308,14 @@ class Command(BaseCommand):
                 # Visit homepage first to establish session/cookies
                 try:
                     self.stdout.write('    Visiting homepage to establish session...')
-                    homepage_resp = session.get(base_url, timeout=10, allow_redirects=True)
+                    homepage_resp = session.get(base_url, timeout=10, allow_redirects=True, proxies=proxies)
                     self.stdout.write(f'    Homepage response: HTTP {homepage_resp.status_code}')
                     time.sleep(1.0)  # Delay to mimic human behavior
                 except Exception as e:
                     self.stdout.write(f'    ⚠️  Homepage visit failed: {str(e)}')
                 
                 self.stdout.write('    Fetching sitemap...')
-                response = session.get(sitemap_url, timeout=30, allow_redirects=True)
+                response = session.get(sitemap_url, timeout=30, allow_redirects=True, proxies=proxies)
                 self.stdout.write(f'    Sitemap response: HTTP {response.status_code}')
                 if response.status_code in (200, 202):
                     self.stdout.write(self.style.SUCCESS(f'  ✅ Success with full headers (HTTP {response.status_code})'))
@@ -171,7 +340,7 @@ class Command(BaseCommand):
                 try:
                     self.stdout.write('  Approach 2: Minimal headers...')
                     minimal_headers = self.get_request_headers(base_url, minimal=True)
-                    response = requests.get(sitemap_url, headers=minimal_headers, timeout=30, allow_redirects=True)
+                    response = requests.get(sitemap_url, headers=minimal_headers, timeout=30, allow_redirects=True, proxies=proxies)
                     self.stdout.write(f'    Sitemap response: HTTP {response.status_code}')
                     if response.status_code in (200, 202):
                         self.stdout.write(self.style.SUCCESS(f'  ✅ Success with minimal headers (HTTP {response.status_code})'))
@@ -200,7 +369,7 @@ class Command(BaseCommand):
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                         'Referer': f"{base_url}/",
                     }
-                    response = requests.get(sitemap_url, headers=simple_headers, timeout=30, allow_redirects=True)
+                    response = requests.get(sitemap_url, headers=simple_headers, timeout=30, allow_redirects=True, proxies=proxies)
                     self.stdout.write(f'    Sitemap response: HTTP {response.status_code}')
                     if response.status_code in (200, 202):
                         self.stdout.write(self.style.SUCCESS(f'  ✅ Success with simple headers (HTTP {response.status_code})'))
@@ -225,9 +394,20 @@ class Command(BaseCommand):
             if not response or (hasattr(response, 'status_code') and response.status_code not in (200, 202)):
                 try:
                     self.stdout.write('  Approach 4: Using curl (subprocess)...')
+                    # Build curl command
+                    curl_cmd = ['curl', '-s', '-L', '--max-time', '30']
+                    
+                    # Add proxy if available
+                    if proxies and proxies.get('http'):
+                        proxy_url = proxies['http']
+                        # Extract proxy details for curl format: http://user:pass@host:port
+                        curl_cmd.extend(['--proxy', proxy_url])
+                    
+                    curl_cmd.append(sitemap_url)
+                    
                     # Use curl to fetch the sitemap
                     result = subprocess.run(
-                        ['curl', '-s', '-L', '--max-time', '30', sitemap_url],
+                        curl_cmd,
                         capture_output=True,
                         text=True,
                         timeout=35
@@ -338,7 +518,7 @@ class Command(BaseCommand):
                 # Parse each post sitemap
                 for i, post_sitemap_url in enumerate(post_sitemaps, 1):
                     self.stdout.write(f'Parsing sitemap {i}/{len(post_sitemaps)}: {post_sitemap_url}')
-                    nested_posts = self.parse_sitemap(post_sitemap_url, base_url=base_url)
+                    nested_posts = self.parse_sitemap(post_sitemap_url, base_url=base_url, proxies=proxies)
                     posts.extend(nested_posts)
                     self.stdout.write(f'  Found {len(nested_posts)} posts\n')
                     

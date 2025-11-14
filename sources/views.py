@@ -913,10 +913,21 @@ def source_edit(request, pk):
                             
                             # Step 1: Extract content
                             print(f"  [BACKGROUND] [{idx}/{len(created_content_ids)}] Processing: {content.title[:60]}...", flush=True)
-                            if processing_service.extract_content(content, force=False):
-                                extracted_count += 1
-                                content.refresh_from_db()
-                                
+                            extraction_succeeded = False
+                            try:
+                                if processing_service.extract_content(content, force=False):
+                                    extracted_count += 1
+                                    content.refresh_from_db()
+                                    extraction_succeeded = True
+                                else:
+                                    extracted_failed += 1
+                                    print(f"    [BACKGROUND] ✗ Failed to extract content from: {content.link[:80]}...", flush=True)
+                            except Exception as extract_error:
+                                extracted_failed += 1
+                                print(f"    [BACKGROUND] ✗ Exception extracting content: {str(extract_error)}", flush=True)
+                            
+                            # Only proceed with translate/tag/embed if extraction succeeded
+                            if extraction_succeeded:
                                 # Step 2: Translate (if source language is not English)
                                 if content.source.language != 'en' and content.content and content.content.strip():
                                     if processing_service.translate_content(content):
@@ -944,8 +955,6 @@ def source_edit(request, pk):
                                             embedded_failed += 1
                                     else:
                                         print(f"    [BACKGROUND] Skipping embedding (no tags)", flush=True)
-                            else:
-                                extracted_failed += 1
                             
                             if idx % 10 == 0:
                                 print(f"  [BACKGROUND] Progress: {idx}/{len(created_content_ids)} (extracted: {extracted_count}, translated: {translated_count}, tagged: {tagged_count}, embedded: {embedded_count})...", flush=True)
