@@ -137,6 +137,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # For production, where collectstatic will gather files
 
+# Media files (user uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'  # Directory where uploaded files will be stored
+
 # Only add STATICFILES_DIRS if the directory exists
 static_dir = BASE_DIR / 'static'
 if static_dir.exists():

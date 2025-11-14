@@ -566,20 +566,14 @@ def source_edit(request, pk):
                         print(f"  [BACKGROUND] ✗ No ebook file found", flush=True)
                         return
                     
-                    # Open file with UTF-8 encoding
+                    # Read file as binary and decode with UTF-8 (handles encoding issues)
+                    ebook_file.open('rb')
                     try:
-                        ebook_file.open('r')
-                        text = ebook_file.read()
+                        raw_bytes = ebook_file.read()
+                        # Decode with UTF-8, replacing invalid characters if any
+                        text = raw_bytes.decode('utf-8', errors='replace')
+                    finally:
                         ebook_file.close()
-                    except UnicodeDecodeError:
-                        # If UTF-8 fails, try with latin-1 or errors='replace'
-                        ebook_file.open('rb')
-                        try:
-                            raw_bytes = ebook_file.read()
-                            # Try UTF-8 with error handling
-                            text = raw_bytes.decode('utf-8', errors='replace')
-                        finally:
-                            ebook_file.close()
                     
                     if not text or not text.strip():
                         print(f"  [BACKGROUND] ✗ Ebook file is empty", flush=True)
