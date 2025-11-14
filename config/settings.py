@@ -167,8 +167,45 @@ GOOGLE_CSE_ID = os.environ.get('GOOGLE_CSE_ID', None)
 API_TOKEN = os.environ.get('API_TOKEN', '')
 
 LOG_DIR = os.path.join(BASE_DIR, "logs")
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+# Try to create log directory, but don't fail if we can't
+try:
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+except (OSError, PermissionError):
+    pass  # Directory creation failed, will use console logging only
+
+# Check if we can write to the log file
+LOG_FILE = os.path.join(LOG_DIR, "django.log")
+CAN_WRITE_LOG_FILE = False
+if os.path.exists(LOG_DIR):
+    try:
+        # Try to create/write to the log file
+        test_file = os.path.join(LOG_DIR, ".test_write")
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        CAN_WRITE_LOG_FILE = True
+    except (OSError, PermissionError):
+        CAN_WRITE_LOG_FILE = False
+
+# Build handlers list - always include console, conditionally include file
+handlers = {
+    "console": {
+        "class": "logging.StreamHandler",
+        "formatter": "simple",
+    },
+}
+
+root_handlers = ["console"]
+
+if CAN_WRITE_LOG_FILE:
+    handlers["file"] = {
+        "level": "INFO",
+        "class": "logging.FileHandler",
+        "filename": LOG_FILE,
+        "formatter": "verbose",
+    }
+    root_handlers.append("file")
 
 LOGGING = {
     "version": 1,
@@ -183,30 +220,19 @@ LOGGING = {
             "style": "{",
         },
     },
-    "handlers": {
-        "file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(LOG_DIR, "django.log"),
-            "formatter": "verbose",
-        },
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
-        },
-    },
+    "handlers": handlers,
     "root": {
-        "handlers": ["file", "console"],
+        "handlers": root_handlers,
         "level": "INFO",
     },
     "loggers": {
         "django": {
-            "handlers": ["file"],
+            "handlers": root_handlers,
             "level": "INFO",
             "propagate": True,
         },
         "django.request": {
-            "handlers": ["file"],
+            "handlers": root_handlers,
             "level": "ERROR",
             "propagate": False,
         },
