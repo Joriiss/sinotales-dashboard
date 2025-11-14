@@ -451,7 +451,7 @@ def source_edit(request, pk):
                 from django.utils import timezone
                 from urllib.parse import urlparse
                 import requests
-                from bs4 import BeautifulSoup
+                import xml.etree.ElementTree as ET
                 import time
                 import subprocess
                 
@@ -623,26 +623,66 @@ def source_edit(request, pk):
                     content_preview = response.content[:500].decode('utf-8', errors='ignore') if isinstance(response.content, bytes) else str(response.content)[:500]
                     print(f"  [BACKGROUND] Content preview (first 500 chars): {content_preview[:200]}...", flush=True)
                     
-                    # Parse XML
+                    # Parse XML using ElementTree
                     try:
-                        soup = BeautifulSoup(response.content, 'xml')
+                        # Get content as bytes or string
+                        if isinstance(response.content, bytes):
+                            xml_content = response.content
+                        else:
+                            xml_content = response.content.encode('utf-8')
+                        
+                        root = ET.fromstring(xml_content)
                     except Exception as e:
                         print(f"  [BACKGROUND] ✗ Failed to parse XML: {type(e).__name__}: {str(e)}", flush=True)
                         return posts
                     
-                    # Check if it's a sitemap index (try both with and without namespace)
-                    sitemapindex = soup.find('sitemapindex') or soup.find('sitemapindex', xmlns='http://www.sitemaps.org/schemas/sitemap/0.9')
+                    # Define namespace for sitemap XML
+                    # Sitemaps use: http://www.sitemaps.org/schemas/sitemap/0.9
+                    # ElementTree includes full namespace URI in tag names when default namespace is used
+                    sitemap_ns = 'http://www.sitemaps.org/schemas/sitemap/0.9'
+                    namespace = {'sitemap': sitemap_ns}
                     
-                    # Debug: Check what tags we found
-                    all_tags = [tag.name for tag in soup.find_all()]
-                    print(f"  [BACKGROUND] Found XML tags: {set(all_tags)}", flush=True)
+                    # Helper function to find elements with or without namespace
+                    def find_with_ns(elem, tag_name):
+                        """Find element with or without namespace"""
+                        # Try with namespace prefix
+                        result = elem.find(f'.//sitemap:{tag_name}', namespace)
+                        if result is not None:
+                            return result
+                        # Try without namespace (full URI)
+                        result = elem.find(f'.//{{{sitemap_ns}}}{tag_name}')
+                        if result is not None:
+                            return result
+                        # Try without any namespace
+                        return elem.find(f'.//{tag_name}')
                     
-                    if sitemapindex:
+                    def findall_with_ns(elem, tag_name):
+                        """Find all elements with or without namespace"""
+                        results = elem.findall(f'.//sitemap:{tag_name}', namespace)
+                        if results:
+                            return results
+                        results = elem.findall(f'.//{{{sitemap_ns}}}{tag_name}')
+                        if results:
+                            return results
+                        return elem.findall(f'.//{tag_name}')
+                    
+                    # Check if it's a sitemap index
+                    sitemapindex = find_with_ns(root, 'sitemapindex')
+                    has_sitemap_elements = len(findall_with_ns(root, 'sitemap')) > 0
+                    
+                    if sitemapindex is not None or root.tag.endswith('sitemapindex') or has_sitemap_elements:
                         print(f"  [BACKGROUND] Found sitemap index, filtering for post sitemaps...", flush=True)
                         sitemap_urls = []
-                        for sitemap_tag in soup.find_all('sitemap'):
-                            loc = sitemap_tag.find('loc')
-                            if loc and loc.text:
+                        
+                        # Find all sitemap elements (try with and without namespace)
+                        sitemap_elements = findall_with_ns(root, 'sitemap')
+                        if not sitemap_elements:
+                            sitemap_elements = [elem for elem in root.iter() if elem.tag.endswith('sitemap')]
+                        
+                        for sitemap_elem in sitemap_elements:
+                            # Find loc element (try with and without namespace)
+                            loc = find_with_ns(sitemap_elem, 'loc')
+                            if loc is not None and loc.text:
                                 sitemap_urls.append(loc.text.strip())
                         
                         print(f"  [BACKGROUND] Found {len(sitemap_urls)} total sitemap(s) in index", flush=True)
@@ -667,31 +707,27 @@ def source_edit(request, pk):
                     else:
                         # Regular sitemap with URLs
                         print(f"  [BACKGROUND] Parsing regular sitemap (not an index)...", flush=True)
-                        url_tags = soup.find_all('url')
-                        print(f"  [BACKGROUND] Found {len(url_tags)} <url> tags", flush=True)
                         
-                        for url_tag in url_tags:
-                            loc = url_tag.find('loc')
-                            if not loc or not loc.text:
+                        # Find all url elements (try with and without namespace)
+                        url_elements = findall_with_ns(root, 'url')
+                        if not url_elements:
+                            url_elements = [elem for elem in root.iter() if elem.tag.endswith('url')]
+                        
+                        print(f"  [BACKGROUND] Found {len(url_elements)} <url> tags", flush=True)
+                        
+                        for url_elem in url_elements:
+                            # Find loc element (try with and without namespace)
+                            loc = find_with_ns(url_elem, 'loc')
+                            if loc is None or not loc.text:
                                 continue
                             
                             url = loc.text.strip()
                             
-                            # Extract lastmod (date)
-                            # BeautifulSoup with 'xml' parser should handle namespaces automatically
-                            lastmod = url_tag.find('lastmod')
-                            
+                            # Extract lastmod (date) - try with and without namespace
+                            lastmod = find_with_ns(url_elem, 'lastmod')
                             date_str = ''
-                            if lastmod:
-                                # Try multiple ways to get the text content
-                                if hasattr(lastmod, 'get_text'):
-                                    date_str = lastmod.get_text(strip=True)
-                                elif hasattr(lastmod, 'text') and lastmod.text:
-                                    date_str = str(lastmod.text).strip()
-                                elif hasattr(lastmod, 'string') and lastmod.string:
-                                    date_str = str(lastmod.string).strip()
-                                elif hasattr(lastmod, 'contents') and lastmod.contents:
-                                    date_str = ''.join(str(c).strip() for c in lastmod.contents if c and str(c).strip())
+                            if lastmod is not None and lastmod.text:
+                                date_str = lastmod.text.strip()
                             
                             # Debug: log first few dates to verify extraction
                             if len(posts) < 3:
