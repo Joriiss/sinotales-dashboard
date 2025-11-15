@@ -493,6 +493,7 @@ Response:"""
         filtered_china = 0
         posts_before_content_filter = len(posts)
         filtered_posts = []
+        filtered_out_posts = []  # Store filtered posts with reasons
         ollama_errors = 0
         
         if use_ollama:
@@ -504,43 +505,57 @@ Response:"""
                         post, ollama_model, check_china=filter_china
                     )
                     
-                    # Skip job postings
+                    # Store filtering results
+                    post['_ollama_is_job'] = is_job
+                    post['_ollama_is_non_travel'] = is_non_travel
+                    post['_ollama_is_china_related'] = is_china_related_ollama
+                    post['_ollama_reasoning'] = reasoning
+                    
+                    # Determine filter reason
+                    filter_reason = None
                     if is_job:
                         filtered_jobs += 1
-                        continue
-                    
-                    # Skip non-travel content
-                    if is_non_travel:
+                        filter_reason = "Job Posting"
+                    elif is_non_travel:
                         filtered_non_travel += 1
-                        continue
-                    
-                    # Apply China filter if enabled
-                    if filter_china and not is_china_related_ollama:
+                        filter_reason = "Non-Travel Content"
+                    elif filter_china and not is_china_related_ollama:
                         filtered_china += 1
-                        continue
+                        filter_reason = "Not China-Related"
                     
-                    # Store reasoning in post for display
-                    post['_ollama_reasoning'] = reasoning
-                    filtered_posts.append(post)
+                    if filter_reason:
+                        # Store filtered post with reason
+                        post['_filter_reason'] = filter_reason
+                        filtered_out_posts.append(post)
+                    else:
+                        # Post passed all filters
+                        filtered_posts.append(post)
                     
                 except Exception as e:
                     ollama_errors += 1
                     # Fall back to keyword-based filtering on error
                     self.stdout.write(self.style.WARNING(f'⚠️  Ollama error for post "{post.get("title", "")[:50]}": {str(e)[:100]}'))
                     # Use keyword-based as fallback
+                    filter_reason = None
                     if self.is_job_posting(post):
                         filtered_jobs += 1
-                        continue
-                    if self.is_non_travel_content(post):
+                        filter_reason = "Job Posting (keyword-based fallback)"
+                    elif self.is_non_travel_content(post):
                         filtered_non_travel += 1
-                        continue
-                    if filter_china:
+                        filter_reason = "Non-Travel Content (keyword-based fallback)"
+                    elif filter_china:
                         post_url = post.get('url', '')
                         post_title = post.get('title', '')
                         if not (self.is_china_related(post_url) or (post_title and self.is_china_related(post_title))):
                             filtered_china += 1
-                            continue
-                    filtered_posts.append(post)
+                            filter_reason = "Not China-Related (keyword-based fallback)"
+                    
+                    if filter_reason:
+                        post['_filter_reason'] = filter_reason
+                        post['_ollama_reasoning'] = f"Ollama error: {str(e)[:200]}"
+                        filtered_out_posts.append(post)
+                    else:
+                        filtered_posts.append(post)
             
             if ollama_errors > 0:
                 self.stdout.write(self.style.WARNING(f'⚠️  {ollama_errors} posts processed with keyword-based fallback due to Ollama errors\n'))
@@ -570,16 +585,50 @@ Response:"""
                 filtered_china = original_after_existing - len(filtered_posts)
         
         posts = filtered_posts
-        if filtered_jobs > 0:
-            self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_jobs} job postings\n'))
-        if filtered_non_travel > 0:
-            self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_non_travel} non-travel content posts\n'))
-        if filter_china and filtered_china > 0:
-            self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_china} non-China-related posts\n'))
         
-        # Display results
+        # Display filtered out posts first (if using Ollama)
+        if use_ollama and filtered_out_posts:
+            self.stdout.write(self.style.WARNING(f'\n{"="*60}'))
+            self.stdout.write(self.style.WARNING(f'❌ FILTERED OUT ({len(filtered_out_posts)} posts):\n'))
+            self.stdout.write(self.style.WARNING(f'{"="*60}\n'))
+            
+            # Group by filter reason
+            by_reason = {}
+            for post in filtered_out_posts:
+                reason = post.get('_filter_reason', 'Unknown')
+                if reason not in by_reason:
+                    by_reason[reason] = []
+                by_reason[reason].append(post)
+            
+            # Display each group
+            for reason, reason_posts in by_reason.items():
+                self.stdout.write(self.style.WARNING(f'\n🔴 {reason} ({len(reason_posts)} posts):\n'))
+                for i, post in enumerate(reason_posts, 1):
+                    self.stdout.write(f'  {i}. {post["title"]}')
+                    self.stdout.write(f'     URL: {post["url"]}')
+                    if post.get('date'):
+                        self.stdout.write(f'     Date: {post["date"]}')
+                    # Show Ollama reasoning
+                    reasoning = post.get('_ollama_reasoning', '')
+                    if reasoning:
+                        # Show full reasoning for filtered posts
+                        self.stdout.write(self.style.WARNING(f'     Reason: {reasoning}'))
+                    self.stdout.write('')
+        
+        # Display summary of filtered posts
+        if not use_ollama:
+            if filtered_jobs > 0:
+                self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_jobs} job postings\n'))
+            if filtered_non_travel > 0:
+                self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_non_travel} non-travel content posts\n'))
+            if filter_china and filtered_china > 0:
+                self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_china} non-China-related posts\n'))
+        
+        # Display results that passed filters
         if posts:
-            self.stdout.write(self.style.SUCCESS(f'\n✅ Found {len(posts)} new posts:\n'))
+            self.stdout.write(self.style.SUCCESS(f'\n{"="*60}'))
+            self.stdout.write(self.style.SUCCESS(f'✅ PASSED FILTERS ({len(posts)} posts):\n'))
+            self.stdout.write(self.style.SUCCESS(f'{"="*60}\n'))
             for i, post in enumerate(posts, 1):
                 self.stdout.write(f'{i}. {post["title"]}')
                 self.stdout.write(f'   URL: {post["url"]}')
@@ -590,8 +639,7 @@ Response:"""
                     # Show Ollama reasoning
                     reasoning = post.get('_ollama_reasoning', '')
                     if reasoning:
-                        reasoning_preview = reasoning[:150] + "..." if len(reasoning) > 150 else reasoning
-                        self.stdout.write(f'   [Ollama] {reasoning_preview}')
+                        self.stdout.write(self.style.SUCCESS(f'   ✓ Passed: {reasoning}'))
                 elif filter_china:
                     is_china = self.is_china_related(post.get('url', '')) or self.is_china_related(post.get('title', ''))
                     if is_china:
