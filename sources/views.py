@@ -1365,10 +1365,12 @@ def source_edit(request, pk):
                 )
                 # Combine both sets (URLs might be in either field)
                 existing_urls_raw = existing_external_ids_raw | existing_links_raw
+                # Count actual Content objects, not unique URLs
+                existing_count = Content.objects.filter(source=source_refresh).count()
                 # Normalize existing URLs (remove trailing slashes for comparison)
                 existing_urls_normalized = {url.rstrip('/') for url in existing_urls_raw if url}
-                print(f"  [BACKGROUND] {len(existing_urls_raw)} posts already exist in database", flush=True)
-                print(f"  [BACKGROUND] (checked both external_id and link fields)", flush=True)
+                print(f"  [BACKGROUND] {existing_count} posts already exist in database", flush=True)
+                print(f"  [BACKGROUND] (checked both external_id and link fields for {len(existing_urls_normalized)} unique URLs)", flush=True)
                 
                 # Filter out existing posts first (before applying content filters)
                 if existing_urls_normalized:
@@ -1377,6 +1379,23 @@ def source_edit(request, pk):
                     filtered_existing = posts_before_existing - len(posts)
                     if filtered_existing > 0:
                         print(f"  [BACKGROUND] Filtered out {filtered_existing} existing posts", flush=True)
+                
+                # Step 1: If filter_china is enabled, apply keyword-based URL filter first
+                filter_china = source_refresh.filter_china
+                filtered_china_keyword = 0
+                if filter_china:
+                    posts_before_china_keyword = len(posts)
+                    filtered_posts_china = []
+                    for post in posts:
+                        post_url = post.get('url', '')
+                        post_title = post.get('title', '')
+                        # Check URL first (most reliable), then title
+                        if is_china_related(post_url) or (post_title and is_china_related(post_title)):
+                            filtered_posts_china.append(post)
+                    posts = filtered_posts_china
+                    filtered_china_keyword = posts_before_china_keyword - len(posts)
+                    if filtered_china_keyword > 0:
+                        print(f"  [BACKGROUND] Filtered out {filtered_china_keyword} non-China-related posts (keyword-based URL filter)", flush=True)
                 
                 # Create Content entries for each post
                 created_count = 0
@@ -1515,13 +1534,12 @@ Response:"""
                     
                     return False, False, True if not check_china else False, "Failed to parse Ollama response"
                 
-                # Apply filtering (Ollama if available, otherwise keyword-based)
-                filter_china = source_refresh.filter_china
-                original_count = len(posts)
+                # Step 2: Apply Ollama filtering (always, if available) for job postings, non-travel content, and China relevance
+                original_count_after_china = len(posts)
                 filtered_posts = []
                 filtered_jobs = 0
                 filtered_non_travel = 0
-                filtered_china_count = 0
+                filtered_china_ollama = 0
                 ollama_used = False
                 ollama_errors = 0
                 
@@ -1536,6 +1554,8 @@ Response:"""
                         
                         for post in posts:
                             try:
+                                # Always check China relevance with Ollama if filter_china is enabled
+                                # (even though we already did keyword filtering, Ollama can be more nuanced)
                                 is_job, is_non_travel, is_china_related_ollama, reasoning = filter_post_with_ollama(
                                     post, ollama_model, check_china=filter_china
                                 )
@@ -1550,9 +1570,9 @@ Response:"""
                                     filtered_non_travel += 1
                                     continue
                                 
-                                # Apply China filter if enabled
+                                # Apply China filter if enabled (Ollama can refine the keyword-based filter)
                                 if filter_china and not is_china_related_ollama:
-                                    filtered_china_count += 1
+                                    filtered_china_ollama += 1
                                     continue
                                 
                                 # Post passed all filters
@@ -1567,12 +1587,8 @@ Response:"""
                                 if is_non_travel_content_keyword(post):
                                     filtered_non_travel += 1
                                     continue
-                                if filter_china:
-                                    post_url = post.get('url', '')
-                                    post_title = post.get('title', '')
-                                    if not (is_china_related(post_url) or (post_title and is_china_related(post_title))):
-                                        filtered_china_count += 1
-                                        continue
+                                # If filter_china is enabled, we already filtered by keyword, so keep the post
+                                # (unless Ollama explicitly says it's not China-related, but we can't know that here)
                                 filtered_posts.append(post)
                         
                         if ollama_errors > 0:
@@ -1583,7 +1599,7 @@ Response:"""
                 
                 # Fallback to keyword-based filtering if Ollama not used
                 if not ollama_used:
-                    print(f"  [BACKGROUND] Using keyword-based filtering", flush=True)
+                    print(f"  [BACKGROUND] Using keyword-based filtering for job postings and non-travel content", flush=True)
                     for post in posts:
                         # Skip job postings
                         if is_job_posting_keyword(post):
@@ -1595,13 +1611,8 @@ Response:"""
                             filtered_non_travel += 1
                             continue
                         
-                        # Apply China filter if enabled
-                        if filter_china:
-                            post_url = post.get('url', '')
-                            post_title = post.get('title', '')
-                            if not (is_china_related(post_url) or (post_title and is_china_related(post_title))):
-                                filtered_china_count += 1
-                                continue
+                        # China filter already applied above with keyword-based URL filter
+                        # No need to check again here
                         
                         filtered_posts.append(post)
                 
@@ -1609,15 +1620,15 @@ Response:"""
                 
                 # Log filtering results
                 if filtered_jobs > 0:
-                    print(f"  [BACKGROUND] Filtered out {filtered_jobs} job postings", flush=True)
+                    print(f"  [BACKGROUND] Filtered out {filtered_jobs} job postings (Ollama)", flush=True)
                 if filtered_non_travel > 0:
-                    print(f"  [BACKGROUND] Filtered out {filtered_non_travel} non-travel content posts", flush=True)
-                if filter_china and filtered_china_count > 0:
-                    print(f"  [BACKGROUND] Filtered out {filtered_china_count} non-China-related posts (filter_china=True)", flush=True)
+                    print(f"  [BACKGROUND] Filtered out {filtered_non_travel} non-travel content posts (Ollama)", flush=True)
+                if filter_china and filtered_china_ollama > 0:
+                    print(f"  [BACKGROUND] Filtered out {filtered_china_ollama} non-China-related posts (Ollama refinement)", flush=True)
                 
-                filtered_total = original_count - len(posts)
+                filtered_total = original_count_after_china - len(posts)
                 if filtered_total > 0:
-                    print(f"  [BACKGROUND] Total filtered: {filtered_total} posts, {len(posts)} posts remaining", flush=True)
+                    print(f"  [BACKGROUND] Total filtered by Ollama: {filtered_total} posts, {len(posts)} posts remaining", flush=True)
                 
                 with transaction.atomic():
                     for i, post in enumerate(posts, 1):
