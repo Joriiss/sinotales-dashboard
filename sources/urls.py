@@ -26,6 +26,7 @@ urlpatterns = [
     
     # API URLs
     path('api/youtube-channels/', views.youtube_channels_api, name='youtube_channels_api'),
+    path('api/blog-sources/', views.blog_sources_api, name='blog_sources_api'),
     path('api/video-content/', views.create_video_content_api, name='create_video_content_api'),
     path('api/video-content', views.create_video_content_api, name='create_video_content_api_no_slash'),  # Support both with and without trailing slash
     

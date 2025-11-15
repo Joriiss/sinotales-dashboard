@@ -2439,6 +2439,45 @@ def youtube_channels_api(request):
 
 
 @csrf_exempt
+def blog_sources_api(request):
+    """API endpoint to get all blog sources with sitemap links (token-based authentication)"""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Get all blog sources that have a sitemap link
+        blog_sources = Source.objects.filter(
+            source_type='blog',
+            sitemap__isnull=False
+        ).exclude(sitemap='').order_by('name')
+        
+        # Build response data
+        sources = []
+        for source in blog_sources:
+            sources.append({
+                'name': source.name,
+                'sitemap': source.sitemap,
+                'filter_china': source.filter_china
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'sources': sources,
+            'count': len(sources)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
 def create_video_content_api(request):
     """API endpoint to create video content (token-based authentication)"""
     if request.method != 'POST':
