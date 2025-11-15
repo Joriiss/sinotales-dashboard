@@ -780,6 +780,35 @@ def source_edit(request, pk):
         import threading
         from django.db import connection
         
+        def has_language_code(url):
+            """
+            Check if a URL contains a language code in the path (e.g., /es/, /pt/, /ja/).
+            Returns True if the URL contains a language code, False otherwise.
+            English URLs typically don't have a language code.
+            """
+            parsed = urlparse(url)
+            path = parsed.path.lower()
+            
+            # Common language codes (ISO 639-1 two-letter codes)
+            # These appear in URLs like /es/page, /pt/page, /ja/page, etc.
+            language_codes = [
+                '/es/', '/pt/', '/ja/', '/ko/', '/de/', '/fr/', '/it/', '/ru/', '/zh/',
+                '/ar/', '/hi/', '/nl/', '/sv/', '/pl/', '/tr/', '/vi/', '/th/', '/id/',
+                '/cs/', '/hu/', '/ro/', '/fi/', '/da/', '/no/', '/he/', '/uk/', '/el/',
+                '/bg/', '/hr/', '/sk/', '/sl/', '/et/', '/lv/', '/lt/', '/mt/', '/ga/',
+                '/cy/', '/is/', '/mk/', '/sq/', '/sr/', '/bs/', '/ca/', '/eu/', '/gl/',
+                # Also check for language codes at the start of path (without leading slash)
+                'es/', 'pt/', 'ja/', 'ko/', 'de/', 'fr/', 'it/', 'ru/', 'zh/',
+                'ar/', 'hi/', 'nl/', 'sv/', 'pl/', 'tr/', 'vi/', 'th/', 'id/',
+            ]
+            
+            # Check if any language code appears in the path
+            for code in language_codes:
+                if code in path:
+                    return True
+            
+            return False
+
         def is_china_related(url):
             """
             Check if a URL is related to China based on keywords in the URL.
@@ -1295,6 +1324,7 @@ def source_edit(request, pk):
                         
                         print(f"  [BACKGROUND] Found {len(url_elements)} <url> tags", flush=True)
                         
+                        filtered_language_count = 0
                         for url_elem in url_elements:
                             # Find loc element (try with and without namespace)
                             loc = find_with_ns(url_elem, 'loc')
@@ -1302,6 +1332,11 @@ def source_edit(request, pk):
                                 continue
                             
                             url = loc.text.strip()
+                            
+                            # Filter out non-English versions (URLs with language codes)
+                            if has_language_code(url):
+                                filtered_language_count += 1
+                                continue
                             
                             # Extract lastmod (date) - try with and without namespace
                             lastmod = find_with_ns(url_elem, 'lastmod')
@@ -1331,6 +1366,8 @@ def source_edit(request, pk):
                                 'date': date_str
                             })
                         
+                        if filtered_language_count > 0:
+                            print(f"  [BACKGROUND] ⏭️  Filtered out {filtered_language_count} non-English URLs (language codes)", flush=True)
                         print(f"  [BACKGROUND] Extracted {len(posts)} posts from sitemap", flush=True)
                     
                     return posts
