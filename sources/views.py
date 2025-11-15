@@ -779,6 +779,7 @@ def source_edit(request, pk):
         # Run post import in background thread to avoid timeout
         import threading
         from django.db import connection
+        from urllib.parse import urlparse
         
         def has_language_code(url):
             """
@@ -789,17 +790,19 @@ def source_edit(request, pk):
             parsed = urlparse(url)
             path = parsed.path.lower()
             
-            # Common language codes (ISO 639-1 two-letter codes)
+            # Common language codes (ISO 639-1 two-letter codes and variants)
             # These appear in URLs like /es/page, /pt/page, /ja/page, etc.
             language_codes = [
-                '/es/', '/pt/', '/ja/', '/ko/', '/de/', '/fr/', '/it/', '/ru/', '/zh/',
+                '/es/', '/pt/', '/ja/', '/ko/', '/de/', '/fr/', '/it/', '/ru/', '/zh/', '/zh_cn/', '/zh_tw/',
                 '/ar/', '/hi/', '/nl/', '/sv/', '/pl/', '/tr/', '/vi/', '/th/', '/id/',
                 '/cs/', '/hu/', '/ro/', '/fi/', '/da/', '/no/', '/he/', '/uk/', '/el/',
                 '/bg/', '/hr/', '/sk/', '/sl/', '/et/', '/lv/', '/lt/', '/mt/', '/ga/',
                 '/cy/', '/is/', '/mk/', '/sq/', '/sr/', '/bs/', '/ca/', '/eu/', '/gl/',
+                '/bn/', '/ur/', '/mr/', '/te/', '/ta/', '/jv/', '/gu/', '/ms/', '/ml/', '/kn/', '/pa/', '/ne/',
                 # Also check for language codes at the start of path (without leading slash)
-                'es/', 'pt/', 'ja/', 'ko/', 'de/', 'fr/', 'it/', 'ru/', 'zh/',
+                'es/', 'pt/', 'ja/', 'ko/', 'de/', 'fr/', 'it/', 'ru/', 'zh/', 'zh_cn/', 'zh_tw/',
                 'ar/', 'hi/', 'nl/', 'sv/', 'pl/', 'tr/', 'vi/', 'th/', 'id/',
+                'bn/', 'ur/', 'mr/', 'te/', 'ta/', 'jv/', 'gu/', 'ms/', 'ml/', 'kn/', 'pa/', 'ne/',
             ]
             
             # Check if any language code appears in the path
@@ -905,7 +908,6 @@ def source_edit(request, pk):
             try:
                 from django.db import transaction, IntegrityError
                 from django.utils import timezone
-                from urllib.parse import urlparse
                 import requests
                 import xml.etree.ElementTree as ET
                 import time
@@ -1076,7 +1078,9 @@ def source_edit(request, pk):
                     # Approach 1: Use curl first (most reliable)
                     try:
                         print(f"    [BACKGROUND] Trying Approach 1: Using curl...", flush=True)
-                        curl_cmd = ['curl', '-s', '-L', '--max-time', '30']
+                        # Use much longer timeout for very large sitemaps (especially when using proxy)
+                        # For 15,000+ entries, allow up to 5 minutes (300 seconds)
+                        curl_cmd = ['curl', '-s', '-L', '--max-time', '300', '--connect-timeout', '30']
                         
                         # Add proxy if available
                         if proxies and proxies.get('http'):
@@ -1087,13 +1091,14 @@ def source_edit(request, pk):
                         
                         curl_cmd.append(sitemap_url)
                         
+                        print(f"    [BACKGROUND] (This may take several minutes for large sitemaps...)", flush=True)
                         result = subprocess.run(
                             curl_cmd,
                             capture_output=True,
                             text=True,
                             encoding='utf-8',
                             errors='replace',  # Replace invalid UTF-8 sequences instead of failing
-                            timeout=35
+                            timeout=320  # 300s curl timeout + 20s buffer
                         )
                         print(f"    [BACKGROUND] Curl return code: {result.returncode}", flush=True)
                         if result.returncode != 0:
@@ -2555,7 +2560,7 @@ def create_video_content_api(request):
                 else:
                     print(f"  [FILTER] No China-related keywords found in title, description, or tags", flush=True)
                     print(f"  [FILTER] Matched keywords: (none)", flush=True)
-                print(f"{'='*60}\n", flush=True)
+                    print(f"{'='*60}\n", flush=True)
                 
                 return JsonResponse({
                     'success': False,

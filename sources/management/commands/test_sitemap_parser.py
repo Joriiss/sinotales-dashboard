@@ -17,6 +17,9 @@ from pathlib import Path
 from django.conf import settings
 from sources.models import Source, Content
 from typing import Dict, Optional, Tuple
+import xml.etree.ElementTree as ET
+from io import BytesIO
+import tempfile
 
 
 class Command(BaseCommand):
@@ -76,17 +79,19 @@ class Command(BaseCommand):
         parsed = urlparse(url)
         path = parsed.path.lower()
         
-        # Common language codes (ISO 639-1 two-letter codes)
+        # Common language codes (ISO 639-1 two-letter codes and variants)
         # These appear in URLs like /es/page, /pt/page, /ja/page, etc.
         language_codes = [
-            '/es/', '/pt/', '/ja/', '/ko/', '/de/', '/fr/', '/it/', '/ru/', '/zh/',
+            '/es/', '/pt/', '/ja/', '/ko/', '/de/', '/fr/', '/it/', '/ru/', '/zh/', '/zh_cn/', '/zh_tw/',
             '/ar/', '/hi/', '/nl/', '/sv/', '/pl/', '/tr/', '/vi/', '/th/', '/id/',
             '/cs/', '/hu/', '/ro/', '/fi/', '/da/', '/no/', '/he/', '/uk/', '/el/',
             '/bg/', '/hr/', '/sk/', '/sl/', '/et/', '/lv/', '/lt/', '/mt/', '/ga/',
             '/cy/', '/is/', '/mk/', '/sq/', '/sr/', '/bs/', '/ca/', '/eu/', '/gl/',
+            '/bn/', '/ur/', '/mr/', '/te/', '/ta/', '/jv/', '/gu/', '/ms/', '/ml/', '/kn/', '/pa/', '/ne/',
             # Also check for language codes at the start of path (without leading slash)
-            'es/', 'pt/', 'ja/', 'ko/', 'de/', 'fr/', 'it/', 'ru/', 'zh/',
+            'es/', 'pt/', 'ja/', 'ko/', 'de/', 'fr/', 'it/', 'ru/', 'zh/', 'zh_cn/', 'zh_tw/',
             'ar/', 'hi/', 'nl/', 'sv/', 'pl/', 'tr/', 'vi/', 'th/', 'id/',
+            'bn/', 'ur/', 'mr/', 'te/', 'ta/', 'jv/', 'gu/', 'ms/', 'ml/', 'kn/', 'pa/', 'ne/',
         ]
         
         # Check if any language code appears in the path
@@ -848,7 +853,7 @@ Response:"""
             for mode in modes_to_try:
                 params = {
                     'page': 1,
-                    'page_size': 25,  # Fetch multiple proxies
+                    'page_size': 50,  # Fetch multiple proxies
                 }
                 if mode:
                     params['mode'] = mode
@@ -881,7 +886,7 @@ Response:"""
             # (Only if we're not using an API token, since API tokens don't work with basic auth)
             if (not response or (hasattr(response, 'status_code') and response.status_code != 200)) and not api_token and proxy_username and proxy_password:
                 self.stdout.write('  Token auth failed, trying basic auth...')
-                params = {'page': 1, 'page_size': 25}  # Try without mode for basic auth
+                params = {'page': 1, 'page_size': 50}  # Try without mode for basic auth
                 try:
                     auth = (proxy_username, proxy_password)
                     response = requests.get(api_url, auth=auth, params=params, timeout=10, verify=False)
@@ -1092,22 +1097,31 @@ Response:"""
                 try:
                     self.stdout.write('  Approach 4: Using curl (subprocess)...')
                     # Build curl command
-                    curl_cmd = ['curl', '-s', '-L', '--max-time', '30']
+                    # Use much longer timeout for very large sitemaps (especially when using proxy)
+                    # For 15,000+ entries, allow up to 5 minutes (300 seconds)
+                    curl_cmd = ['curl', '-s', '-L', '--max-time', '300', '--connect-timeout', '30']
                     
                     # Add proxy if available
                     if proxies and proxies.get('http'):
                         proxy_url = proxies['http']
                         # Extract proxy details for curl format: http://user:pass@host:port
                         curl_cmd.extend(['--proxy', proxy_url])
+                        # Skip SSL verification for proxy connections (common with proxies)
+                        curl_cmd.extend(['-k', '--proxy-insecure'])
                     
                     curl_cmd.append(sitemap_url)
                     
                     # Use curl to fetch the sitemap
+                    # Use encoding='utf-8', errors='replace' to handle any encoding issues
+                    # Increase subprocess timeout to match curl timeout + buffer
+                    self.stdout.write('    (This may take several minutes for large sitemaps...)')
                     result = subprocess.run(
                         curl_cmd,
                         capture_output=True,
                         text=True,
-                        timeout=35
+                        encoding='utf-8',
+                        errors='replace',
+                        timeout=320  # 300s curl timeout + 20s buffer
                     )
                     
                     if result.returncode == 0 and result.stdout:
@@ -1122,16 +1136,29 @@ Response:"""
                         response = MockResponse(result.stdout, 200)
                         self.stdout.write(self.style.SUCCESS(f'  ✅ Success with curl (HTTP 200)'))
                     else:
-                        self.stdout.write(f'  ⚠️  Approach 4 failed: curl returned code {result.returncode}')
+                        # Curl return codes: 28 = timeout, 7 = couldn't connect, 6 = couldn't resolve host
+                        error_msg = f'curl returned code {result.returncode}'
+                        if result.returncode == 28:
+                            error_msg += ' (timeout - sitemap may be too large or proxy too slow)'
+                        elif result.returncode == 7:
+                            error_msg += ' (connection failed - check proxy/network)'
+                        elif result.returncode == 6:
+                            error_msg += ' (could not resolve host)'
+                        self.stdout.write(f'  ⚠️  Approach 4 failed: {error_msg}')
                         if result.stderr:
-                            self.stdout.write(f'    Error: {result.stderr[:200]}')
+                            # Decode stderr safely
+                            try:
+                                stderr_text = result.stderr if isinstance(result.stderr, str) else result.stderr.decode('utf-8', errors='replace')
+                                self.stdout.write(f'    Error: {stderr_text[:200]}')
+                            except Exception:
+                                self.stdout.write(f'    Error: (could not decode stderr)')
                 except FileNotFoundError:
                     self.stdout.write('  ⚠️  Approach 4 failed: curl not found in PATH')
                     # Keep previous response if it exists
                     if 'response' not in locals():
                         response = None
                 except subprocess.TimeoutExpired:
-                    self.stdout.write(f'  ⚠️  Approach 4 failed: curl timeout')
+                    self.stdout.write(f'  ⚠️  Approach 4 failed: subprocess timeout (sitemap may be too large or proxy too slow)')
                     # Keep previous response if it exists
                     if 'response' not in locals():
                         response = None
@@ -1187,13 +1214,18 @@ Response:"""
             
             self.stdout.write(self.style.SUCCESS('✅ Successfully fetched sitemap\n'))
             
-            # Parse XML
-            soup = BeautifulSoup(response.content, 'xml')
+            # Get content as bytes
+            content_bytes = response.content if isinstance(response.content, bytes) else response.content.encode('utf-8')
+            content_size_mb = len(content_bytes) / (1024 * 1024)
             
-            # Check if it's a sitemap index (contains other sitemaps)
-            sitemapindex = soup.find('sitemapindex')
-            if sitemapindex:
-                self.stdout.write('📋 Found sitemap index, extracting post-related sitemaps...\n')
+            # First, quickly check if it's a sitemap index (indexes are usually small, so use BeautifulSoup)
+            # Check first 10KB to see if it's an index
+            preview = content_bytes[:10000].decode('utf-8', errors='ignore').lower()
+            is_index = '<sitemapindex' in preview or 'sitemapindex' in preview
+            
+            if is_index:
+                # Sitemap index - use BeautifulSoup (indexes are small)
+                soup = BeautifulSoup(content_bytes, 'xml')
                 
                 # Extract all sitemap URLs
                 sitemap_urls = []
@@ -1224,50 +1256,66 @@ Response:"""
                         time.sleep(0.5)
             else:
                 # Regular sitemap with URLs
-                self.stdout.write('📄 Parsing regular sitemap...\n')
+                # For large sitemaps (>5MB), use streaming parser
+                use_streaming = content_size_mb > 5
+                if use_streaming:
+                    self.stdout.write(f'📦 Large sitemap detected ({content_size_mb:.1f} MB), using streaming parser...\n')
+                    try:
+                        # Use BytesIO for streaming
+                        xml_file = BytesIO(content_bytes)
+                        # Parse with iterparse for memory efficiency
+                        return self._parse_sitemap_streaming(xml_file, base_url, sitemap_url, proxies)
+                    except Exception as e:
+                        self.stdout.write(self.style.WARNING(f'⚠️  Streaming parser failed: {str(e)}, falling back to standard parser'))
+                        use_streaming = False
                 
-                filtered_language_count = 0
-                for url_tag in soup.find_all('url'):
-                    loc = url_tag.find('loc')
-                    if not loc or not loc.text:
-                        continue
+                if not use_streaming:
+                    # Use BeautifulSoup for smaller sitemaps (backward compatibility)
+                    self.stdout.write('📄 Parsing regular sitemap...\n')
+                    soup = BeautifulSoup(content_bytes, 'xml')
                     
-                    url = loc.text.strip()
-                    
-                    # Filter out non-English versions (URLs with language codes)
-                    if self.has_language_code(url):
-                        filtered_language_count += 1
-                        continue
-                    
-                    # Extract lastmod (date)
-                    lastmod = url_tag.find('lastmod')
-                    date_str = lastmod.text.strip() if lastmod and lastmod.text else ''
-                    
-                    # Extract title if available (some sitemaps include it)
-                    title_tag = url_tag.find('image:title') or url_tag.find('title')
-                    if title_tag and title_tag.text:
-                        title = title_tag.text.strip()
-                    else:
-                        # Generate title from URL if not in sitemap (same logic as views.py)
-                        parsed = urlparse(url)
-                        path = parsed.path.strip('/')
-                        # Get the last part of the path (slug)
-                        slug = path.split('/')[-1] if path else ''
-                        # Convert slug to title (replace hyphens with spaces, title case)
-                        if slug:
-                            title = slug.replace('-', ' ').replace('_', ' ').title()
+                    filtered_language_count = 0
+                    for url_tag in soup.find_all('url'):
+                        loc = url_tag.find('loc')
+                        if not loc or not loc.text:
+                            continue
+                        
+                        url = loc.text.strip()
+                        
+                        # Filter out non-English versions (URLs with language codes)
+                        if self.has_language_code(url):
+                            filtered_language_count += 1
+                            continue
+                        
+                        # Extract lastmod (date)
+                        lastmod = url_tag.find('lastmod')
+                        date_str = lastmod.text.strip() if lastmod and lastmod.text else ''
+                        
+                        # Extract title if available (some sitemaps include it)
+                        title_tag = url_tag.find('image:title') or url_tag.find('title')
+                        if title_tag and title_tag.text:
+                            title = title_tag.text.strip()
                         else:
-                            title = url
+                            # Generate title from URL if not in sitemap (same logic as views.py)
+                            parsed = urlparse(url)
+                            path = parsed.path.strip('/')
+                            # Get the last part of the path (slug)
+                            slug = path.split('/')[-1] if path else ''
+                            # Convert slug to title (replace hyphens with spaces, title case)
+                            if slug:
+                                title = slug.replace('-', ' ').replace('_', ' ').title()
+                            else:
+                                title = url
+                        
+                        posts.append({
+                            'url': url,
+                            'title': title,
+                            'date': date_str
+                        })
                     
-                    posts.append({
-                        'url': url,
-                        'title': title,
-                        'date': date_str
-                    })
-                
-                if filtered_language_count > 0:
-                    self.stdout.write(f'  ⏭️  Filtered out {filtered_language_count} non-English URLs (language codes)\n')
-                self.stdout.write(self.style.SUCCESS(f'✅ Extracted {len(posts)} URLs from sitemap\n'))
+                    if filtered_language_count > 0:
+                        self.stdout.write(f'  ⏭️  Filtered out {filtered_language_count} non-English URLs (language codes)\n')
+                    self.stdout.write(self.style.SUCCESS(f'✅ Extracted {len(posts)} URLs from sitemap\n'))
         
         except requests.exceptions.Timeout:
             self.stdout.write(self.style.ERROR(f'❌ Timeout fetching sitemap: {sitemap_url}'))
