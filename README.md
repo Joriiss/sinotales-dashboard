@@ -504,9 +504,38 @@ curl -H "Authorization: Token your-api-token" \
       "id": 1,
       "name": "Channel Name",
       "channel_id": "UCxxxxx",
-      "filter_videos": true
+      "include_shorts": false
     }
-  ]
+  ],
+  "count": 1
+}
+```
+
+### Get Blog Sources
+
+**Endpoint**: `GET /api/blog-sources/`
+
+Returns a list of all blog sources that have a sitemap link configured.
+
+**Example Request**:
+```bash
+curl -H "Authorization: Token your-api-token" \
+     http://127.0.0.1:8000/api/blog-sources/
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "sources": [
+    {
+      "id": 1,
+      "name": "Source Name",
+      "sitemap": "https://example.com/sitemap.xml",
+      "filter_china": true
+    }
+  ],
+  "count": 1
 }
 ```
 
@@ -590,6 +619,71 @@ curl -X POST \
   "error": "Error message here"
 }
 ```
+
+### Create Blog Post
+
+**Endpoint**: `POST /api/blog-post/`
+
+Creates a new blog post content entry. The content will be automatically processed (extracted, translated, tagged, embedded) if `auto_process` is enabled.
+
+**Request Body**:
+```json
+{
+  "source_id": 1,
+  "title": "Blog Post Title",
+  "link": "https://example.com/blog-post",
+  "date": "2025-01-15",
+  "auto_process": true
+}
+```
+
+**Required Fields**:
+- `source_id`: ID of the blog source
+- `title`: Blog post title
+- `link`: Full URL to the blog post
+
+**Optional Fields**:
+- `date`: Publication date in YYYY-MM-DD format or ISO 8601 (defaults to today)
+- `auto_process`: Whether to automatically extract content, translate, tag, and embed (default: true)
+
+**Example Request**:
+```bash
+curl -X POST \
+     -H "Authorization: Token your-api-token" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "source_id": 1,
+       "title": "My Blog Post Title",
+       "link": "https://example.com/my-blog-post",
+       "date": "2025-01-15"
+     }' \
+     http://127.0.0.1:8000/api/blog-post/
+```
+
+**Response (Success)**:
+```json
+{
+  "success": true,
+  "content_id": 123,
+  "message": "Blog post created successfully",
+  "processing": {
+    "extracted": true,
+    "translated": false,
+    "tagged": true,
+    "embedded": true
+  }
+}
+```
+
+**Response (Error)**:
+```json
+{
+  "success": false,
+  "error": "Error message here"
+}
+```
+
+**Note**: If a blog post with the same link already exists for the source, the API will return a 409 Conflict error.
 
 ### China Filtering
 
