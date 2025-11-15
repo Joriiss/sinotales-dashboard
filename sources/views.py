@@ -2460,6 +2460,7 @@ def blog_sources_api(request):
         sources = []
         for source in blog_sources:
             sources.append({
+                'id': source.id,
                 'name': source.name,
                 'sitemap': source.sitemap,
                 'filter_china': source.filter_china
@@ -2731,6 +2732,176 @@ def create_video_content_api(request):
             'error': 'Invalid JSON in request body'
         }, status=400)
     except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def create_blog_post_api(request):
+    """API endpoint to create blog post content (token-based authentication)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        data = json.loads(request.body)
+        
+        # Required fields
+        source_id = data.get('source_id')
+        title = data.get('title')
+        link = data.get('link')
+        
+        # Optional fields
+        date = data.get('date')  # YYYY-MM-DD format or ISO 8601
+        auto_process = data.get('auto_process', True)  # Whether to automatically process (extract content, translate, tag, embed)
+        
+        # Validate required fields
+        if not source_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'source_id is required'
+            }, status=400)
+        
+        if not title:
+            return JsonResponse({
+                'success': False,
+                'error': 'title is required'
+            }, status=400)
+        
+        if not link:
+            return JsonResponse({
+                'success': False,
+                'error': 'link is required'
+            }, status=400)
+        
+        # Get source
+        try:
+            source = Source.objects.get(pk=source_id, source_type='blog')
+        except Source.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': f'Source with id {source_id} not found or is not a blog source'
+            }, status=404)
+        
+        # Use link as external_id for blog posts (URL is unique identifier)
+        external_id = link
+        
+        # Check if content already exists
+        if Content.objects.filter(source=source, external_id=external_id).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Blog post with link "{link}" already exists for this source'
+            }, status=409)
+        
+        # Parse date if provided
+        parsed_date = None
+        if date:
+            try:
+                from datetime import datetime
+                # Try ISO 8601 format first (with time and timezone)
+                try:
+                    dt = datetime.fromisoformat(date.replace('Z', '+00:00'))
+                    parsed_date = dt.date()
+                except ValueError:
+                    # Fallback to YYYY-MM-DD format
+                    parsed_date = datetime.strptime(date, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid date format. Use YYYY-MM-DD or ISO 8601 format (e.g., 2025-11-07T15:15:00+00:00)'
+                }, status=400)
+        
+        # Use today's date if not provided
+        if not parsed_date:
+            from datetime import date
+            parsed_date = date.today()
+        
+        # Create content
+        content = Content.objects.create(
+            source=source,
+            external_id=external_id,
+            title=title,
+            link=link,
+            content_type='blog_post',
+            date=parsed_date,
+            content='',  # Empty - will be filled during processing
+            processed=False,
+        )
+        
+        # Update last_collected timestamp on source
+        from django.utils import timezone
+        source.last_collected = timezone.now()
+        source.save(update_fields=['last_collected'])
+        
+        # Log content creation
+        log_activity(
+            'content_created',
+            f'Content "{content.title}" (Blog Post) was created via API',
+            user=None,  # API request, no user
+            content=content,
+            source=content.source
+        )
+        
+        # Process content if requested
+        processing_results = {}
+        if auto_process:
+            try:
+                print(f"\n{'='*60}", flush=True)
+                print(f"Processing blog post content via API: {content.title}", flush=True)
+                print(f"Link: {content.link}", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+                processing_service = ContentProcessingService(use_proxy=True)
+                processing_results = processing_service.process_content(
+                    content,
+                    extract=True,
+                    translate=True,
+                    tag=True,
+                    embed=True
+                )
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"Processing completed for: {content.title}", flush=True)
+                print(f"Extracted: {processing_results.get('extracted', False)}", flush=True)
+                print(f"Translated: {processing_results.get('translated', False)}", flush=True)
+                print(f"Tagged: {processing_results.get('tagged', False)}", flush=True)
+                print(f"Embedded: {processing_results.get('embedded', False)}", flush=True)
+                print(f"{'='*60}\n", flush=True)
+                
+            except Exception as e:
+                print(f"  [API] ⚠️  Error during processing: {str(e)}", flush=True)
+                import traceback
+                print(f"  [API] Traceback: {traceback.format_exc()}", flush=True)
+                processing_results = {
+                    'error': str(e),
+                    'extracted': False,
+                    'translated': False,
+                    'tagged': False,
+                    'embedded': False
+                }
+        
+        return JsonResponse({
+            'success': True,
+            'content_id': content.id,
+            'message': 'Blog post created successfully',
+            'processing': processing_results if auto_process else None
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON in request body'
+        }, status=400)
+    except Exception as e:
+        import traceback
+        print(f"  [API] ❌ Error creating blog post: {str(e)}", flush=True)
+        print(f"  [API] Traceback: {traceback.format_exc()}", flush=True)
         return JsonResponse({
             'success': False,
             'error': str(e)
