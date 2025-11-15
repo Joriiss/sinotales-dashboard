@@ -516,7 +516,12 @@ Response:"""
         if use_ollama:
             # Use Ollama for filtering
             self.stdout.write(f'\n🔍 Filtering posts with Ollama AI...\n')
+            total_posts = len(posts)
             for i, post in enumerate(posts, 1):
+                post_title = post.get('title', '')[:60]  # Truncate for display
+                self.stdout.write(f'  [{i}/{total_posts}] Analyzing: {post_title}...', ending='')
+                self.stdout.flush()
+                
                 try:
                     # Always check China relevance with Ollama if filter_china is enabled
                     # (even though we already did keyword filtering, Ollama can be more nuanced)
@@ -546,14 +551,16 @@ Response:"""
                         # Store filtered post with reason
                         post['_filter_reason'] = filter_reason
                         filtered_out_posts.append(post)
+                        self.stdout.write(self.style.WARNING(f' ❌ FILTERED ({filter_reason})'))
                     else:
                         # Post passed all filters
                         filtered_posts.append(post)
+                        self.stdout.write(self.style.SUCCESS(' ✓ PASSED'))
                     
                 except Exception as e:
                     ollama_errors += 1
                     # Fall back to keyword-based filtering on error
-                    self.stdout.write(self.style.WARNING(f'⚠️  Ollama error for post "{post.get("title", "")[:50]}": {str(e)[:100]}'))
+                    self.stdout.write(self.style.WARNING(f' ⚠️  ERROR: {str(e)[:50]}'))
                     # Use keyword-based as fallback
                     filter_reason = None
                     if self.is_job_posting(post):

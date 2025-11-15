@@ -1551,8 +1551,12 @@ Response:"""
                     if ollama_model:
                         print(f"  [BACKGROUND] Using Ollama filtering with model: {ollama_model}", flush=True)
                         ollama_used = True
+                        total_posts = len(posts)
                         
-                        for post in posts:
+                        for i, post in enumerate(posts, 1):
+                            post_title = post.get('title', '')[:60]  # Truncate for display
+                            print(f"  [BACKGROUND] [{i}/{total_posts}] Analyzing: {post_title}...", end='', flush=True)
+                            
                             try:
                                 # Always check China relevance with Ollama if filter_china is enabled
                                 # (even though we already did keyword filtering, Ollama can be more nuanced)
@@ -1563,23 +1567,28 @@ Response:"""
                                 # Skip job postings
                                 if is_job:
                                     filtered_jobs += 1
+                                    print(f" ❌ FILTERED (Job Posting)", flush=True)
                                     continue
                                 
                                 # Skip non-travel content
                                 if is_non_travel:
                                     filtered_non_travel += 1
+                                    print(f" ❌ FILTERED (Non-Travel Content)", flush=True)
                                     continue
                                 
                                 # Apply China filter if enabled (Ollama can refine the keyword-based filter)
                                 if filter_china and not is_china_related_ollama:
                                     filtered_china_ollama += 1
+                                    print(f" ❌ FILTERED (Not China-Related)", flush=True)
                                     continue
                                 
                                 # Post passed all filters
                                 filtered_posts.append(post)
+                                print(f" ✓ PASSED", flush=True)
                                 
                             except Exception as e:
                                 ollama_errors += 1
+                                print(f" ⚠️  ERROR: {str(e)[:50]}", flush=True)
                                 # Fall back to keyword-based filtering for this post
                                 if is_job_posting_keyword(post):
                                     filtered_jobs += 1
