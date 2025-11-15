@@ -99,9 +99,9 @@ class Command(BaseCommand):
                 try:
                     from sources.models import Settings
                     app_settings = Settings.get_settings()
-                    ollama_model = app_settings.default_tagging_model
+                    ollama_model = app_settings.default_filtering_model
                 except Exception:
-                    ollama_model = 'gpt-oss:20b-cloud'
+                    ollama_model = 'llama3.2:latest'
             self.stdout.write(self.style.SUCCESS(f'Using Ollama model: {ollama_model}'))
 
         self.stdout.write(self.style.SUCCESS(f'\n{"="*80}'))

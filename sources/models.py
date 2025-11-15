@@ -434,6 +434,11 @@ class Settings(models.Model):
         default='gpt-oss:20b-cloud',
         help_text="Default model for content tagging (e.g., 'gpt-oss:20b-cloud' for Ollama, 'gpt-3.5-turbo' for OpenAI)"
     )
+    default_filtering_model = models.CharField(
+        max_length=100,
+        default='llama3.2:latest',
+        help_text="Default Ollama model for filtering content (YouTube videos and blog posts) - e.g., 'llama3.2:latest', 'gpt-oss:20b-cloud'"
+    )
     
     # Embedding settings (for future use)
     default_embedding_provider = models.CharField(

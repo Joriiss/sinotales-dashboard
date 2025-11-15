@@ -323,6 +323,7 @@ class SettingsForm(forms.ModelForm):
         fields = [
             'default_tagging_provider',
             'default_tagging_model',
+            'default_filtering_model',
             'default_embedding_provider',
         ]
         widgets = {
@@ -333,6 +334,10 @@ class SettingsForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'e.g., gpt-oss:20b-cloud, llama3.2:latest'
             }),
+            'default_filtering_model': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., llama3.2:latest, gpt-oss:20b-cloud'
+            }),
             'default_embedding_provider': forms.Select(attrs={
                 'class': 'form-control',
             }),
@@ -340,6 +345,7 @@ class SettingsForm(forms.ModelForm):
         help_texts = {
             'default_tagging_provider': 'Provider for AI-powered content tagging',
             'default_tagging_model': 'Model name for tagging (Ollama: e.g., gpt-oss:20b-cloud, llama3.2:latest | OpenAI: e.g., gpt-3.5-turbo)',
+            'default_filtering_model': 'Ollama model for filtering content (YouTube videos and blog posts) - e.g., llama3.2:latest, gpt-oss:20b-cloud',
             'default_embedding_provider': 'Provider for generating content embeddings',
         }
 

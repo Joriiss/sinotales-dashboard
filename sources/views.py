@@ -780,13 +780,101 @@ def source_edit(request, pk):
         import threading
         from django.db import connection
         
+        def is_china_related(url):
+            """
+            Check if a URL is related to China based on keywords in the URL.
+            Excludes Chinatowns and Chinese-related content in other countries.
+            Based on the logic from get_posts_list.py
+            
+            Args:
+                url: URL to check
+                
+            Returns:
+                True if URL contains China-related keywords, False otherwise
+            """
+            url_lower = url.lower()
+            
+            # Exclude URLs that are clearly about other countries
+            # Check for country codes in the path (common in Lonely Planet URLs)
+            exclude_countries = [
+                '/usa/', '/united-states/', '/america/', '/american/',
+                '/australia/', '/canada/', '/uk/', '/united-kingdom/', '/britain/',
+                '/france/', '/germany/', '/italy/', '/spain/', '/japan/', '/korea/',
+                '/thailand/', '/vietnam/', '/singapore/', '/malaysia/', '/indonesia/',
+                '/philippines/', '/india/', '/brazil/', '/mexico/', '/argentina/',
+                '/new-zealand/', '/south-africa/', '/egypt/', '/turkey/', '/greece/'
+            ]
+            
+            # If URL contains a non-China country code, it's likely not about China
+            for country in exclude_countries:
+                if country in url_lower:
+                    # Exception: if it also explicitly mentions China in the path, it might be relevant
+                    if '/china/' not in url_lower:
+                        return False
+            
+            # Strong indicators that it's about China (these take priority)
+            strong_indicators = [
+                '/china/',  # Explicit China path (e.g., /china/beijing/)
+                '/taiwan/', '/taipei/',  # Taiwan is part of China context
+                '/hong-kong/', '/hongkong/', '/macau/', '/macao/',  # Special regions
+            ]
+            
+            for indicator in strong_indicators:
+                if indicator in url_lower:
+                    return True
+            
+            # China-related keywords (but be careful with "chinatown" and "chinese" in other contexts)
+            china_keywords = [
+                # Major cities (only if not in excluded countries)
+                'beijing', 'peking', 'shanghai', 'guangzhou', 'canton', 'shenzhen', 
+                'chengdu', 'xian', 'xi\'an', 'hangzhou', 'nanjing', 'wuhan', 
+                'chongqing', 'tianjin', 'suzhou', 'dalian', 'qingdao', 'xiamen',
+                'foshan', 'dongguan', 'zhengzhou', 'changsha', 'kunming', 'fuzhou',
+                'wuxi', 'hefei', 'nanning', 'shijiazhuang', 'haerbin', 'harbin',
+                'jinan', 'taiyuan', 'changchun', 'nanchang', 'guiyang', 'lanzhou',
+                # Provinces and regions
+                'guangdong', 'jiangsu', 'shandong', 'zhejiang', 'henan', 'sichuan',
+                'hubei', 'hunan', 'anhui', 'hebei', 'jiangxi', 'shanxi', 'liaoning',
+                'fujian', 'yunnan', 'guangxi', 'heilongjiang', 'jilin', 'shaanxi',
+                'guizhou', 'xinjiang', 'tibet', 'qinghai', 'gansu', 'inner-mongolia',
+                'ningxia',
+                # Regions and areas
+                'yangtze', 'yellow-river', 'pearl-river', 'tibetan',
+                'manchuria', 'dongbei', 'northeast-china',
+                # Other related terms
+                'great-wall', 'terracotta', 'forbidden-city', 'panda', 'silk-road'
+            ]
+            
+            # Check for China keywords, but exclude "chinatown" and "chinese" unless in China context
+            for keyword in china_keywords:
+                if keyword in url_lower:
+                    return True
+            
+            # Check for "china" or "chinese" but only if not in excluded country context
+            # and not just "chinatown" in other countries
+            if 'china' in url_lower or 'chinese' in url_lower:
+                # If it's just "chinatown" without other strong China indicators, be cautious
+                if 'chinatown' in url_lower:
+                    # Only accept if there are other strong China indicators
+                    if any(indicator in url_lower for indicator in strong_indicators):
+                        return True
+                    # Or if it's in a China city/province context
+                    if any(city in url_lower for city in ['beijing', 'shanghai', 'guangzhou', 'chengdu', 'xian']):
+                        return True
+                    return False
+                # For "china" or "chinese" (not chinatown), check if it's in excluded country
+                # If we got here, we already checked exclude_countries above
+                return True
+            
+            return False
+        
         def import_posts_background():
             """Import blog posts in background thread"""
             # Close the database connection from the main thread
             connection.close()
             
             try:
-                from django.db import transaction
+                from django.db import transaction, IntegrityError
                 from django.utils import timezone
                 from urllib.parse import urlparse
                 import requests
@@ -1261,24 +1349,41 @@ def source_edit(request, pk):
                 
                 print(f"  [BACKGROUND] Found {len(posts)} posts in sitemap, checking which are new...", flush=True)
                 
-                # Get existing post URLs to skip duplicates
-                existing_urls = set(
+                # Get existing post external_ids to skip duplicates (external_id is what the unique constraint uses)
+                existing_external_ids = set(
                     Content.objects.filter(source=source_refresh)
-                    .values_list('link', flat=True)
+                    .values_list('external_id', flat=True)
                 )
-                print(f"  [BACKGROUND] {len(existing_urls)} posts already exist in database", flush=True)
+                print(f"  [BACKGROUND] {len(existing_external_ids)} posts already exist in database", flush=True)
                 
                 # Create Content entries for each post
                 created_count = 0
                 skipped_count = 0
                 created_content_ids = []  # Store content IDs for processing
                 
+                # Apply China filter if enabled
+                filter_china = source_refresh.filter_china
+                if filter_china:
+                    original_count = len(posts)
+                    # Filter based on URL (primary) and title (secondary)
+                    filtered_posts = []
+                    for post in posts:
+                        post_url = post.get('url', '')
+                        post_title = post.get('title', '')
+                        # Check URL first (most reliable), then title
+                        if is_china_related(post_url) or (post_title and is_china_related(post_title)):
+                            filtered_posts.append(post)
+                    posts = filtered_posts
+                    filtered_count = original_count - len(posts)
+                    if filtered_count > 0:
+                        print(f"  [BACKGROUND] Filtered out {filtered_count} non-China-related posts (filter_china=True)", flush=True)
+                
                 with transaction.atomic():
                     for i, post in enumerate(posts, 1):
                         post_url = post['url']
                         
-                        # Check if content already exists (by exact URL)
-                        if post_url in existing_urls:
+                        # Check if content already exists (by external_id, which is the URL for blog posts)
+                        if post_url in existing_external_ids:
                             skipped_count += 1
                             if i % 50 == 0:
                                 print(f"  [BACKGROUND] Processed {i}/{len(posts)} posts (created: {created_count}, skipped: {skipped_count})...", flush=True)
@@ -1331,19 +1436,29 @@ def source_edit(request, pk):
                             if created_count < 3:
                                 print(f"    [BACKGROUND] Using current time: {post_date}", flush=True)
                         
-                        # Create content entry
-                        content = Content.objects.create(
-                            source=source_refresh,
-                            external_id=post_url,  # Use URL as external_id for blog posts
-                            title=post.get('title', post_url),
-                            link=post_url,
-                            content_type='blog_post',  # Fixed: should be 'blog_post' not 'blog'
-                            date=post_date,
-                            content='',  # Empty - will be filled later when processing
-                            processed=False,
-                        )
-                        created_count += 1
-                        created_content_ids.append(content.id)
+                        # Create content entry (with error handling for race conditions)
+                        try:
+                            content = Content.objects.create(
+                                source=source_refresh,
+                                external_id=post_url,  # Use URL as external_id for blog posts
+                                title=post.get('title', post_url),
+                                link=post_url,
+                                content_type='blog_post',  # Fixed: should be 'blog_post' not 'blog'
+                                date=post_date,
+                                content='',  # Empty - will be filled later when processing
+                                processed=False,
+                            )
+                            created_count += 1
+                            created_content_ids.append(content.id)
+                        except Exception as e:
+                            # Handle duplicate key errors (race condition or missed duplicate)
+                            if isinstance(e, IntegrityError) and 'unique constraint' in str(e).lower():
+                                skipped_count += 1
+                                if i % 50 == 0 or i <= 3:
+                                    print(f"    [BACKGROUND] Skipped duplicate (race condition or missed check): {post_url[:60]}...", flush=True)
+                            else:
+                                # Re-raise other errors
+                                raise
                         
                         if i % 50 == 0:
                             print(f"  [BACKGROUND] Processed {i}/{len(posts)} posts (created: {created_count}, skipped: {skipped_count})...", flush=True)

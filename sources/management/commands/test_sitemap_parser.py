@@ -11,8 +11,12 @@ from bs4 import BeautifulSoup
 import time
 import subprocess
 import os
+import re
+import json
 from pathlib import Path
 from django.conf import settings
+from sources.models import Source, Content
+from typing import Dict, Optional, Tuple
 
 
 class Command(BaseCommand):
@@ -35,11 +39,351 @@ class Command(BaseCommand):
             action='store_true',
             help='Use Webshare proxies for requests (helps bypass Cloudflare)'
         )
+        parser.add_argument(
+            '--source',
+            type=str,
+            default=None,
+            help='Source name or ID to check for existing posts (only show new posts)'
+        )
+        parser.add_argument(
+            '--filter-china',
+            action='store_true',
+            help='Filter to only show China-related posts (overrides source setting)'
+        )
+        parser.add_argument(
+            '--no-filter-china',
+            action='store_true',
+            help='Disable China filter even if source has it enabled'
+        )
+        parser.add_argument(
+            '--use-ollama',
+            action='store_true',
+            help='Use Ollama AI to filter posts (job postings, non-travel content, China relevance)'
+        )
+        parser.add_argument(
+            '--ollama-model',
+            type=str,
+            default=None,
+            help='Ollama model to use (default: from settings or llama3.2:latest)'
+        )
+
+    def is_china_related(self, url):
+        """
+        Check if a URL is related to China based on keywords in the URL.
+        Based on the logic from get_posts_list.py
+        """
+        url_lower = url.lower()
+        
+        # Exclude URLs that are clearly about other countries
+        exclude_countries = [
+            '/usa/', '/united-states/', '/america/', '/american/',
+            '/australia/', '/canada/', '/uk/', '/united-kingdom/', '/britain/',
+            '/france/', '/germany/', '/italy/', '/spain/', '/japan/', '/korea/',
+            '/thailand/', '/vietnam/', '/singapore/', '/malaysia/', '/indonesia/',
+            '/philippines/', '/india/', '/brazil/', '/mexico/', '/argentina/',
+            '/new-zealand/', '/south-africa/', '/egypt/', '/turkey/', '/greece/'
+        ]
+        
+        for country in exclude_countries:
+            if country in url_lower:
+                if '/china/' not in url_lower:
+                    return False
+        
+        # Strong indicators
+        strong_indicators = [
+            '/china/', '/taiwan/', '/taipei/',
+            '/hong-kong/', '/hongkong/', '/macau/', '/macao/',
+        ]
+        
+        for indicator in strong_indicators:
+            if indicator in url_lower:
+                return True
+        
+        # China-related keywords
+        china_keywords = [
+            'beijing', 'peking', 'shanghai', 'guangzhou', 'canton', 'shenzhen', 
+            'chengdu', 'xian', 'xi\'an', 'hangzhou', 'nanjing', 'wuhan', 
+            'chongqing', 'tianjin', 'suzhou', 'dalian', 'qingdao', 'xiamen',
+            'foshan', 'dongguan', 'zhengzhou', 'changsha', 'kunming', 'fuzhou',
+            'wuxi', 'hefei', 'nanning', 'shijiazhuang', 'haerbin', 'harbin',
+            'jinan', 'taiyuan', 'changchun', 'nanchang', 'guiyang', 'lanzhou',
+            'guangdong', 'jiangsu', 'shandong', 'zhejiang', 'henan', 'sichuan',
+            'hubei', 'hunan', 'anhui', 'hebei', 'jiangxi', 'shanxi', 'liaoning',
+            'fujian', 'yunnan', 'guangxi', 'heilongjiang', 'jilin', 'shaanxi',
+            'guizhou', 'xinjiang', 'tibet', 'qinghai', 'gansu', 'inner-mongolia',
+            'ningxia', 'yangtze', 'yellow-river', 'pearl-river', 'tibetan',
+            'manchuria', 'dongbei', 'northeast-china',
+            'great-wall', 'terracotta', 'forbidden-city', 'panda', 'silk-road'
+        ]
+        
+        for keyword in china_keywords:
+            if keyword in url_lower:
+                return True
+        
+        if 'china' in url_lower or 'chinese' in url_lower:
+            if 'chinatown' in url_lower:
+                if any(indicator in url_lower for indicator in strong_indicators):
+                    return True
+                if any(city in url_lower for city in ['beijing', 'shanghai', 'guangzhou', 'chengdu', 'xian']):
+                    return True
+                return False
+            return True
+        
+        return False
+
+    def is_job_posting(self, post):
+        """
+        Check if a post is a job posting based on title and tags.
+        Based on the logic from get_posts_list.py
+        """
+        title = post.get('title', '').lower()
+        tags = post.get('tags', '').lower() if post.get('tags') else ''
+        combined = f"{title} {tags}"
+        
+        # Job-related keywords
+        job_keywords = [
+            'career', 'careers', 'job', 'jobs', 'hiring', 'position', 'vacancy',
+            'vacancies', 'recruit', 'recruitment', 'intern', 'internship', 'internships',
+            'manager', 'director', 'coordinator', 'specialist', 'associate', 'executive',
+            'applicant', 'application', 'apply now', 'join our team', 'we are hiring',
+            'open position', 'full-time', 'part-time', 'remote position'
+        ]
+        
+        # Check if any job keyword appears
+        for keyword in job_keywords:
+            if keyword in combined:
+                return True
+        
+        return False
+
+    def is_non_travel_content(self, post):
+        """
+        Check if a post is non-travel content (legal pages, business pages, etc.).
+        Based on the logic from get_posts_list.py
+        """
+        title = post.get('title', '').lower()
+        link = post.get('url', post.get('link', '')).lower()
+        tags = post.get('tags', '').lower() if post.get('tags') else ''
+        combined = f"{title} {link} {tags}"
+        
+        # Legal/Business page patterns in URL
+        legal_url_patterns = [
+            '/aboutus/', '/about-us/', '/terms', '/disclaimer', '/privacy',
+            '/contact', '/partner/', '/partners/', '/affiliate', '/sitemap',
+            '/legal/', '/policy/', '/policies/'
+        ]
+        
+        for pattern in legal_url_patterns:
+            if pattern in link:
+                return True
+        
+        # Legal/Business keywords in title
+        legal_keywords = [
+            'terms and conditions', 'privacy policy', 'disclaimer',
+            'contact us', 'about us', 'sitemap'
+        ]
+        
+        for keyword in legal_keywords:
+            if keyword in title:
+                return True
+        
+        # Partnership/Business development keywords
+        business_keywords = [
+            'partnership opportunities', 'travel partner', 'become a partner',
+            'affiliate program', 'agent opportunities', 'advisors', 'b2b'
+        ]
+        
+        for keyword in business_keywords:
+            if keyword in combined:
+                return True
+        
+        # Company news/announcements (more aggressive filtering)
+        company_news_keywords = [
+            'wins award', 'won award', 'receives award', 'award winner',
+            'company news', 'announcement', 'announces',
+            'expands partnership', 'new partnership', 'partners with'
+        ]
+        
+        # Only filter if it's clearly company-focused, not travel-focused
+        if any(keyword in combined for keyword in company_news_keywords):
+            # But keep it if it's about travel destinations or experiences
+            travel_indicators = ['tour', 'travel', 'destination', 'visit', 'guide', 'trip', 
+                               'place', 'places', 'location', 'region', 'city', 'town',
+                               'attraction', 'attractions', 'sightseeing', 'explore', 'exploring']
+            # Also check for common travel-related patterns
+            has_travel_content = any(indicator in combined for indicator in travel_indicators)
+            # Check if it mentions a specific location (likely travel-related)
+            # Common patterns: "in [place]", "at [place]", "[place] update", etc.
+            location_patterns = [
+                r'\b(in|at|to|from|near|around)\s+[A-Z][a-z]+',  # "in Yunnan", "at Beijing"
+                r'[A-Z][a-z]+\s+(update|news|guide|tour|travel)',  # "Yunnan update", "Beijing guide"
+            ]
+            has_location = any(re.search(pattern, combined) for pattern in location_patterns)
+            
+            if not (has_travel_content or has_location):
+                return True
+        
+        # Special case: "in the news" tag - only filter if it's clearly company news without travel context
+        if 'in the news' in combined:
+            # Keep if it mentions locations, travel, or destinations
+            travel_indicators = ['tour', 'travel', 'destination', 'visit', 'guide', 'trip',
+                               'place', 'places', 'location', 'region', 'city', 'town',
+                               'attraction', 'attractions', 'earthquake', 'weather', 'festival',
+                               'culture', 'food', 'cuisine', 'restaurant', 'hotel']
+            # Check for location names (capitalized words that might be places)
+            has_location = bool(re.search(r'\b[A-Z][a-z]+\s+(update|news|guide|tour|travel|earthquake|weather)', combined))
+            if not (any(indicator in combined for indicator in travel_indicators) or has_location):
+                # Only filter if it's clearly company-focused (awards, partnerships, etc.)
+                company_focused = any(word in combined for word in ['award', 'partnership', 'nominated', 'winner', 'selected'])
+                if company_focused:
+                    return True
+        
+        return False
+
+    def _filter_post_with_ollama(
+        self, 
+        post: Dict, 
+        model: str, 
+        check_china: bool = False
+    ) -> Tuple[bool, bool, bool, Optional[str]]:
+        """
+        Use Ollama to filter a post based on multiple criteria.
+        
+        Args:
+            post: Post dict with 'title', 'url'/'link', and optionally 'tags'
+            model: Ollama model name
+            check_china: Whether to check China relevance
+            
+        Returns:
+            Tuple of (is_job_posting: bool, is_non_travel: bool, is_china_related: bool, reasoning: str or None)
+        """
+        try:
+            import requests
+        except ImportError:
+            raise ImportError("requests library required for Ollama. Install with: pip install requests")
+        
+        title = post.get('title', '')
+        url = post.get('url', post.get('link', ''))
+        tags = post.get('tags', '')
+        
+        # Prepare the content for analysis
+        tags_str = tags if isinstance(tags, str) else ', '.join(tags) if tags else 'None'
+        
+        # Create prompt
+        prompt = f"""Analyze the following blog post and determine:
+1. Is this a job posting or job advertisement?
+2. Is this non-travel content (legal pages, business pages, company announcements, etc.)?
+{f"3. Is this content related to China, Chinese culture, Chinese geography, or Chinese topics?" if check_china else ""}
+
+Title: {title}
+URL: {url}
+Tags: {tags_str}
+
+Instructions:
+- A job posting includes: job openings, hiring announcements, career opportunities, internships, positions available, etc.
+- Non-travel content includes: legal pages (terms, privacy, disclaimer), business pages (about us, contact, partners), company announcements (awards, partnerships) that are NOT about travel destinations or experiences
+- Keep travel-related company news (e.g., "New tour in Yunnan", "Award for best China travel guide")
+- {"China-related content includes: Chinese cities, provinces, culture, history, geography, food, traditions, travel in China, etc. Exclude Chinatowns in other countries unless they're specifically about China." if check_china else ""}
+
+Respond in the following JSON format:
+{{
+    "is_job_posting": true or false,
+    "is_non_travel": true or false,
+    {"\"is_china_related\": true or false," if check_china else ""}
+    "reasoning": "Brief explanation for each determination (2-3 sentences)"
+}}
+
+Response:"""
+
+        # Call Ollama
+        ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+        url_api = f"{ollama_url}/api/generate"
+        
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.3,  # Lower temperature for more consistent results
+                "top_p": 0.9,
+            }
+        }
+        
+        try:
+            response = requests.post(url_api, json=payload, timeout=30)
+            response.raise_for_status()
+            result = response.json()
+            response_text = result.get('response', '').strip()
+            
+            # Parse JSON response
+            # Try to extract JSON from response (in case there's extra text)
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = response_text[start_idx:end_idx + 1]
+                try:
+                    parsed = json.loads(json_str)
+                    is_job = bool(parsed.get('is_job_posting', False))
+                    is_non_travel = bool(parsed.get('is_non_travel', False))
+                    is_china = bool(parsed.get('is_china_related', True)) if check_china else True
+                    reasoning = parsed.get('reasoning', 'No reasoning provided')
+                    return is_job, is_non_travel, is_china, reasoning
+                except json.JSONDecodeError:
+                    pass  # Fall through to try parsing whole response
+            
+            # Fallback: try to parse the whole response as JSON
+            try:
+                parsed = json.loads(response_text)
+                is_job = bool(parsed.get('is_job_posting', False))
+                is_non_travel = bool(parsed.get('is_non_travel', False))
+                is_china = bool(parsed.get('is_china_related', True)) if check_china else True
+                reasoning = parsed.get('reasoning', 'No reasoning provided')
+                return is_job, is_non_travel, is_china, reasoning
+            except json.JSONDecodeError:
+                pass  # Will be caught by outer exception handler
+                
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(
+                f"Could not connect to Ollama at {ollama_url}. "
+                "Make sure Ollama is running: https://ollama.ai"
+            )
+        except json.JSONDecodeError as e:
+            # If JSON parsing fails, try to infer from response text
+            response_lower = response_text.lower()
+            is_job = 'job' in response_lower and ('true' in response_lower or 'yes' in response_lower)
+            is_non_travel = 'non-travel' in response_lower or 'non travel' in response_lower
+            is_china = 'china' in response_lower and ('true' in response_lower or 'yes' in response_lower) if check_china else True
+            return is_job, is_non_travel, is_china, f"Parsed from response (JSON parse failed): {response_text[:200]}"
+        except Exception as e:
+            raise Exception(f"Ollama API error: {str(e)}")
+        
+        # If we get here, parsing failed completely
+        return False, False, True if not check_china else False, "Failed to parse Ollama response"
 
     def handle(self, *args, **options):
         sitemap_url = options['sitemap_url']
         base_url = options.get('base_url')
         use_proxy = options.get('use_proxy', False)
+        source_arg = options.get('source')
+        filter_china_flag = options.get('filter_china', False)
+        no_filter_china_flag = options.get('no_filter_china', False)
+        use_ollama = options.get('use_ollama', False)
+        ollama_model = options.get('ollama_model')
+        
+        # Get Ollama model if using Ollama
+        if use_ollama:
+            if not ollama_model:
+                # Try to get from settings
+                try:
+                    from sources.models import Settings
+                    app_settings = Settings.get_settings()
+                    ollama_model = app_settings.default_filtering_model
+                except:
+                    pass
+                if not ollama_model:
+                    ollama_model = 'gpt-oss:20b-cloud'
+            self.stdout.write(self.style.SUCCESS(f'Using Ollama model: {ollama_model}'))
         
         # Load proxy configuration if requested
         proxies = None
@@ -56,23 +400,243 @@ class Command(BaseCommand):
         self.stdout.write(f'Sitemap URL: {sitemap_url}\n')
         if proxies:
             self.stdout.write(f'Using proxy: Yes\n')
+        if source_arg:
+            self.stdout.write(f'Source filter: {source_arg}\n')
+        if use_ollama:
+            self.stdout.write(f'Filtering method: Ollama AI\n')
+        else:
+            self.stdout.write(f'Filtering method: Keyword-based\n')
         
         # Parse the sitemap
         posts = self.parse_sitemap(sitemap_url, base_url=base_url, proxies=proxies)
         
+        original_count = len(posts)
+        
+        # Check for existing posts if source is provided
+        existing_external_ids = set()
+        existing_urls_normalized = set()
+        existing_count = 0
+        source = None
+        filter_china = False  # Will be determined from source or flag
+        
+        if source_arg:
+            try:
+                # Try to parse as ID first
+                try:
+                    source_id = int(source_arg)
+                    source = Source.objects.get(pk=source_id)
+                except ValueError:
+                    # Not a number, try as name
+                    source = Source.objects.filter(name__icontains=source_arg).first()
+                
+                if source:
+                    # Check source's filter_china setting (unless overridden by flags)
+                    if no_filter_china_flag:
+                        filter_china = False
+                        self.stdout.write(f'Found source: {source.name} (ID: {source.id})')
+                        self.stdout.write(f'  Source has filter_china={source.filter_china}, but --no-filter-china flag overrides it\n')
+                    elif filter_china_flag:
+                        filter_china = True
+                        self.stdout.write(f'Found source: {source.name} (ID: {source.id})')
+                        self.stdout.write(f'  Source has filter_china={source.filter_china}, but --filter-china flag forces it enabled\n')
+                    else:
+                        filter_china = source.filter_china
+                        self.stdout.write(f'Found source: {source.name} (ID: {source.id})')
+                        if filter_china:
+                            self.stdout.write(f'  Source has filter_china=True, China filter will be applied\n')
+                    
+                    # Get both external_id and link to check for existing posts
+                    # (some posts might have URL in external_id, others in link)
+                    existing_external_ids_raw = set(
+                        Content.objects.filter(source=source)
+                        .exclude(external_id__isnull=True)
+                        .exclude(external_id='')
+                        .values_list('external_id', flat=True)
+                    )
+                    existing_links_raw = set(
+                        Content.objects.filter(source=source)
+                        .exclude(link__isnull=True)
+                        .exclude(link='')
+                        .values_list('link', flat=True)
+                    )
+                    # Combine both sets (URLs might be in either field)
+                    existing_urls_raw = existing_external_ids_raw | existing_links_raw
+                    existing_count = len(existing_urls_raw)
+                    # Normalize existing URLs (remove trailing slashes for comparison)
+                    existing_urls_normalized = {url.rstrip('/') for url in existing_urls_raw if url}
+                    self.stdout.write(f'Existing posts in database: {existing_count}')
+                    self.stdout.write(f'  (checked both external_id and link fields)\n')
+                else:
+                    self.stdout.write(self.style.WARNING(f'⚠️  Source not found: {source_arg}'))
+                    self.stdout.write(self.style.WARNING('⚠️  Will show all posts (not filtering by existing)\n'))
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'⚠️  Error looking up source: {str(e)}\n'))
+        else:
+            # No source provided, use flag if set
+            if filter_china_flag:
+                filter_china = True
+                self.stdout.write(f'China filter: Enabled (via --filter-china flag)\n')
+        
+        # Filter out existing posts
+        filtered_existing = 0
+        if existing_urls_normalized:
+            posts_before_existing = len(posts)
+            # Check against normalized URLs
+            posts = [post for post in posts if post['url'].rstrip('/') not in existing_urls_normalized]
+            filtered_existing = posts_before_existing - len(posts)
+            if filtered_existing > 0:
+                self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_existing} existing posts\n'))
+        
+        # Filter out job postings, non-travel content, and apply China filter
+        filtered_jobs = 0
+        filtered_non_travel = 0
+        filtered_china = 0
+        posts_before_content_filter = len(posts)
+        filtered_posts = []
+        ollama_errors = 0
+        
+        if use_ollama:
+            # Use Ollama for filtering
+            self.stdout.write(f'\n🔍 Filtering posts with Ollama AI...\n')
+            for i, post in enumerate(posts, 1):
+                try:
+                    is_job, is_non_travel, is_china_related_ollama, reasoning = self._filter_post_with_ollama(
+                        post, ollama_model, check_china=filter_china
+                    )
+                    
+                    # Skip job postings
+                    if is_job:
+                        filtered_jobs += 1
+                        continue
+                    
+                    # Skip non-travel content
+                    if is_non_travel:
+                        filtered_non_travel += 1
+                        continue
+                    
+                    # Apply China filter if enabled
+                    if filter_china and not is_china_related_ollama:
+                        filtered_china += 1
+                        continue
+                    
+                    # Store reasoning in post for display
+                    post['_ollama_reasoning'] = reasoning
+                    filtered_posts.append(post)
+                    
+                except Exception as e:
+                    ollama_errors += 1
+                    # Fall back to keyword-based filtering on error
+                    self.stdout.write(self.style.WARNING(f'⚠️  Ollama error for post "{post.get("title", "")[:50]}": {str(e)[:100]}'))
+                    # Use keyword-based as fallback
+                    if self.is_job_posting(post):
+                        filtered_jobs += 1
+                        continue
+                    if self.is_non_travel_content(post):
+                        filtered_non_travel += 1
+                        continue
+                    if filter_china:
+                        post_url = post.get('url', '')
+                        post_title = post.get('title', '')
+                        if not (self.is_china_related(post_url) or (post_title and self.is_china_related(post_title))):
+                            filtered_china += 1
+                            continue
+                    filtered_posts.append(post)
+            
+            if ollama_errors > 0:
+                self.stdout.write(self.style.WARNING(f'⚠️  {ollama_errors} posts processed with keyword-based fallback due to Ollama errors\n'))
+        else:
+            # Use keyword-based filtering
+            for post in posts:
+                # Skip job postings
+                if self.is_job_posting(post):
+                    filtered_jobs += 1
+                    continue
+                # Skip non-travel content
+                if self.is_non_travel_content(post):
+                    filtered_non_travel += 1
+                    continue
+                filtered_posts.append(post)
+            
+            # Apply China filter if enabled
+            if filter_china:
+                original_after_existing = len(filtered_posts)
+                china_filtered = []
+                for post in filtered_posts:
+                    post_url = post.get('url', '')
+                    post_title = post.get('title', '')
+                    if self.is_china_related(post_url) or (post_title and self.is_china_related(post_title)):
+                        china_filtered.append(post)
+                filtered_posts = china_filtered
+                filtered_china = original_after_existing - len(filtered_posts)
+        
+        posts = filtered_posts
+        if filtered_jobs > 0:
+            self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_jobs} job postings\n'))
+        if filtered_non_travel > 0:
+            self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_non_travel} non-travel content posts\n'))
+        if filter_china and filtered_china > 0:
+            self.stdout.write(self.style.WARNING(f'⏭️  Filtered out {filtered_china} non-China-related posts\n'))
+        
         # Display results
         if posts:
-            self.stdout.write(self.style.SUCCESS(f'\n✅ Found {len(posts)} posts:\n'))
+            self.stdout.write(self.style.SUCCESS(f'\n✅ Found {len(posts)} new posts:\n'))
             for i, post in enumerate(posts, 1):
                 self.stdout.write(f'{i}. {post["title"]}')
                 self.stdout.write(f'   URL: {post["url"]}')
                 if post.get('date'):
                     self.stdout.write(f'   Date: {post["date"]}')
+                # Show filter status
+                if use_ollama and post.get('_ollama_reasoning'):
+                    # Show Ollama reasoning
+                    reasoning = post.get('_ollama_reasoning', '')
+                    if reasoning:
+                        reasoning_preview = reasoning[:150] + "..." if len(reasoning) > 150 else reasoning
+                        self.stdout.write(f'   [Ollama] {reasoning_preview}')
+                elif filter_china:
+                    is_china = self.is_china_related(post.get('url', '')) or self.is_china_related(post.get('title', ''))
+                    if is_china:
+                        self.stdout.write(self.style.SUCCESS('   ✓ China-related'))
+                    else:
+                        self.stdout.write(self.style.WARNING('   ✗ Not China-related'))
                 self.stdout.write('')
         else:
-            self.stdout.write(self.style.WARNING('\n⚠️  No posts found in sitemap'))
+            self.stdout.write(self.style.WARNING('\n⚠️  No new posts found'))
+            if existing_urls_normalized:
+                self.stdout.write(self.style.WARNING('   (All posts already exist in database)'))
+            if filter_china:
+                self.stdout.write(self.style.WARNING('   (All posts filtered out by China filter)'))
         
-        self.stdout.write(self.style.SUCCESS(f'\n{"="*60}\n'))
+        # Summary
+        self.stdout.write(self.style.SUCCESS(f'\n{"="*60}'))
+        self.stdout.write(f'Summary:')
+        self.stdout.write(f'  Total posts in sitemap: {original_count}')
+        if use_ollama:
+            self.stdout.write(f'  Filtering method: Ollama AI ({ollama_model})')
+            if ollama_errors > 0:
+                self.stdout.write(f'    ⚠️  {ollama_errors} posts used keyword-based fallback')
+        else:
+            self.stdout.write(f'  Filtering method: Keyword-based')
+        if existing_urls_normalized:
+            # Calculate new posts count (before content filters)
+            new_posts_count = original_count - filtered_existing
+            self.stdout.write(f'  Existing posts in database: {existing_count}')
+            self.stdout.write(f'  New posts (not in database): {new_posts_count}')
+            if filtered_existing > 0:
+                self.stdout.write(f'    → Filtered out {filtered_existing} existing posts')
+        else:
+            self.stdout.write(f'  New posts: {len(posts)}')
+        if filtered_jobs > 0 or filtered_non_travel > 0:
+            self.stdout.write(f'  Content filters applied:')
+            if filtered_jobs > 0:
+                self.stdout.write(f'    → Filtered out {filtered_jobs} job postings')
+            if filtered_non_travel > 0:
+                self.stdout.write(f'    → Filtered out {filtered_non_travel} non-travel content posts')
+        if filter_china:
+            self.stdout.write(f'  China filter: Enabled')
+            if filtered_china > 0:
+                self.stdout.write(f'    → Filtered out {filtered_china} non-China-related posts')
+        self.stdout.write(f'  Final result: {len(posts)} posts to import')
+        self.stdout.write(self.style.SUCCESS(f'{"="*60}\n'))
 
     def get_request_headers(self, base_url=None, minimal=False):
         """Get request headers with optional Referer header"""
@@ -587,7 +1151,19 @@ class Command(BaseCommand):
                     
                     # Extract title if available (some sitemaps include it)
                     title_tag = url_tag.find('image:title') or url_tag.find('title')
-                    title = title_tag.text.strip() if title_tag and title_tag.text else url
+                    if title_tag and title_tag.text:
+                        title = title_tag.text.strip()
+                    else:
+                        # Generate title from URL if not in sitemap (same logic as views.py)
+                        parsed = urlparse(url)
+                        path = parsed.path.strip('/')
+                        # Get the last part of the path (slug)
+                        slug = path.split('/')[-1] if path else ''
+                        # Convert slug to title (replace hyphens with spaces, title case)
+                        if slug:
+                            title = slug.replace('-', ' ').replace('_', ' ').title()
+                        else:
+                            title = url
                     
                     posts.append({
                         'url': url,

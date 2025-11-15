@@ -397,9 +397,9 @@ def is_video_relevant_to_china_with_details(title: str, description: str = '', t
             try:
                 from .models import Settings
                 app_settings = Settings.get_settings()
-                ollama_model = app_settings.default_tagging_model
+                ollama_model = app_settings.default_filtering_model
             except Exception:
-                ollama_model = 'gpt-oss:20b-cloud'
+                ollama_model = 'llama3.2:latest'
             
             # Load proxy config
             proxy_config = _load_proxy_config()
