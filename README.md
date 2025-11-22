@@ -17,6 +17,7 @@ Django-based dashboard for managing content sources and generating blog posts ab
 - **Content Processing**: One-click transcript fetching for YouTube videos and content extraction for blog posts
 - **Activity Logging**: Comprehensive logging of content operations (fetching, transcript extraction, filtering)
 - **China Filter**: Automatic filtering of videos for China-related content (configurable per source)
+- **Post Ideas Management**: Generate, manage, and organize blog post ideas with AI-powered generation
 - **REST API**: Token-based API endpoints for programmatic content management
 
 ## Setup Instructions
@@ -252,6 +253,7 @@ DB_PORT=5432
 DJANGO_SECRET_KEY=your-secret-key-here
 API_TOKEN=your-api-token-here
 OPENAI_API_KEY=your-openai-api-key
+GEMINI_API_KEY=your-gemini-api-key
 OLLAMA_URL=http://localhost:11434
 WEBSHARE_PROXY_USERNAME=your-proxy-username
 WEBSHARE_PROXY_PASSWORD=your-proxy-password
@@ -265,7 +267,8 @@ Variables:
 - `DB_PORT`: Database port (default: '5432')
 - `DJANGO_SECRET_KEY`: Django secret key (default: insecure key for dev only)
 - `API_TOKEN`: Token for API authentication (required for API endpoints)
-- `OPENAI_API_KEY`: OpenAI API key (required for embeddings)
+- `OPENAI_API_KEY`: OpenAI API key (required for embeddings and post idea generation)
+- `GEMINI_API_KEY`: Google Gemini API key (optional, for post idea generation)
 - `OPENAI_EMBEDDING_MODEL`: Embedding model name (default: 'text-embedding-3-small')
 - `OPENAI_EMBEDDING_DIMENSIONS`: Embedding dimensions (default: 1536)
 - `OLLAMA_URL`: Ollama API URL (default: 'http://localhost:11434')
@@ -685,6 +688,66 @@ curl -X POST \
 
 **Note**: If a blog post with the same link already exists for the source, the API will return a 409 Conflict error.
 
+### Generate Post Ideas
+
+**Endpoint**: `POST /post-ideas/api/generate/` or `POST /post-ideas/api/generate`
+
+Generates blog post ideas using AI (Ollama, OpenAI, or Gemini). This endpoint is designed for automation tools like n8n.
+
+**Authentication**: Token-based (via query parameter or Authorization header)
+
+**Request Body**:
+```json
+{
+  "num_ideas": 5,
+  "provider": "ollama",
+  "model": "llama3.2",
+  "tags": [1, 2, 3],
+  "contents": [10, 20, 30]
+}
+```
+
+**Required Fields**:
+- `num_ideas`: Number of post ideas to generate (integer)
+- `provider`: AI provider - `"ollama"`, `"openai"`, or `"gemini"` (string)
+- `model`: Model name to use (string, e.g., `"llama3.2"`, `"gpt-4"`, `"gemini-pro"`)
+
+**Optional Fields**:
+- `tags`: Array of tag IDs to base ideas on (array of integers)
+- `contents`: Array of content IDs to base ideas on (array of integers)
+
+**Example Request**:
+```bash
+curl -X POST \
+     -H "Content-Type: application/json" \
+     -d '{
+       "num_ideas": 5,
+       "provider": "openai",
+       "model": "gpt-4",
+       "tags": [1, 2]
+     }' \
+     "http://127.0.0.1:8000/post-ideas/api/generate/?token=your-api-token"
+```
+
+**Response (Success)**:
+```json
+{
+  "success": true,
+  "message": "Successfully generated 5 post ideas",
+  "ideas_created": 5
+}
+```
+
+**Response (Error)**:
+```json
+{
+  "success": false,
+  "error": "Error message here"
+}
+```
+
+**Note**: The endpoint supports both trailing slash (`/post-ideas/api/generate/`) and without (`/post-ideas/api/generate`) for compatibility with different automation tools.
+
 ### China Filtering
 
 When a source has `filter_videos` enabled, videos added via the API are automatically checked for China-relevance. The filter analyzes:
@@ -716,6 +779,36 @@ python manage.py test_transcript dQw4w9WgXcQ --source-id 1 --use-proxy
 
 This command helps debug transcript fetching issues, especially related to proxy configuration.
 
+## Post Ideas Management
+
+The dashboard includes a Post Ideas feature for generating and managing blog post ideas using AI.
+
+### Features
+
+- **Manual Creation**: Add post ideas manually with title and description
+- **AI Generation**: Generate multiple post ideas using Ollama, OpenAI, or Gemini
+- **Tag-Based Generation**: Generate ideas based on specific tags
+- **Content-Based Generation**: Generate ideas inspired by existing content
+- **Activity Logging**: All idea creation, updates, and generation activities are logged
+
+### Generating Post Ideas
+
+1. Navigate to **Post Ideas** in the sidebar
+2. Click **Generate Ideas**
+3. Configure generation settings:
+   - **Number of Ideas**: How many ideas to generate
+   - **Provider**: Choose between Ollama (free, local), OpenAI, or Gemini
+   - **Model**: Select the specific model to use
+   - **Tags** (optional): Select tags to base ideas on
+   - **Content** (optional): Search and select existing content to inspire ideas
+4. Click **Generate Ideas**
+
+The system will generate post ideas based on your selected criteria and add them to your ideas list.
+
+### API Integration
+
+The Post Ideas generation can be triggered via API for automation (e.g., with n8n). See the [API Endpoints](#generate-post-ideas) section for details.
+
 ### Cost Estimation
 
 - **text-embedding-3-small**: ~$0.02 per 1M tokens
@@ -732,7 +825,7 @@ This command helps debug transcript fetching issues, especially related to proxy
 - [x] Set up embedding generation pipeline
 - [x] Integrate with PostgreSQL pgvector for vector search
 - [ ] Add semantic search functionality (query embeddings and similarity search)
-- [ ] Add Post Ideas tab for generated article ideas
+- [x] Add Post Ideas tab for generated article ideas
 - [ ] Add Blog Posts tab for managing generated posts
 - [ ] Add RAG pipeline for content generation
 

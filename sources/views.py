@@ -3046,9 +3046,10 @@ def post_idea_models_api(request):
         
         # Common Gemini models
         models = [
-            'gemini-1.5-pro',
-            'gemini-1.5-flash',
-            'gemini-pro',
+            'gemini-3-pro-preview',
+            'gemini-2.5-pro',
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite'
         ]
         return JsonResponse({'models': models})
     
