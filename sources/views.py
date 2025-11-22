@@ -2358,15 +2358,10 @@ def post_idea_list(request):
         # Default: newest first
         post_ideas = post_ideas.order_by('-created_at')
     
-    # Get scheduled generation settings
-    from sources.models import ScheduledPostIdeaGeneration
-    scheduled_settings = ScheduledPostIdeaGeneration.get_settings()
-    
     context = {
         'post_ideas': post_ideas,
         'search_query': search_query,
         'sort_by': sort_by,
-        'scheduled_settings': scheduled_settings,
     }
     
     return render(request, 'sources/post_idea_list.html', context)
@@ -2589,59 +2584,6 @@ def post_idea_delete(request, pk):
         'post_idea': post_idea
     }
     return render(request, 'sources/post_idea_confirm_delete.html', context)
-
-
-@login_required
-def post_idea_scheduled_settings(request):
-    """View to configure scheduled post idea generation"""
-    scheduled_settings = ScheduledPostIdeaGeneration.get_settings()
-    
-    if request.method == 'POST':
-        enabled = request.POST.get('enabled') == 'on'
-        trigger_time = request.POST.get('trigger_time', '09:00')
-        num_ideas = int(request.POST.get('num_ideas', 5))
-        provider = request.POST.get('provider', 'ollama')
-        model = request.POST.get('model', '').strip()
-        
-        # Validate inputs
-        if num_ideas < 1 or num_ideas > 50:
-            messages.error(request, 'Number of ideas must be between 1 and 50.')
-            return redirect('sources:post_idea_scheduled_settings')
-        
-        if provider not in ['ollama', 'openai', 'gemini']:
-            messages.error(request, 'Invalid provider selected.')
-            return redirect('sources:post_idea_scheduled_settings')
-        
-        if not model:
-            messages.error(request, 'Model is required.')
-            return redirect('sources:post_idea_scheduled_settings')
-        
-        # Update settings
-        scheduled_settings.enabled = enabled
-        scheduled_settings.trigger_time = trigger_time
-        scheduled_settings.num_ideas = num_ideas
-        scheduled_settings.provider = provider
-        scheduled_settings.model = model
-        scheduled_settings.save()
-        
-        if enabled:
-            messages.success(request, f'Scheduled generation enabled. Will generate {num_ideas} ideas daily at {trigger_time} using {provider} ({model}).')
-        else:
-            messages.success(request, 'Scheduled generation disabled.')
-        
-        return redirect('sources:post_idea_list')
-    
-    # Get available models based on provider
-    has_openai_key = bool(getattr(settings, 'OPENAI_API_KEY', None))
-    has_gemini_key = bool(getattr(settings, 'GEMINI_API_KEY', None))
-    
-    context = {
-        'scheduled_settings': scheduled_settings,
-        'has_openai_key': has_openai_key,
-        'has_gemini_key': has_gemini_key,
-    }
-    
-    return render(request, 'sources/post_idea_scheduled_settings.html', context)
 
 
 def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selected_contents=None, user=None):

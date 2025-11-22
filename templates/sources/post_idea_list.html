@@ -15,31 +15,8 @@
         <a href="{% url 'sources:post_idea_add' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i> Add New Idea
         </a>
-        <a href="{% url 'sources:post_idea_scheduled_settings' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-clock me-1"></i> Scheduled Generation
-        </a>
     </div>
 </div>
-
-<!-- Scheduled Generation Status -->
-{% if scheduled_settings.enabled %}
-<div class="alert alert-info mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <i class="bi bi-clock me-2"></i>
-            <strong>Scheduled Generation Active:</strong> 
-            Generating {{ scheduled_settings.num_ideas }} idea(s) daily at {{ scheduled_settings.trigger_time|time:"H:i" }} 
-            using {{ scheduled_settings.provider|upper }} ({{ scheduled_settings.model }})
-            {% if scheduled_settings.last_run %}
-                <br><small class="text-muted">Last run: {{ scheduled_settings.last_run|date:"M d, Y H:i" }}</small>
-            {% endif %}
-        </div>
-        <a href="{% url 'sources:post_idea_scheduled_settings' %}" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-gear me-1"></i> Configure
-        </a>
-    </div>
-</div>
-{% endif %}
 
 <!-- Filters -->
 <div class="card mb-4 border-0 shadow-sm">

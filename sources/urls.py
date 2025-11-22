@@ -45,7 +45,7 @@ urlpatterns = [
     path('post-ideas/api/search-content/', views.post_idea_search_content_api, name='post_idea_search_content_api'),
     path('post-ideas/api/models/', views.post_idea_models_api, name='post_idea_models_api'),
     path('post-ideas/api/generate/', views.post_idea_generate_api, name='post_idea_generate_api'),
-    path('post-ideas/scheduled-settings/', views.post_idea_scheduled_settings, name='post_idea_scheduled_settings'),
+    path('post-ideas/api/generate', views.post_idea_generate_api, name='post_idea_generate_api_no_slash'),  # Support both with and without trailing slash
     path('post-ideas/<int:pk>/edit/', views.post_idea_edit, name='post_idea_edit'),
     path('post-ideas/<int:pk>/delete/', views.post_idea_delete, name='post_idea_delete'),
 ]
