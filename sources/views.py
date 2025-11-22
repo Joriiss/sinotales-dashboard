@@ -12,7 +12,7 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.utils.html import json_script
 import json
-from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings
+from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration
 from .forms import SourceForm, ContentForm, SettingsForm
 from .rag_service import RAGService
 from .utils import log_activity
@@ -378,7 +378,8 @@ def source_edit(request, pk):
                             content = Content.objects.get(pk=content_id)
                             
                             # Extract transcript (using pre-fetched if available)
-                            if processing_service.extract_transcript(content, force=False, user=None, transcript_text=transcript_text):
+                            extracted, _ = processing_service.extract_transcript(content, force=False, user=None, transcript_text=transcript_text)
+                            if extracted:
                                 transcripts_extracted += 1
                                 
                                 # Refresh to get the saved transcript
@@ -2142,11 +2143,32 @@ def content_edit(request, pk):
                 processing_service = ContentProcessingService(use_proxy=True)
                 # Force re-extraction even if content already exists
                 # Pass user for activity logging (service method handles logging)
-                extracted = processing_service.extract_transcript(content, force=True, user=request.user)
+                extracted, language_code = processing_service.extract_transcript(content, force=True, user=request.user)
                 if extracted:
-                    messages.success(request, f'Transcript fetched successfully for video "{content.title}"')
                     # Refresh content from DB to get updated content
                     content.refresh_from_db()
+                    
+                    # Check if transcript is not in English and translate if needed
+                    is_english = False
+                    if language_code:
+                        # Normalize language code for checking (handle variants like 'en', 'en-US', 'en-GB', etc.)
+                        lang_base = language_code.split('-')[0].lower()
+                        is_english = lang_base == 'en'
+                    
+                    if language_code and not is_english and language_code.lower() != 'auto':
+                        # Transcript is not in English - translate it
+                        print(f"  [TRANSLATE] Transcript is in {language_code}, translating to English...", flush=True)
+                        translated = processing_service.translate_to_english(content, source_language=language_code)
+                        if translated:
+                            content.refresh_from_db()
+                            messages.success(request, f'Transcript fetched and translated to English for video "{content.title}" (original: {language_code})')
+                        else:
+                            messages.warning(request, f'Transcript fetched but translation to English failed for video "{content.title}"')
+                    elif is_english:
+                        messages.success(request, f'Transcript fetched successfully for video "{content.title}" (already in English)')
+                    else:
+                        # Language is unknown or auto - no translation needed
+                        messages.success(request, f'Transcript fetched successfully for video "{content.title}"')
                 else:
                     messages.warning(request, f'Could not extract transcript. The video might not have transcripts available, or they may be disabled.')
             except Exception as e:
@@ -2312,6 +2334,521 @@ def agent_view(request):
 
 
 @login_required
+def post_idea_list(request):
+    """Display list of all post ideas"""
+    post_ideas = PostIdea.objects.all()
+    
+    # Apply search filter
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        post_ideas = post_ideas.filter(
+            Q(title__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+    
+    # Apply sorting (default: newest first)
+    sort_by = request.GET.get('sort', 'newest').strip()
+    if sort_by == 'oldest':
+        post_ideas = post_ideas.order_by('created_at')
+    elif sort_by == 'title_asc':
+        post_ideas = post_ideas.order_by('title')
+    elif sort_by == 'title_desc':
+        post_ideas = post_ideas.order_by('-title')
+    else:
+        # Default: newest first
+        post_ideas = post_ideas.order_by('-created_at')
+    
+    # Get scheduled generation settings
+    from sources.models import ScheduledPostIdeaGeneration
+    scheduled_settings = ScheduledPostIdeaGeneration.get_settings()
+    
+    context = {
+        'post_ideas': post_ideas,
+        'search_query': search_query,
+        'sort_by': sort_by,
+        'scheduled_settings': scheduled_settings,
+    }
+    
+    return render(request, 'sources/post_idea_list.html', context)
+
+
+@login_required
+def post_idea_generate(request):
+    """Generate post ideas using Ollama, OpenAI, or Gemini"""
+    # Get available tags and content for selection
+    tags = Tag.objects.all().order_by('name')
+    # Don't load contents by default - they'll be loaded via AJAX when searching
+    contents = []
+    
+    if request.method == 'POST':
+        num_ideas = int(request.POST.get('num_ideas', 5))
+        selected_tag_ids = request.POST.getlist('tags')
+        selected_content_ids = request.POST.getlist('contents')
+        provider = request.POST.get('provider', 'ollama').strip().lower()
+        selected_model = request.POST.get('model', '').strip()
+        
+        # Get selected tags and contents
+        selected_tags = Tag.objects.filter(pk__in=selected_tag_ids) if selected_tag_ids else []
+        selected_contents = Content.objects.filter(pk__in=selected_content_ids) if selected_content_ids else []
+        
+        # Validate provider
+        if provider not in ['ollama', 'openai', 'gemini']:
+            messages.error(request, 'Invalid provider selected.')
+            return redirect('sources:post_idea_list')
+        
+        # Get model - use selected model or fall back to defaults
+        if not selected_model:
+            if provider == 'ollama':
+                try:
+                    app_settings = Settings.get_settings()
+                    selected_model = app_settings.default_tagging_model
+                except Exception:
+                    selected_model = 'gpt-oss:20b-cloud'
+            elif provider == 'openai':
+                selected_model = 'gpt-4o-mini'
+            elif provider == 'gemini':
+                selected_model = 'gemini-1.5-pro'
+        
+        # Build context for prompt
+        context_parts = []
+        
+        if selected_tags:
+            tag_names = [tag.name for tag in selected_tags]
+            context_parts.append(f"Tags/Categories: {', '.join(tag_names)}")
+        
+        if selected_contents:
+            content_summaries = []
+            for content in selected_contents[:5]:  # Limit to 5 contents to avoid too long prompts
+                summary = f"- {content.title}"
+                if content.content:
+                    # Truncate content preview
+                    content_preview = content.content[:300] if len(content.content) > 300 else content.content
+                    summary += f"\n  Preview: {content_preview}..."
+                content_summaries.append(summary)
+            context_parts.append(f"Related Content:\n" + "\n".join(content_summaries))
+        
+        context_text = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
+        
+        prompt = f"""
+        Generate {num_ideas} high-quality blog post ideas for a China travel blog.
+
+Your ideas must be directly useful for people planning a trip to China.  
+Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.
+
+Use the following context (optional reference material):
+{context_text}
+
+### Requirements
+- Each idea must clearly answer a real search intent a traveler might have.
+- Ideas should be practical, specific, and actionable: itineraries, travel guides, food recommendations, destination highlights, logistics, tips, or seasonal advice.
+- Avoid purely cultural or historical analysis unless it connects directly to a travel experience.
+- Each idea must contain:
+  1. A compelling and SEO-friendly title (50–80 characters)
+  2. A brief description (1–2 sentences) explaining what the post covers and why it helps a traveler.
+- Cover a diverse range of regions, themes, and traveler needs.
+
+### Tone Guidance
+Prioritize topics that answer searches like:
+- "Best things to do in ___"
+- "Where to eat in ___"
+- "Travel guide"
+- "Hidden gems in ___"
+- "Is ___ worth visiting?"
+- "How to get from ___ to ___"
+- "Best time to visit ___"
+- "What to eat in ___"
+- "7-day itinerary for ___"
+
+### Important
+Every idea must be explicitly linked to travel, trip planning, or on-the-ground experience in China.
+
+### Output Format
+Respond in JSON only:
+
+{{
+  "ideas": [
+    {{
+      "title": "Post title here",
+      "description": "Brief summary explaining the travel value"
+    }}
+  ]
+}}
+
+Generate exactly {num_ideas} ideas.
+Response:
+"""
+        
+        # Call the appropriate provider
+        try:
+            import requests
+            import json
+        except ImportError:
+            messages.error(request, 'requests library required. Install with: pip install requests')
+            return redirect('sources:post_idea_list')
+        
+        response_text = None
+        error_message = None
+        
+        try:
+            if provider == 'ollama':
+                # Call Ollama
+                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+                url = f"{ollama_url}/api/generate"
+                
+                payload = {
+                    "model": selected_model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.8,
+                        "top_p": 0.9,
+                    }
+                }
+                
+                response = requests.post(url, json=payload, timeout=120)
+                response.raise_for_status()
+                result = response.json()
+                response_text = result.get('response', '').strip()
+                
+            elif provider == 'openai':
+                # Call OpenAI
+                api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                if not api_key:
+                    messages.error(request, 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.')
+                    return redirect('sources:post_idea_list')
+                
+                try:
+                    from openai import OpenAI
+                except ImportError:
+                    messages.error(request, 'openai library required. Install with: pip install openai')
+                    return redirect('sources:post_idea_list')
+                
+                client = OpenAI(api_key=api_key)
+                
+                # Check model type for parameter compatibility
+                is_gpt5 = 'gpt-5' in selected_model.lower()
+                is_newer_model = any(keyword in selected_model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
+                
+                # Build request parameters
+                request_params = {
+                    "model": selected_model,
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                }
+                
+                # GPT-5 only supports default temperature (1), so don't set it
+                if not is_gpt5:
+                    request_params["temperature"] = 0.8
+                
+                # Use appropriate parameter based on model
+                if is_newer_model:
+                    request_params["max_completion_tokens"] = 2000
+                else:
+                    request_params["max_tokens"] = 2000
+                
+                response = client.chat.completions.create(**request_params)
+                response_text = response.choices[0].message.content.strip()
+                
+            elif provider == 'gemini':
+                # Call Gemini
+                api_key = getattr(settings, 'GEMINI_API_KEY', None)
+                if not api_key:
+                    messages.error(request, 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.')
+                    return redirect('sources:post_idea_list')
+                
+                try:
+                    import google.generativeai as genai
+                except ImportError:
+                    messages.error(request, 'google-generativeai library required. Install with: pip install google-generativeai')
+                    return redirect('sources:post_idea_list')
+                
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel(selected_model)
+                response = model.generate_content(
+                    prompt,
+                    generation_config={
+                        "temperature": 0.8,
+                        "max_output_tokens": 2000,
+                    }
+                )
+                response_text = response.text.strip()
+            
+            # Parse JSON response (common for all providers)
+            if response_text:
+                # Try to extract JSON from response
+                start_idx = response_text.find('{')
+                end_idx = response_text.rfind('}')
+                
+                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                    json_str = response_text[start_idx:end_idx + 1]
+                    try:
+                        parsed = json.loads(json_str)
+                        ideas = parsed.get('ideas', [])
+                        
+                        # Create PostIdea objects
+                        created_count = 0
+                        created_ideas = []
+                        for idea_data in ideas:
+                            title = idea_data.get('title', '').strip()
+                            description = idea_data.get('description', '').strip()
+                            
+                            if title:
+                                post_idea = PostIdea.objects.create(
+                                    title=title,
+                                    description=description
+                                )
+                                created_count += 1
+                                created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
+                        
+                        if created_count > 0:
+                            # Log activity
+                            log_activity(
+                                'post_ideas_generated',
+                                f'{created_count} post idea(s) were generated using AI',
+                                user=request.user,
+                                metadata={
+                                    'count': created_count,
+                                    'num_requested': num_ideas,
+                                    'provider': provider,
+                                    'model': selected_model,
+                                    'tags_selected': [tag.id for tag in selected_tags],
+                                    'tags_names': [tag.name for tag in selected_tags],
+                                    'contents_selected': [content.id for content in selected_contents],
+                                    'created_ideas': created_ideas
+                                }
+                            )
+                            messages.success(request, f'Successfully generated {created_count} post idea(s) using {provider.upper()}!')
+                        else:
+                            messages.warning(request, 'No valid ideas were generated. Please try again.')
+                        
+                        return redirect('sources:post_idea_list')
+                        
+                    except json.JSONDecodeError:
+                        messages.error(request, f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}')
+                else:
+                    messages.error(request, f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}')
+            else:
+                messages.error(request, f'No response received from {provider.upper()}.')
+                
+        except requests.exceptions.ConnectionError as e:
+            if provider == 'ollama':
+                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+                messages.error(request, f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.')
+            else:
+                messages.error(request, f'Connection error: {str(e)}')
+        except Exception as e:
+            error_str = str(e)
+            # Check for API key errors
+            if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
+                if provider == 'openai':
+                    messages.error(request, f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.')
+                elif provider == 'gemini':
+                    messages.error(request, f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.')
+                else:
+                    messages.error(request, f'Authentication error: {error_str}')
+            else:
+                messages.error(request, f'Error generating ideas with {provider.upper()}: {error_str}')
+    
+    # Get default model for the form
+    default_model = ''
+    try:
+        app_settings = Settings.get_settings()
+        default_model = app_settings.default_tagging_model
+    except Exception:
+        default_model = 'gpt-oss:20b-cloud'
+    
+    # Check which providers are available
+    has_openai_key = bool(getattr(settings, 'OPENAI_API_KEY', None))
+    has_gemini_key = bool(getattr(settings, 'GEMINI_API_KEY', None))
+    
+    context = {
+        'tags': tags,
+        'contents': contents,
+        'default_model': default_model,
+        'has_openai_key': has_openai_key,
+        'has_gemini_key': has_gemini_key,
+    }
+    return render(request, 'sources/post_idea_generate.html', context)
+
+
+@login_required
+def post_idea_search_content_api(request):
+    """API endpoint to search content for post idea generation"""
+    search_query = request.GET.get('q', '').strip()
+    
+    if not search_query:
+        return JsonResponse({'contents': []})
+    
+    # Search in all contents that have content text
+    contents = Content.objects.filter(
+        has_content=True
+    ).select_related('source').filter(
+        Q(title__icontains=search_query) | 
+        Q(content__icontains=search_query) |
+        Q(source__name__icontains=search_query)
+    ).order_by('-created_at')[:50]  # Limit to 50 results for performance
+    
+    results = []
+    for content in contents:
+        results.append({
+            'id': content.id,
+            'title': content.title,
+            'content_type': content.get_content_type_display(),
+            'source_name': content.source.name if content.source else None,
+            'preview': content.content[:200] + '...' if content.content and len(content.content) > 200 else (content.content or '')
+        })
+    
+    return JsonResponse({'contents': results})
+
+
+@login_required
+def post_idea_add(request):
+    """Add a new post idea"""
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        
+        if title:
+            post_idea = PostIdea.objects.create(
+                title=title,
+                description=description
+            )
+            # Log activity
+            log_activity(
+                'post_idea_created',
+                f'Post idea "{post_idea.title}" was created',
+                user=request.user,
+                metadata={'post_idea_id': post_idea.id, 'title': post_idea.title}
+            )
+            messages.success(request, f'Post idea "{post_idea.title}" added successfully')
+            return redirect('sources:post_idea_list')
+        else:
+            messages.error(request, 'Title is required')
+    
+    return render(request, 'sources/post_idea_form.html', {'action': 'Add'})
+
+
+@login_required
+def post_idea_edit(request, pk):
+    """Edit an existing post idea"""
+    try:
+        post_idea = PostIdea.objects.get(pk=pk)
+    except PostIdea.DoesNotExist:
+        messages.error(request, 'Post idea not found')
+        return redirect('sources:post_idea_list')
+    
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        
+        if title:
+            old_title = post_idea.title
+            post_idea.title = title
+            post_idea.description = description
+            post_idea.save()
+            # Log activity
+            log_activity(
+                'post_idea_updated',
+                f'Post idea "{post_idea.title}" was updated',
+                user=request.user,
+                metadata={'post_idea_id': post_idea.id, 'old_title': old_title, 'new_title': post_idea.title}
+            )
+            messages.success(request, f'Post idea "{post_idea.title}" updated successfully')
+            return redirect('sources:post_idea_list')
+        else:
+            messages.error(request, 'Title is required')
+    
+    context = {
+        'post_idea': post_idea,
+        'action': 'Edit'
+    }
+    return render(request, 'sources/post_idea_form.html', context)
+
+
+@login_required
+def post_idea_delete(request, pk):
+    """Delete a post idea"""
+    try:
+        post_idea = PostIdea.objects.get(pk=pk)
+    except PostIdea.DoesNotExist:
+        messages.error(request, 'Post idea not found')
+        return redirect('sources:post_idea_list')
+    
+    if request.method == 'POST':
+        title = post_idea.title
+        post_idea_id = post_idea.id
+        post_idea.delete()
+        # Log activity
+        log_activity(
+            'post_idea_deleted',
+            f'Post idea "{title}" was deleted',
+            user=request.user,
+            metadata={'post_idea_id': post_idea_id, 'title': title}
+        )
+        messages.success(request, f'Post idea "{title}" deleted successfully')
+        return redirect('sources:post_idea_list')
+    
+    context = {
+        'post_idea': post_idea
+    }
+    return render(request, 'sources/post_idea_confirm_delete.html', context)
+
+
+@login_required
+def post_idea_scheduled_settings(request):
+    """View to configure scheduled post idea generation"""
+    scheduled_settings = ScheduledPostIdeaGeneration.get_settings()
+    
+    if request.method == 'POST':
+        enabled = request.POST.get('enabled') == 'on'
+        trigger_time = request.POST.get('trigger_time', '09:00')
+        num_ideas = int(request.POST.get('num_ideas', 5))
+        provider = request.POST.get('provider', 'ollama')
+        model = request.POST.get('model', '').strip()
+        
+        # Validate inputs
+        if num_ideas < 1 or num_ideas > 50:
+            messages.error(request, 'Number of ideas must be between 1 and 50.')
+            return redirect('sources:post_idea_scheduled_settings')
+        
+        if provider not in ['ollama', 'openai', 'gemini']:
+            messages.error(request, 'Invalid provider selected.')
+            return redirect('sources:post_idea_scheduled_settings')
+        
+        if not model:
+            messages.error(request, 'Model is required.')
+            return redirect('sources:post_idea_scheduled_settings')
+        
+        # Update settings
+        scheduled_settings.enabled = enabled
+        scheduled_settings.trigger_time = trigger_time
+        scheduled_settings.num_ideas = num_ideas
+        scheduled_settings.provider = provider
+        scheduled_settings.model = model
+        scheduled_settings.save()
+        
+        if enabled:
+            messages.success(request, f'Scheduled generation enabled. Will generate {num_ideas} ideas daily at {trigger_time} using {provider} ({model}).')
+        else:
+            messages.success(request, 'Scheduled generation disabled.')
+        
+        return redirect('sources:post_idea_list')
+    
+    # Get available models based on provider
+    has_openai_key = bool(getattr(settings, 'OPENAI_API_KEY', None))
+    has_gemini_key = bool(getattr(settings, 'GEMINI_API_KEY', None))
+    
+    context = {
+        'scheduled_settings': scheduled_settings,
+        'has_openai_key': has_openai_key,
+        'has_gemini_key': has_gemini_key,
+    }
+    
+    return render(request, 'sources/post_idea_scheduled_settings.html', context)
+
+
 def agent_models_api(request):
     """API endpoint to fetch available Ollama models"""
     try:
@@ -2363,6 +2900,98 @@ def agent_models_api(request):
         return JsonResponse({'error': 'Could not connect to Ollama. Make sure Ollama is running.'}, status=503)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def post_idea_models_api(request):
+    """API endpoint to fetch available models for a given provider"""
+    provider = request.GET.get('provider', 'ollama').strip().lower()
+    
+    if provider == 'ollama':
+        # Use existing agent_models_api logic
+        try:
+            import requests
+        except ImportError:
+            return JsonResponse({'error': 'requests library required'}, status=500)
+        
+        ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+        url = f"{ollama_url}/api/tags"
+        
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            models = []
+            if 'models' in data:
+                for model_info in data['models']:
+                    model_name = model_info.get('name', '')
+                    if model_name:
+                        models.append(model_name)
+            
+            # Sort models
+            chinese_models = [m for m in models if any(keyword in m.lower() for keyword in ['qwen', 'chinese', 'zh', 'cn'])]
+            other_models = [m for m in models if m not in chinese_models]
+            
+            def sort_key(model_name):
+                name_lower = model_name.lower()
+                if ':3b' in name_lower or '3b' in name_lower:
+                    return (0, name_lower)
+                elif ':4b' in name_lower or '4b' in name_lower:
+                    return (1, name_lower)
+                elif ':7b' in name_lower or '7b' in name_lower:
+                    return (2, name_lower)
+                elif ':8b' in name_lower or '8b' in name_lower:
+                    return (3, name_lower)
+                else:
+                    return (4, name_lower)
+            
+            chinese_models.sort(key=sort_key)
+            other_models.sort(key=sort_key)
+            sorted_models = chinese_models + other_models
+            
+            return JsonResponse({'models': sorted_models})
+        except requests.exceptions.ConnectionError:
+            return JsonResponse({'error': 'Could not connect to Ollama. Make sure Ollama is running.'}, status=503)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    elif provider == 'openai':
+        # OpenAI models
+        api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        if not api_key:
+            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
+        
+        # Manual list of OpenAI models
+        models = [
+            'gpt-5.1',
+            'gpt-5',
+            'gpt-5-mini',
+            'gpt-5-nano',
+            'gpt-4o',
+            'gpt-4o-mini',
+            'gpt-4-turbo',
+            'gpt-4',
+            'gpt-3.5-turbo',
+        ]
+        return JsonResponse({'models': models})
+    
+    elif provider == 'gemini':
+        # Gemini models
+        api_key = getattr(settings, 'GEMINI_API_KEY', None)
+        if not api_key:
+            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
+        
+        # Common Gemini models
+        models = [
+            'gemini-1.5-pro',
+            'gemini-1.5-flash',
+            'gemini-pro',
+        ]
+        return JsonResponse({'models': models})
+    
+    else:
+        return JsonResponse({'error': 'Invalid provider'}, status=400)
 
 
 def _validate_api_token(request):

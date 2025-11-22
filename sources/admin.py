@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ImproperlyConfigured
 
 try:
-    from .models import Source, Content, Tag, ContentChunk
+    from .models import Source, Content, Tag, ContentChunk, PostIdea, ScheduledPostIdeaGeneration
 except ImportError as e:
     raise ImproperlyConfigured(f"Error importing models in admin.py: {e}")
 
@@ -137,5 +137,61 @@ class ContentAdmin(admin.ModelAdmin):
         """Count of chunks for this content"""
         return obj.chunks.count()
     chunks_count.short_description = 'Chunks'
+
+
+@admin.register(PostIdea)
+class PostIdeaAdmin(admin.ModelAdmin):
+    list_display = ['title', 'description_preview', 'created_at', 'updated_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['title', 'description']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'description')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+    
+    def description_preview(self, obj):
+        """Show preview of description"""
+        if obj.description:
+            return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+        return '-'
+    description_preview.short_description = 'Description'
+
+
+@admin.register(ScheduledPostIdeaGeneration)
+class ScheduledPostIdeaGenerationAdmin(admin.ModelAdmin):
+    list_display = ['enabled', 'trigger_time', 'num_ideas', 'provider', 'model', 'last_run', 'updated_at']
+    list_filter = ['enabled', 'provider']
+    readonly_fields = ['created_at', 'updated_at', 'last_run']
+    
+    fieldsets = (
+        ('Schedule Settings', {
+            'fields': ('enabled', 'trigger_time', 'num_ideas')
+        }),
+        ('AI Settings', {
+            'fields': ('provider', 'model')
+        }),
+        ('Status', {
+            'fields': ('last_run',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Only allow one instance
+        return not ScheduledPostIdeaGeneration.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        # Don't allow deletion
+        return False
 
 

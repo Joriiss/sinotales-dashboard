@@ -173,7 +173,7 @@ class Command(BaseCommand):
             
             # Extract transcript
             self.stdout.write('Extracting transcript...\n')
-            success = processing_service.extract_transcript(content, force=True)
+            success, _ = processing_service.extract_transcript(content, force=True)
             
             # Refresh content from database
             content.refresh_from_db()

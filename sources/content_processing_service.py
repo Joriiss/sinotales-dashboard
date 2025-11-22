@@ -1,7 +1,7 @@
 """
 Service for processing content: extract, translate, tag, and embed
 """
-from typing import Optional
+from typing import Optional, Tuple
 from django.db import transaction
 from django.conf import settings
 from pathlib import Path
@@ -37,6 +37,66 @@ try:
 except ImportError:
     PROXY_SUPPORT = False
     WebshareProxyConfig = None
+
+
+def format_transcript_for_translation(text: str) -> str:
+    """
+    Format transcript text by removing line breaks that are not at sentence endings.
+    This improves translation quality by providing better context to the translator.
+    
+    Example:
+        Input: "Hello everyone. So the weather is nice\ntoday as you can see.\nIf it's blue, it's fall. The\nJink are losing their\nleaves but not quite yet\ngolden."
+        Output: "Hello everyone. So the weather is nice today as you can see.\nIf it's blue, it's fall. The Jink are losing their leaves but not quite yet golden."
+    
+    Args:
+        text: Raw transcript text with many line breaks
+        
+    Returns:
+        Formatted text with line breaks only after sentence endings
+    """
+    if not text:
+        return text
+    
+    lines = text.split('\n')
+    formatted_lines = []
+    current_sentence = ''
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            # Empty line - if we have accumulated text, add it and preserve the paragraph break
+            if current_sentence:
+                formatted_lines.append(current_sentence.strip())
+                current_sentence = ''
+            # Preserve empty lines as paragraph breaks
+            if formatted_lines and formatted_lines[-1]:  # Only add if previous line wasn't empty
+                formatted_lines.append('')
+            continue
+        
+        # Add line to current sentence
+        current_sentence += (' ' if current_sentence else '') + line
+        
+        # Check if the line ends with sentence punctuation
+        # If so, this is the end of a sentence - add to formatted_lines and start a new sentence
+        if line and line[-1] in '.!?。！？':
+            formatted_lines.append(current_sentence.strip())
+            current_sentence = ''
+    
+    # Add any remaining text
+    if current_sentence:
+        formatted_lines.append(current_sentence.strip())
+    
+    # Join lines, preserving paragraph breaks (double newlines)
+    result = []
+    for i, line in enumerate(formatted_lines):
+        if line == '':
+            # Empty line - check if we should add it (avoid consecutive empty lines)
+            if i == 0 or formatted_lines[i-1] != '':
+                result.append('')
+        else:
+            result.append(line)
+    
+    return '\n'.join(result).strip()
 
 
 class ContentProcessingService:
@@ -322,7 +382,7 @@ class ContentProcessingService:
         
         return None
     
-    def extract_transcript(self, content: Content, force: bool = False, user=None, transcript_text: Optional[str] = None) -> bool:
+    def extract_transcript(self, content: Content, force: bool = False, user=None, transcript_text: Optional[str] = None) -> Tuple[bool, Optional[str]]:
         """
         Extract transcript from YouTube video if content is empty and link/external_id is available.
         
@@ -330,19 +390,22 @@ class ContentProcessingService:
             content: Content object
             force: If True, extract even if content already exists (for re-fetching)
             user: Optional user object for activity logging
+            transcript_text: Optional pre-fetched transcript text to use directly
             
         Returns:
-            True if transcript was extracted, False otherwise
+            Tuple of (success: bool, language_code: str or None)
+            If successful: (True, language_code)
+            If failed: (False, None)
         """
         # Only extract for videos
         if content.content_type != 'video':
             print(f"  [EXTRACT] Skipping: content type is {content.content_type}, not 'video'", flush=True)
-            return False
+            return False, None
         
         # Skip if content already exists (unless force is True)
         if not force and content.content and content.content.strip():
             print(f"  [EXTRACT] Skipping: content already exists for video {content.external_id}", flush=True)
-            return False
+            return False, None
         
         # If transcript_text is provided, use it directly (no need to fetch)
         if transcript_text:
@@ -361,12 +424,13 @@ class ContentProcessingService:
             )
             
             print(f"  [EXTRACT] ✓ Successfully saved pre-fetched transcript for video {content.external_id} ({len(transcript_text)} chars)", flush=True)
-            return True
+            # Return None for language since we don't know it for pre-fetched transcripts
+            return True, None
         
         # Check if YouTube Transcript API is available
         if not YOUTUBE_TRANSCRIPT_AVAILABLE:
             print("  [EXTRACT] ERROR: YouTube Transcript API not available. Install with: pip install youtube-transcript-api", flush=True)
-            return False
+            return False, None
         
         # Get video ID from external_id or link
         video_id = content.external_id
@@ -375,7 +439,7 @@ class ContentProcessingService:
         
         if not video_id:
             print(f"  [EXTRACT] ERROR: No video ID found for content {content.id}", flush=True)
-            return False
+            return False, None
         
         print(f"  [EXTRACT] Attempting to extract transcript for video {video_id}...", flush=True)
         
@@ -444,12 +508,12 @@ class ContentProcessingService:
                         except (NoTranscriptFound, TranscriptsDisabled) as e:
                             if isinstance(e, TranscriptsDisabled):
                                 print(f"  [EXTRACT] ERROR: Transcripts are disabled for video {video_id}", flush=True)
-                                return False
+                                return False, None
                             print(f"  [EXTRACT] ERROR: No transcript found for video {video_id}", flush=True)
-                            return False
+                            return False, None
                     except VideoUnavailable:
                         print(f"  [EXTRACT] ERROR: Video {video_id} is unavailable", flush=True)
-                        return False
+                        return False, None
                     
                     # If we got here, we successfully fetched the transcript
                     print(f"  [EXTRACT] Successfully fetched transcript {config_name}", flush=True)
@@ -482,7 +546,7 @@ class ContentProcessingService:
             # Check if we successfully got a transcript
             if transcript is None:
                 print(f"  [EXTRACT] ERROR: Failed to fetch transcript for video {video_id} (tried all configurations)", flush=True)
-                return False
+                return False, None
             
             # Extract text from transcript snippets
             transcript_text = '\n'.join([snippet.text for snippet in transcript.snippets])
@@ -505,7 +569,8 @@ class ContentProcessingService:
                     metadata={'video_id': video_id, 'language': language_used, 'char_count': len(transcript_text)}
                 )
                 
-                return True
+                # Return True and the language code for potential translation
+                return True, language_used
             else:
                 print(f"  [EXTRACT] ERROR: Empty transcript for video {video_id}", flush=True)
                 # Log failed transcript fetch
@@ -517,7 +582,7 @@ class ContentProcessingService:
                     source=content.source,
                     metadata={'success': False, 'video_id': video_id, 'reason': 'Empty transcript'}
                 )
-                return False
+                return False, None
         except Exception as e:
             # Log error but don't fail
             import traceback
@@ -534,7 +599,7 @@ class ContentProcessingService:
                 source=content.source,
                 metadata={'success': False, 'video_id': video_id, 'error': error_msg}
             )
-            return False
+            return False, None
     
     def extract_content(self, content: Content, force: bool = False) -> bool:
         """
@@ -551,7 +616,8 @@ class ContentProcessingService:
         """
         # Handle videos differently (extract transcript)
         if content.content_type == 'video':
-            return self.extract_transcript(content, force=force)
+            extracted, _ = self.extract_transcript(content, force=force)
+            return extracted
         
         # Handle blog posts (extract article content)
         if content.content_type != 'blog_post':
@@ -672,6 +738,13 @@ class ContentProcessingService:
         
         try:
             content_text = content.content
+            
+            # Format transcript text before translation if this is a video (transcript)
+            # This removes unnecessary line breaks to improve translation quality
+            if content.content_type == 'video':
+                content_text = format_transcript_for_translation(content_text)
+                print(f"Formatted transcript for better translation quality")
+            
             chunk_size = 4500  # Max characters per translation request
             translated_chunks = []
             
@@ -739,6 +812,115 @@ class ContentProcessingService:
         except Exception as e:
             import traceback
             print(f"Error translating content {content.id}: {str(e)}")
+            print(traceback.format_exc())
+            return False
+    
+    def translate_to_english(self, content: Content, source_language: Optional[str] = None) -> bool:
+        """
+        Translate content to English from any language.
+        Uses auto-detect if source_language is not provided.
+        Works for both blog posts and video transcripts.
+        
+        Args:
+            content: Content object
+            source_language: Optional source language code (e.g., 'fr', 'zh'). If None, uses auto-detect.
+            
+        Returns:
+            True if content was translated, False otherwise
+        """
+        # Check if translation is available
+        if not TRANSLATION_AVAILABLE:
+            print("Translation library not available. Skipping translation.")
+            return False
+        
+        # Skip if no content to translate
+        if not content.content or not content.content.strip():
+            return False
+        
+        try:
+            content_text = content.content
+            
+            # Format transcript text before translation if this is a video (transcript)
+            # This removes unnecessary line breaks to improve translation quality
+            if content.content_type == 'video':
+                content_text = format_transcript_for_translation(content_text)
+                print(f"Formatted transcript for better translation quality")
+            
+            chunk_size = 4500  # Max characters per translation request
+            translated_chunks = []
+            
+            # Determine source language
+            if source_language:
+                # Normalize language code (handle variants like 'zh-CN', 'zh-TW')
+                source_lang = source_language.split('-')[0].lower()  # Get base language code
+                print(f"Translating content {content.id} from {source_lang} to English...")
+            else:
+                source_lang = 'auto'
+                print(f"Translating content {content.id} to English (auto-detect source language)...")
+            
+            if len(content_text) <= chunk_size:
+                # Small content - translate in one go
+                translator = GoogleTranslator(source=source_lang, target='en')
+                translated_text = translator.translate(content_text)
+                content.content = translated_text
+                content.save(update_fields=['content'])
+                print(f"Successfully translated content {content.id} to English")
+                return True
+            else:
+                # Large content - translate in chunks
+                translator = GoogleTranslator(source=source_lang, target='en')
+                
+                # Try splitting by sentences first (for blog posts)
+                if '. ' in content_text or '.\n' in content_text:
+                    # Split by periods (with space or newline after)
+                    import re
+                    sentences = re.split(r'([.!?]\s+)', content_text)
+                    current_chunk = ''
+                    
+                    for sentence in sentences:
+                        if len(current_chunk) + len(sentence) <= chunk_size:
+                            current_chunk += sentence
+                        else:
+                            if current_chunk:
+                                translated_chunk = translator.translate(current_chunk)
+                                translated_chunks.append(translated_chunk)
+                            current_chunk = sentence
+                    
+                    if current_chunk:
+                        translated_chunk = translator.translate(current_chunk)
+                        translated_chunks.append(translated_chunk)
+                else:
+                    # For transcripts or content without periods, split by newlines or fixed size
+                    lines = content_text.split('\n')
+                    current_chunk = ''
+                    
+                    for line in lines:
+                        if len(current_chunk) + len(line) + 1 <= chunk_size:
+                            current_chunk += line + '\n' if current_chunk else line
+                        else:
+                            if current_chunk:
+                                translated_chunk = translator.translate(current_chunk)
+                                translated_chunks.append(translated_chunk)
+                            current_chunk = line + '\n'
+                    
+                    if current_chunk:
+                        translated_chunk = translator.translate(current_chunk)
+                        translated_chunks.append(translated_chunk)
+                
+                # Join translated chunks, preserving structure
+                if '\n' in content_text:
+                    # Preserve newlines for transcripts
+                    content.content = '\n'.join(translated_chunks)
+                else:
+                    # Join with spaces for blog posts
+                    content.content = ' '.join(translated_chunks)
+                
+                content.save(update_fields=['content'])
+                print(f"Successfully translated content {content.id} to English ({len(translated_chunks)} chunks)")
+                return True
+        except Exception as e:
+            import traceback
+            print(f"Error translating content {content.id} to English: {str(e)}")
             print(traceback.format_exc())
             return False
     

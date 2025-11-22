@@ -37,6 +37,16 @@ urlpatterns = [
     
     # Settings
     path('settings/', views.settings_view, name='settings'),
+    
+    # Post Ideas
+    path('post-ideas/', views.post_idea_list, name='post_idea_list'),
+    path('post-ideas/add/', views.post_idea_add, name='post_idea_add'),
+    path('post-ideas/generate/', views.post_idea_generate, name='post_idea_generate'),
+    path('post-ideas/api/search-content/', views.post_idea_search_content_api, name='post_idea_search_content_api'),
+    path('post-ideas/api/models/', views.post_idea_models_api, name='post_idea_models_api'),
+    path('post-ideas/scheduled-settings/', views.post_idea_scheduled_settings, name='post_idea_scheduled_settings'),
+    path('post-ideas/<int:pk>/edit/', views.post_idea_edit, name='post_idea_edit'),
+    path('post-ideas/<int:pk>/delete/', views.post_idea_delete, name='post_idea_delete'),
 ]
 
 

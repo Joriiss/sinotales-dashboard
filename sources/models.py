@@ -361,6 +361,10 @@ class ActivityLog(models.Model):
         ('settings_updated', 'Settings Updated'),
         ('transcript_fetched', 'Transcript Fetched'),
         ('content_fetched', 'Content Fetched'),
+        ('post_idea_created', 'Post Idea Created'),
+        ('post_idea_updated', 'Post Idea Updated'),
+        ('post_idea_deleted', 'Post Idea Deleted'),
+        ('post_ideas_generated', 'Post Ideas Generated'),
     ]
     
     activity_type = models.CharField(
@@ -415,6 +419,32 @@ class ActivityLog(models.Model):
         return f"{self.get_activity_type_display()} - {self.description[:50]}"
 
 
+class PostIdea(models.Model):
+    """
+    Post ideas for future blog posts
+    """
+    title = models.CharField(
+        max_length=255,
+        help_text="Title or topic of the post idea"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional description or notes about the post idea"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'post_ideas'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+    
+    def __str__(self):
+        return self.title
+
+
 class Settings(models.Model):
     """
     Application settings (singleton pattern - only one instance)
@@ -461,6 +491,67 @@ class Settings(models.Model):
     
     def __str__(self):
         return "Application Settings"
+    
+    @classmethod
+    def get_settings(cls):
+        """Get or create the singleton settings instance"""
+        settings, created = cls.objects.get_or_create(pk=1)
+        return settings
+    
+    def save(self, *args, **kwargs):
+        """Ensure only one settings instance exists"""
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+
+class ScheduledPostIdeaGeneration(models.Model):
+    """
+    Settings for scheduled automatic post idea generation (singleton pattern)
+    """
+    enabled = models.BooleanField(
+        default=False,
+        help_text="Enable or disable scheduled post idea generation"
+    )
+    trigger_time = models.TimeField(
+        default='09:00',
+        help_text="Time of day to trigger generation (24-hour format, e.g., 09:00 for 9 AM)"
+    )
+    num_ideas = models.IntegerField(
+        default=5,
+        help_text="Number of post ideas to generate each time"
+    )
+    provider = models.CharField(
+        max_length=20,
+        choices=[
+            ('ollama', 'Ollama'),
+            ('openai', 'OpenAI'),
+            ('gemini', 'Gemini'),
+        ],
+        default='ollama',
+        help_text="AI provider to use for generation"
+    )
+    model = models.CharField(
+        max_length=100,
+        default='gpt-oss:20b-cloud',
+        help_text="Model to use for generation (e.g., 'gpt-oss:20b-cloud' for Ollama, 'gpt-4o-mini' for OpenAI)"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_run = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time the scheduled generation was executed"
+    )
+    
+    class Meta:
+        db_table = 'scheduled_post_idea_generation'
+        verbose_name = 'Scheduled Post Idea Generation'
+        verbose_name_plural = 'Scheduled Post Idea Generation'
+    
+    def __str__(self):
+        return f"Scheduled Generation ({'Enabled' if self.enabled else 'Disabled'})"
     
     @classmethod
     def get_settings(cls):

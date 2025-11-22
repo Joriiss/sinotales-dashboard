@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+
+{% block title %}Generate Post Ideas - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-magic me-2"></i>Generate Post Ideas</h1>
+    <p class="text-muted mb-0">Use AI to generate blog post ideas based on tags and content</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" id="generateForm">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label for="num_ideas" class="form-label">Number of Ideas to Generate <span class="text-danger">*</span></label>
+                <input type="number" 
+                       class="form-control" 
+                       id="num_ideas" 
+                       name="num_ideas" 
+                       value="5"
+                       min="1"
+                       max="20"
+                       required>
+                <div class="form-text">Enter a number between 1 and 20</div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="provider" class="form-label">AI Provider <span class="text-danger">*</span></label>
+                <select class="form-select" id="provider" name="provider" required>
+                    <option value="ollama" selected>Ollama</option>
+                    {% if has_openai_key %}
+                    <option value="openai">OpenAI</option>
+                    {% else %}
+                    <option value="openai" disabled>OpenAI (API key not configured)</option>
+                    {% endif %}
+                    {% if has_gemini_key %}
+                    <option value="gemini">Gemini</option>
+                    {% else %}
+                    <option value="gemini" disabled>Gemini (API key not configured)</option>
+                    {% endif %}
+                </select>
+                <div class="form-text">Select the AI provider to use for generating ideas</div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="model" class="form-label">Model <span class="text-danger">*</span></label>
+                <select class="form-select" id="model" name="model" required>
+                    <option value="">Select provider first...</option>
+                </select>
+                <div class="form-text" id="modelHelp">Select the model to use for generating ideas</div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label">Select Tags (Optional)</label>
+                <div class="form-text mb-2">Choose one or more tags to base ideas on. Leave empty for general ideas.</div>
+                {% if tags %}
+                <div class="mb-2">
+                    <input type="text" 
+                           class="form-control form-control-sm" 
+                           id="tagSearch" 
+                           placeholder="Search tags...">
+                </div>
+                {% endif %}
+                <div class="border rounded p-3" id="tagsContainer" style="max-height: 200px; overflow-y: auto;">
+                    {% if tags %}
+                        {% for tag in tags %}
+                        <div class="form-check tag-item" data-tag-name="{{ tag.name|lower }}">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   name="tags" 
+                                   value="{{ tag.id }}" 
+                                   id="tag_{{ tag.id }}">
+                            <label class="form-check-label" for="tag_{{ tag.id }}">
+                                {{ tag.name }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No tags available. Ideas will be generated without tag context.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label">Select Content (Optional)</label>
+                <div class="form-text mb-2">Search and select one or more content items to base ideas on. Leave empty for general ideas.</div>
+                <div class="mb-2">
+                    <input type="text" 
+                           class="form-control form-control-sm" 
+                           id="contentSearch" 
+                           placeholder="Type to search content...">
+                </div>
+                <div class="border rounded p-3" id="contentContainer" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-muted mb-0" id="contentPlaceholder">Start typing to search for content...</p>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>How it works:</strong> The AI will generate creative blog post ideas based on your selections. 
+                If you select tags, ideas will be related to those categories. If you select content, ideas will be inspired by those pieces. 
+                You can combine both for more targeted suggestions.
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success" id="generateBtn">
+                    <i class="bi bi-magic me-1"></i> Generate Ideas
+                </button>
+                <a href="{% url 'sources:post_idea_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Load models on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const providerSelect = document.getElementById('provider');
+    if (providerSelect) {
+        // Load models for initial provider
+        loadModels(providerSelect.value);
+        
+        // Listen for provider changes
+        providerSelect.addEventListener('change', function() {
+            loadModels(this.value);
+        });
+    }
+});
+
+// Function to load models for a given provider
+async function loadModels(provider) {
+    const modelSelect = document.getElementById('model');
+    const modelHelp = document.getElementById('modelHelp');
+    if (!modelSelect) return;
+    
+    // Show loading state
+    modelSelect.innerHTML = '<option value="">Loading models...</option>';
+    modelSelect.disabled = true;
+    
+    try {
+        const response = await fetch(`{% url "sources:post_idea_models_api" %}?provider=${encodeURIComponent(provider)}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            modelSelect.innerHTML = `<option value="">Error: ${escapeHtml(data.error)}</option>`;
+            modelHelp.textContent = data.error;
+            return;
+        }
+        
+        if (data.models && data.models.length > 0) {
+            modelSelect.innerHTML = '';
+            
+            // Get default model from context (only for Ollama)
+            const defaultModel = provider === 'ollama' ? '{{ default_model|default:"" }}' : '';
+            
+            // Add all models
+            data.models.forEach(model => {
+                const isDefault = model === defaultModel;
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = isDefault ? `${model} (Default)` : model;
+                if (isDefault) {
+                    option.selected = true;
+                }
+                modelSelect.appendChild(option);
+            });
+            
+            // If no default was set or default not in list, select first model
+            if (!defaultModel || !data.models.includes(defaultModel)) {
+                if (data.models.length > 0) {
+                    modelSelect.value = data.models[0];
+                }
+            }
+            
+            modelSelect.disabled = false;
+            modelHelp.textContent = `Select the ${provider} model to use for generating ideas`;
+        } else {
+            modelSelect.innerHTML = '<option value="">No models available</option>';
+            modelHelp.textContent = 'No models available for this provider';
+        }
+    } catch (error) {
+        console.error('Error loading models:', error);
+        modelSelect.innerHTML = '<option value="">Error loading models</option>';
+        modelHelp.textContent = 'Error loading models. Please try again.';
+    }
+}
+
+// Tag search functionality
+const tagSearch = document.getElementById('tagSearch');
+if (tagSearch) {
+    tagSearch.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const tagItems = document.querySelectorAll('.tag-item');
+        
+        tagItems.forEach(item => {
+            const tagName = item.getAttribute('data-tag-name');
+            if (tagName.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Content search functionality with AJAX
+const contentSearch = document.getElementById('contentSearch');
+const contentContainer = document.getElementById('contentContainer');
+const contentPlaceholder = document.getElementById('contentPlaceholder');
+let searchTimeout = null;
+let selectedContents = new Set(); // Track selected content IDs
+
+if (contentSearch) {
+    contentSearch.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.trim();
+        
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        if (searchTerm.length < 2) {
+            // Show placeholder if search is too short
+            contentContainer.innerHTML = '<p class="text-muted mb-0" id="contentPlaceholder">Start typing to search for content...</p>';
+            contentPlaceholder = document.getElementById('contentPlaceholder');
+            return;
+        }
+        
+        // Debounce search - wait 300ms after user stops typing
+        searchTimeout = setTimeout(function() {
+            // Show loading state
+            contentContainer.innerHTML = '<p class="text-muted mb-0"><span class="spinner-border spinner-border-sm me-2"></span>Searching...</p>';
+            
+            // Fetch content via AJAX
+            fetch(`{% url 'sources:post_idea_search_content_api' %}?q=${encodeURIComponent(searchTerm)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.contents && data.contents.length > 0) {
+                        let html = '';
+                        data.contents.forEach(content => {
+                            const isChecked = selectedContents.has(content.id) ? 'checked' : '';
+                            html += `
+                                <div class="form-check mb-2 content-item">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           name="contents" 
+                                           value="${content.id}" 
+                                           id="content_${content.id}"
+                                           ${isChecked}
+                                           onchange="updateSelectedContents(${content.id}, this.checked)">
+                                    <label class="form-check-label" for="content_${content.id}">
+                                        <strong>${escapeHtml(content.title)}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            ${escapeHtml(content.content_type)} 
+                                            ${content.source_name ? 'from ' + escapeHtml(content.source_name) : ''}
+                                        </small>
+                                    </label>
+                                </div>
+                            `;
+                        });
+                        contentContainer.innerHTML = html;
+                    } else {
+                        contentContainer.innerHTML = '<p class="text-muted mb-0">No content found matching your search.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching content:', error);
+                    contentContainer.innerHTML = '<p class="text-danger mb-0">Error searching content. Please try again.</p>';
+                });
+        }, 300);
+    });
+}
+
+// Function to escape HTML to prevent XSS
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+}
+
+// Function to track selected contents
+function updateSelectedContents(contentId, isChecked) {
+    if (isChecked) {
+        selectedContents.add(contentId);
+    } else {
+        selectedContents.delete(contentId);
+    }
+}
+
+// Preserve selected contents when search results update
+document.addEventListener('DOMContentLoaded', function() {
+    // Load any pre-selected contents from form data if page is reloaded
+    const form = document.getElementById('generateForm');
+    if (form) {
+        const checkboxes = form.querySelectorAll('input[name="contents"]:checked');
+        checkboxes.forEach(checkbox => {
+            selectedContents.add(parseInt(checkbox.value));
+        });
+    }
+});
+
+// Form submission handler
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Generating...';
+});
+</script>
+{% endblock %}
+
