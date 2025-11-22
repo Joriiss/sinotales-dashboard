@@ -2427,229 +2427,24 @@ def post_idea_generate(request):
                 content_summaries.append(summary)
             context_parts.append(f"Related Content:\n" + "\n".join(content_summaries))
         
-        context_text = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
+        # Use helper function to generate ideas
+        success, created_count, created_ideas, error_message = _generate_post_ideas(
+            num_ideas=num_ideas,
+            provider=provider,
+            model=selected_model,
+            selected_tags=selected_tags,
+            selected_contents=selected_contents,
+            user=request.user
+        )
         
-        prompt = f"""
-        Generate {num_ideas} high-quality blog post ideas for a China travel blog.
-
-Your ideas must be directly useful for people planning a trip to China.  
-Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.
-
-Use the following context (optional reference material):
-{context_text}
-
-### Requirements
-- Each idea must clearly answer a real search intent a traveler might have.
-- Ideas should be practical, specific, and actionable: itineraries, travel guides, food recommendations, destination highlights, logistics, tips, or seasonal advice.
-- Avoid purely cultural or historical analysis unless it connects directly to a travel experience.
-- Each idea must contain:
-  1. A compelling and SEO-friendly title (50–80 characters)
-  2. A brief description (1–2 sentences) explaining what the post covers and why it helps a traveler.
-- Cover a diverse range of regions, themes, and traveler needs.
-
-### Tone Guidance
-Prioritize topics that answer searches like:
-- "Best things to do in ___"
-- "Where to eat in ___"
-- "Travel guide"
-- "Hidden gems in ___"
-- "Is ___ worth visiting?"
-- "How to get from ___ to ___"
-- "Best time to visit ___"
-- "What to eat in ___"
-- "7-day itinerary for ___"
-
-### Important
-Every idea must be explicitly linked to travel, trip planning, or on-the-ground experience in China.
-
-### Output Format
-Respond in JSON only:
-
-{{
-  "ideas": [
-    {{
-      "title": "Post title here",
-      "description": "Brief summary explaining the travel value"
-    }}
-  ]
-}}
-
-Generate exactly {num_ideas} ideas.
-Response:
-"""
-        
-        # Call the appropriate provider
-        try:
-            import requests
-            import json
-        except ImportError:
-            messages.error(request, 'requests library required. Install with: pip install requests')
+        if success:
+            if created_count > 0:
+                messages.success(request, f'Successfully generated {created_count} post idea(s) using {provider.upper()}!')
+            else:
+                messages.warning(request, 'No valid ideas were generated. Please try again.')
             return redirect('sources:post_idea_list')
-        
-        response_text = None
-        error_message = None
-        
-        try:
-            if provider == 'ollama':
-                # Call Ollama
-                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-                url = f"{ollama_url}/api/generate"
-                
-                payload = {
-                    "model": selected_model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.8,
-                        "top_p": 0.9,
-                    }
-                }
-                
-                response = requests.post(url, json=payload, timeout=120)
-                response.raise_for_status()
-                result = response.json()
-                response_text = result.get('response', '').strip()
-                
-            elif provider == 'openai':
-                # Call OpenAI
-                api_key = getattr(settings, 'OPENAI_API_KEY', None)
-                if not api_key:
-                    messages.error(request, 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.')
-                    return redirect('sources:post_idea_list')
-                
-                try:
-                    from openai import OpenAI
-                except ImportError:
-                    messages.error(request, 'openai library required. Install with: pip install openai')
-                    return redirect('sources:post_idea_list')
-                
-                client = OpenAI(api_key=api_key)
-                
-                # Check model type for parameter compatibility
-                is_gpt5 = 'gpt-5' in selected_model.lower()
-                is_newer_model = any(keyword in selected_model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
-                
-                # Build request parameters
-                request_params = {
-                    "model": selected_model,
-                    "messages": [
-                        {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
-                        {"role": "user", "content": prompt}
-                    ],
-                }
-                
-                # GPT-5 only supports default temperature (1), so don't set it
-                if not is_gpt5:
-                    request_params["temperature"] = 0.8
-                
-                # Use appropriate parameter based on model
-                if is_newer_model:
-                    request_params["max_completion_tokens"] = 2000
-                else:
-                    request_params["max_tokens"] = 2000
-                
-                response = client.chat.completions.create(**request_params)
-                response_text = response.choices[0].message.content.strip()
-                
-            elif provider == 'gemini':
-                # Call Gemini
-                api_key = getattr(settings, 'GEMINI_API_KEY', None)
-                if not api_key:
-                    messages.error(request, 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.')
-                    return redirect('sources:post_idea_list')
-                
-                try:
-                    import google.generativeai as genai
-                except ImportError:
-                    messages.error(request, 'google-generativeai library required. Install with: pip install google-generativeai')
-                    return redirect('sources:post_idea_list')
-                
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(selected_model)
-                response = model.generate_content(
-                    prompt,
-                    generation_config={
-                        "temperature": 0.8,
-                        "max_output_tokens": 2000,
-                    }
-                )
-                response_text = response.text.strip()
-            
-            # Parse JSON response (common for all providers)
-            if response_text:
-                # Try to extract JSON from response
-                start_idx = response_text.find('{')
-                end_idx = response_text.rfind('}')
-                
-                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                    json_str = response_text[start_idx:end_idx + 1]
-                    try:
-                        parsed = json.loads(json_str)
-                        ideas = parsed.get('ideas', [])
-                        
-                        # Create PostIdea objects
-                        created_count = 0
-                        created_ideas = []
-                        for idea_data in ideas:
-                            title = idea_data.get('title', '').strip()
-                            description = idea_data.get('description', '').strip()
-                            
-                            if title:
-                                post_idea = PostIdea.objects.create(
-                                    title=title,
-                                    description=description
-                                )
-                                created_count += 1
-                                created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
-                        
-                        if created_count > 0:
-                            # Log activity
-                            log_activity(
-                                'post_ideas_generated',
-                                f'{created_count} post idea(s) were generated using AI',
-                                user=request.user,
-                                metadata={
-                                    'count': created_count,
-                                    'num_requested': num_ideas,
-                                    'provider': provider,
-                                    'model': selected_model,
-                                    'tags_selected': [tag.id for tag in selected_tags],
-                                    'tags_names': [tag.name for tag in selected_tags],
-                                    'contents_selected': [content.id for content in selected_contents],
-                                    'created_ideas': created_ideas
-                                }
-                            )
-                            messages.success(request, f'Successfully generated {created_count} post idea(s) using {provider.upper()}!')
-                        else:
-                            messages.warning(request, 'No valid ideas were generated. Please try again.')
-                        
-                        return redirect('sources:post_idea_list')
-                        
-                    except json.JSONDecodeError:
-                        messages.error(request, f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}')
-                else:
-                    messages.error(request, f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}')
-            else:
-                messages.error(request, f'No response received from {provider.upper()}.')
-                
-        except requests.exceptions.ConnectionError as e:
-            if provider == 'ollama':
-                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-                messages.error(request, f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.')
-            else:
-                messages.error(request, f'Connection error: {str(e)}')
-        except Exception as e:
-            error_str = str(e)
-            # Check for API key errors
-            if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
-                if provider == 'openai':
-                    messages.error(request, f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.')
-                elif provider == 'gemini':
-                    messages.error(request, f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.')
-                else:
-                    messages.error(request, f'Authentication error: {error_str}')
-            else:
-                messages.error(request, f'Error generating ideas with {provider.upper()}: {error_str}')
+        else:
+            messages.error(request, error_message)
     
     # Get default model for the form
     default_model = ''
@@ -2847,6 +2642,331 @@ def post_idea_scheduled_settings(request):
     }
     
     return render(request, 'sources/post_idea_scheduled_settings.html', context)
+
+
+def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selected_contents=None, user=None):
+    """
+    Helper function to generate post ideas using the specified provider and model.
+    Returns tuple: (success: bool, created_count: int, created_ideas: list, error_message: str)
+    """
+    selected_tags = selected_tags or []
+    selected_contents = selected_contents or []
+    
+    # Build context for prompt
+    context_parts = []
+    
+    if selected_tags:
+        tag_names = [tag.name for tag in selected_tags]
+        context_parts.append(f"Tags/Categories: {', '.join(tag_names)}")
+    
+    if selected_contents:
+        content_summaries = []
+        for content in selected_contents[:5]:  # Limit to 5 contents to avoid too long prompts
+            summary = f"- {content.title}"
+            if content.content:
+                # Truncate content preview
+                content_preview = content.content[:300] if len(content.content) > 300 else content.content
+                summary += f"\n  Preview: {content_preview}..."
+            content_summaries.append(summary)
+        context_parts.append(f"Related Content:\n" + "\n".join(content_summaries))
+    
+    context_text = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
+    
+    prompt = f"""
+        Generate {num_ideas} high-quality blog post ideas for a China travel blog.
+
+Your ideas must be directly useful for people planning a trip to China.  
+Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.
+
+Use the following context (optional reference material):
+{context_text}
+
+### Requirements
+- Each idea must clearly answer a real search intent a traveler might have.
+- Ideas should be practical, specific, and actionable: itineraries, travel guides, food recommendations, destination highlights, logistics, tips, or seasonal advice.
+- Avoid purely cultural or historical analysis unless it connects directly to a travel experience.
+- Each idea must contain:
+  1. A compelling and SEO-friendly title (50–80 characters)
+  2. A brief description (1–2 sentences) explaining what the post covers and why it helps a traveler.
+- Cover a diverse range of regions, themes, and traveler needs.
+
+### Tone Guidance
+Prioritize topics that answer searches like:
+- "Best things to do in ___"
+- "Where to eat in ___"
+- "Travel guide"
+- "Hidden gems in ___"
+- "Is ___ worth visiting?"
+- "How to get from ___ to ___"
+- "Best time to visit ___"
+- "What to eat in ___"
+- "7-day itinerary for ___"
+
+### Important
+Every idea must be explicitly linked to travel, trip planning, or on-the-ground experience in China.
+
+### Output Format
+Respond in JSON only:
+
+{{
+  "ideas": [
+    {{
+      "title": "Post title here",
+      "description": "Brief summary explaining the travel value"
+    }}
+  ]
+}}
+
+Generate exactly {num_ideas} ideas.
+Response:
+"""
+    
+    try:
+        import requests
+        import json
+    except ImportError:
+        return False, 0, [], 'requests library required. Install with: pip install requests'
+    
+    response_text = None
+    
+    try:
+        if provider == 'ollama':
+            # Call Ollama
+            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+            url = f"{ollama_url}/api/generate"
+            
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.8,
+                    "top_p": 0.9,
+                }
+            }
+            
+            response = requests.post(url, json=payload, timeout=120)
+            response.raise_for_status()
+            result = response.json()
+            response_text = result.get('response', '').strip()
+            
+        elif provider == 'openai':
+            # Call OpenAI
+            api_key = getattr(settings, 'OPENAI_API_KEY', None)
+            if not api_key:
+                return False, 0, [], 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
+            
+            try:
+                from openai import OpenAI
+            except ImportError:
+                return False, 0, [], 'openai library required. Install with: pip install openai'
+            
+            client = OpenAI(api_key=api_key)
+            
+            # Check model type for parameter compatibility
+            is_gpt5 = 'gpt-5' in model.lower()
+            is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
+            
+            # Build request parameters
+            request_params = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
+                    {"role": "user", "content": prompt}
+                ],
+            }
+            
+            # GPT-5 only supports default temperature (1), so don't set it
+            if not is_gpt5:
+                request_params["temperature"] = 0.8
+            
+            # Use appropriate parameter based on model
+            if is_newer_model:
+                request_params["max_completion_tokens"] = 2000
+            else:
+                request_params["max_tokens"] = 2000
+            
+            response = client.chat.completions.create(**request_params)
+            response_text = response.choices[0].message.content.strip()
+            
+        elif provider == 'gemini':
+            # Call Gemini
+            api_key = getattr(settings, 'GEMINI_API_KEY', None)
+            if not api_key:
+                return False, 0, [], 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
+            
+            try:
+                import google.generativeai as genai
+            except ImportError:
+                return False, 0, [], 'google-generativeai library required. Install with: pip install google-generativeai'
+            
+            genai.configure(api_key=api_key)
+            genai_model = genai.GenerativeModel(model)
+            response = genai_model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.8,
+                    "max_output_tokens": 2000,
+                }
+            )
+            response_text = response.text.strip()
+        else:
+            return False, 0, [], f'Invalid provider: {provider}'
+        
+        # Parse JSON response
+        if response_text:
+            # Try to extract JSON from response
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = response_text[start_idx:end_idx + 1]
+                try:
+                    parsed = json.loads(json_str)
+                    ideas = parsed.get('ideas', [])
+                    
+                    # Create PostIdea objects
+                    created_count = 0
+                    created_ideas = []
+                    for idea_data in ideas:
+                        title = idea_data.get('title', '').strip()
+                        description = idea_data.get('description', '').strip()
+                        
+                        if title:
+                            post_idea = PostIdea.objects.create(
+                                title=title,
+                                description=description
+                            )
+                            created_count += 1
+                            created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
+                    
+                    if created_count > 0:
+                        # Log activity
+                        log_activity(
+                            'post_ideas_generated',
+                            f'{created_count} post idea(s) were generated using AI',
+                            user=user,
+                            metadata={
+                                'count': created_count,
+                                'num_requested': num_ideas,
+                                'provider': provider,
+                                'model': model,
+                                'tags_selected': [tag.id for tag in selected_tags] if selected_tags else [],
+                                'tags_names': [tag.name for tag in selected_tags] if selected_tags else [],
+                                'contents_selected': [content.id for content in selected_contents] if selected_contents else [],
+                                'created_ideas': created_ideas,
+                                'api_generated': user is None
+                            }
+                        )
+                    
+                    return True, created_count, created_ideas, None
+                    
+                except json.JSONDecodeError:
+                    return False, 0, [], f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}'
+            else:
+                return False, 0, [], f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}'
+        else:
+            return False, 0, [], f'No response received from {provider.upper()}.'
+            
+    except requests.exceptions.ConnectionError as e:
+        if provider == 'ollama':
+            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+            return False, 0, [], f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
+        else:
+            return False, 0, [], f'Connection error: {str(e)}'
+    except Exception as e:
+        error_str = str(e)
+        # Check for API key errors
+        if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
+            if provider == 'openai':
+                return False, 0, [], f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.'
+            elif provider == 'gemini':
+                return False, 0, [], f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.'
+            else:
+                return False, 0, [], f'Authentication error: {error_str}'
+        else:
+            return False, 0, [], f'Error generating ideas with {provider.upper()}: {error_str}'
+
+
+@csrf_exempt
+def post_idea_generate_api(request):
+    """API endpoint to generate post ideas (for n8n or other automation)"""
+    if request.method not in ['POST', 'GET']:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate API token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    # Get parameters (support both POST and GET)
+    if request.method == 'POST':
+        try:
+            import json as json_lib
+            if request.content_type == 'application/json':
+                data = json_lib.loads(request.body)
+                num_ideas = data.get('num_ideas')
+                provider = data.get('provider')
+                model = data.get('model')
+            else:
+                num_ideas = request.POST.get('num_ideas')
+                provider = request.POST.get('provider')
+                model = request.POST.get('model')
+        except:
+            num_ideas = request.POST.get('num_ideas')
+            provider = request.POST.get('provider')
+            model = request.POST.get('model')
+    else:
+        num_ideas = request.GET.get('num_ideas')
+        provider = request.GET.get('provider')
+        model = request.GET.get('model')
+    
+    # Validate required parameters
+    if not num_ideas:
+        return JsonResponse({'error': 'num_ideas parameter is required'}, status=400)
+    
+    if not provider:
+        return JsonResponse({'error': 'provider parameter is required (ollama, openai, or gemini)'}, status=400)
+    
+    if not model:
+        return JsonResponse({'error': 'model parameter is required'}, status=400)
+    
+    # Validate and convert num_ideas
+    try:
+        num_ideas = int(num_ideas)
+        if num_ideas < 1 or num_ideas > 50:
+            return JsonResponse({'error': 'num_ideas must be between 1 and 50'}, status=400)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'num_ideas must be a valid integer'}, status=400)
+    
+    # Validate provider
+    if provider not in ['ollama', 'openai', 'gemini']:
+        return JsonResponse({'error': 'provider must be one of: ollama, openai, gemini'}, status=400)
+    
+    # Generate ideas
+    success, created_count, created_ideas, error_message = _generate_post_ideas(
+        num_ideas=num_ideas,
+        provider=provider,
+        model=model,
+        selected_tags=None,
+        selected_contents=None,
+        user=None  # API calls are system-generated
+    )
+    
+    if success:
+        return JsonResponse({
+            'success': True,
+            'created_count': created_count,
+            'num_requested': num_ideas,
+            'provider': provider,
+            'model': model,
+            'ideas': created_ideas
+        })
+    else:
+        return JsonResponse({
+            'success': False,
+            'error': error_message
+        }, status=500)
 
 
 def agent_models_api(request):
