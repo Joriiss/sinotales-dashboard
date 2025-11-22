@@ -3,23 +3,26 @@ Django settings for china-blog-dashboard project.
 """
 
 from pathlib import Path
-from dotenv import load_dotenv
 import os
 import logging.config
 
-env_path = Path('/srv/china_blog_dashboard/.env')
-load_dotenv(env_path)
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file if it exists
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    # Try loading from project root first (for development)
+    env_path = BASE_DIR / '.env'
+    load_dotenv(env_path)
+    # Also try production path (for production server)
+    if not env_path.exists():
+        prod_env_path = Path('/srv/china_blog_dashboard/.env')
+        if prod_env_path.exists():
+            load_dotenv(prod_env_path)
 except ImportError:
     # python-dotenv not installed, skip loading .env file
     pass
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -160,6 +163,9 @@ LOGOUT_REDIRECT_URL = '/login/'
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_EMBEDDING_MODEL = os.environ.get('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
 OPENAI_EMBEDDING_DIMENSIONS = int(os.environ.get('OPENAI_EMBEDDING_DIMENSIONS', 1536))
+
+# Gemini API settings
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', None)
 
 # Web search API settings (for RAG agent)
 TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', None)
