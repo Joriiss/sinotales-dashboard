@@ -2433,7 +2433,7 @@ def post_idea_generate(request):
             context_parts.append(f"Related Content:\n" + "\n".join(content_summaries))
         
         # Use helper function to generate ideas
-        success, created_count, created_ideas, error_message = _generate_post_ideas(
+        success, created_count, created_ideas, error_message, skipped_similar = _generate_post_ideas(
             num_ideas=num_ideas,
             provider=provider,
             model=selected_model,
@@ -2444,9 +2444,19 @@ def post_idea_generate(request):
         
         if success:
             if created_count > 0:
-                messages.success(request, f'Successfully generated {created_count} post idea(s) using {provider.upper()}!')
+                message = f'Successfully generated {created_count} post idea(s) using {provider.upper()}!'
+                if skipped_similar > 0:
+                    message += f' ({skipped_similar} similar idea(s) were skipped to avoid duplicates)'
+                messages.success(request, message)
             else:
-                messages.warning(request, 'No valid ideas were generated. Please try again.')
+                if skipped_similar > 0:
+                    messages.warning(
+                        request, 
+                        f'All {skipped_similar} generated idea(s) were too similar to existing ideas and were skipped. '
+                        f'Try generating ideas with different tags/content, or lower the similarity threshold.'
+                    )
+                else:
+                    messages.warning(request, 'No valid ideas were generated. Please try again.')
             return redirect('sources:post_idea_list')
         else:
             messages.error(request, error_message)
@@ -2596,13 +2606,28 @@ def post_idea_delete(request, pk):
     return render(request, 'sources/post_idea_confirm_delete.html', context)
 
 
-def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selected_contents=None, user=None):
+def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selected_contents=None, user=None, max_retries=5):
     """
     Helper function to generate post ideas using the specified provider and model.
-    Returns tuple: (success: bool, created_count: int, created_ideas: list, error_message: str)
+    Automatically retries generation until the requested number of valid (non-duplicate) ideas are found.
+    Returns tuple: (success: bool, created_count: int, created_ideas: list, error_message: str, skipped_similar: int)
     """
     selected_tags = selected_tags or []
     selected_contents = selected_contents or []
+    
+    # Initialize embedding service for similarity checking
+    embedding_service = None
+    similarity_threshold = 0.8  # 80% similarity threshold
+    try:
+        embedding_service = EmbeddingService()
+    except (ValueError, ImportError):
+        # Embedding service not available, skip similarity checking
+        pass
+    
+    # Get existing ideas with embeddings for comparison (load once, update as we create)
+    existing_ideas_with_embeddings = list(
+        PostIdea.objects.filter(title_embedding__isnull=False)
+    ) if embedding_service else []
     
     # Build context for prompt
     context_parts = []
@@ -2624,8 +2649,21 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
     
     context_text = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
     
-    prompt = f"""
-        Generate {num_ideas} high-quality blog post ideas for a China travel blog.
+    # Track totals across all retries
+    total_created_count = 0
+    total_created_ideas = []
+    total_skipped_similar = 0
+    total_skipped_titles = []
+    total_attempts = 0
+    ideas_still_needed = num_ideas
+    
+    # Retry loop: continue generating until we have enough valid ideas
+    while ideas_still_needed > 0 and total_attempts < max_retries:
+        total_attempts += 1
+        batch_size = max(ideas_still_needed, 5)  # Generate at least 5 ideas per batch, or more if needed
+        
+        prompt = f"""
+        Generate {batch_size} high-quality blog post ideas for a China travel blog.
 
 Your ideas must be directly useful for people planning a trip to China.  
 Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.
@@ -2670,232 +2708,282 @@ Respond in JSON only:
   ]
 }}
 
-Generate exactly {num_ideas} ideas.
+Generate exactly {batch_size} ideas.
 Response:
 """
-    
-    try:
-        import requests
-        import json
-    except ImportError:
-        return False, 0, [], 'requests library required. Install with: pip install requests'
-    
-    response_text = None
-    
-    try:
-        if provider == 'ollama':
-            # Call Ollama
-            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-            url = f"{ollama_url}/api/generate"
-            
-            payload = {
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "temperature": 0.8,
-                    "top_p": 0.9,
-                }
-            }
-            
-            response = requests.post(url, json=payload, timeout=120)
-            response.raise_for_status()
-            result = response.json()
-            response_text = result.get('response', '').strip()
-            
-        elif provider == 'openai':
-            # Call OpenAI
-            api_key = getattr(settings, 'OPENAI_API_KEY', None)
-            if not api_key:
-                return False, 0, [], 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
-            
-            try:
-                from openai import OpenAI
-            except ImportError:
-                return False, 0, [], 'openai library required. Install with: pip install openai'
-            
-            client = OpenAI(api_key=api_key)
-            
-            # Check model type for parameter compatibility
-            is_gpt5 = 'gpt-5' in model.lower()
-            is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
-            
-            # Build request parameters
-            request_params = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-            }
-            
-            # GPT-5 only supports default temperature (1), so don't set it
-            if not is_gpt5:
-                request_params["temperature"] = 0.8
-            
-            # Use appropriate parameter based on model
-            if is_newer_model:
-                request_params["max_completion_tokens"] = 2000
-            else:
-                request_params["max_tokens"] = 2000
-            
-            response = client.chat.completions.create(**request_params)
-            response_text = response.choices[0].message.content.strip()
-            
-        elif provider == 'gemini':
-            # Call Gemini
-            api_key = getattr(settings, 'GEMINI_API_KEY', None)
-            if not api_key:
-                return False, 0, [], 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
-            
-            try:
-                import google.generativeai as genai
-            except ImportError:
-                return False, 0, [], 'google-generativeai library required. Install with: pip install google-generativeai'
-            
-            genai.configure(api_key=api_key)
-            genai_model = genai.GenerativeModel(model)
-            response = genai_model.generate_content(
-                prompt,
-                generation_config={
-                    "temperature": 0.8,
-                    "max_output_tokens": 2000,
-                }
-            )
-            response_text = response.text.strip()
-        else:
-            return False, 0, [], f'Invalid provider: {provider}'
         
-        # Parse JSON response
-        if response_text:
-            # Try to extract JSON from response
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}')
-            
-            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                json_str = response_text[start_idx:end_idx + 1]
+        # Call API to generate ideas
+        try:
+            import requests
+            import json
+        except ImportError:
+            return False, 0, [], 'requests library required. Install with: pip install requests', 0
+        
+        response_text = None
+        api_error = None
+        
+        try:
+            if provider == 'ollama':
+                # Call Ollama
+                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+                url = f"{ollama_url}/api/generate"
+                
+                payload = {
+                    "model": model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.8,
+                        "top_p": 0.9,
+                    }
+                }
+                
+                response = requests.post(url, json=payload, timeout=120)
+                response.raise_for_status()
+                result = response.json()
+                response_text = result.get('response', '').strip()
+                
+            elif provider == 'openai':
+                # Call OpenAI
+                api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                if not api_key:
+                    api_error = 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue
+                
                 try:
-                    parsed = json.loads(json_str)
-                    ideas = parsed.get('ideas', [])
-                    
-                    # Initialize embedding service for similarity checking
-                    embedding_service = None
-                    similarity_threshold = 0.85  # 85% similarity threshold
-                    try:
-                        embedding_service = EmbeddingService()
-                    except (ValueError, ImportError):
-                        # Embedding service not available, skip similarity checking
-                        pass
-                    
-                    # Create PostIdea objects with similarity checking
-                    created_count = 0
-                    created_ideas = []
-                    skipped_similar = 0
-                    skipped_titles = []
-                    
-                    # Get existing ideas with embeddings for comparison
-                    existing_ideas_with_embeddings = list(
-                        PostIdea.objects.filter(title_embedding__isnull=False)
-                    ) if embedding_service else []
-                    
-                    for idea_data in ideas:
-                        title = idea_data.get('title', '').strip()
-                        description = idea_data.get('description', '').strip()
-                        
-                        if not title:
-                            continue
-                        
-                        # Check for similarity using embeddings if available
-                        too_similar = False
-                        if embedding_service and existing_ideas_with_embeddings:
-                            too_similar = is_idea_too_similar_with_embeddings(
-                                title, 
-                                existing_ideas_with_embeddings,
-                                embedding_service,
-                                similarity_threshold
-                            )
-                        
-                        if too_similar:
-                            skipped_similar += 1
-                            skipped_titles.append(title)
-                            print(f"Skipping similar idea: {title}")
-                            continue
-                        
-                        # Generate embedding for the new idea
-                        new_embedding = None
-                        if embedding_service:
-                            try:
-                                new_embedding = embedding_service.generate_embedding(title)
-                            except Exception as e:
-                                print(f"Warning: Could not generate embedding for '{title}': {str(e)}")
-                        
-                        # Create the post idea
-                        post_idea = PostIdea.objects.create(
-                            title=title,
-                            description=description,
-                            title_embedding=new_embedding
-                        )
-                        created_count += 1
-                        created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
-                        
-                        # Add to existing list for checking against in the same batch
-                        if new_embedding:
-                            existing_ideas_with_embeddings.append(post_idea)
-                    
-                    if created_count > 0 or skipped_similar > 0:
-                        # Log activity
-                        message = f'{created_count} post idea(s) were generated using AI'
-                        if skipped_similar > 0:
-                            message += f' ({skipped_similar} similar ideas skipped)'
-                        
-                        log_activity(
-                            'post_ideas_generated',
-                            message,
-                            user=user,
-                            metadata={
-                                'count': created_count,
-                                'skipped_similar': skipped_similar,
-                                'num_requested': num_ideas,
-                                'provider': provider,
-                                'model': model,
-                                'similarity_check': embedding_service is not None,
-                                'similarity_threshold': similarity_threshold if embedding_service else None,
-                                'tags_selected': [tag.id for tag in selected_tags] if selected_tags else [],
-                                'tags_names': [tag.name for tag in selected_tags] if selected_tags else [],
-                                'contents_selected': [content.id for content in selected_contents] if selected_contents else [],
-                                'created_ideas': created_ideas,
-                                'skipped_titles': skipped_titles if skipped_titles else [],
-                                'api_generated': user is None
-                            }
-                        )
-                    
-                    return True, created_count, created_ideas, None
-                    
-                except json.JSONDecodeError:
-                    return False, 0, [], f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}'
-            else:
-                return False, 0, [], f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}'
-        else:
-            return False, 0, [], f'No response received from {provider.upper()}.'
-            
-    except requests.exceptions.ConnectionError as e:
-        if provider == 'ollama':
-            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-            return False, 0, [], f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
-        else:
-            return False, 0, [], f'Connection error: {str(e)}'
-    except Exception as e:
-        error_str = str(e)
-        # Check for API key errors
-        if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
-            if provider == 'openai':
-                return False, 0, [], f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.'
+                    from openai import OpenAI
+                except ImportError:
+                    api_error = 'openai library required. Install with: pip install openai'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue
+                
+                client = OpenAI(api_key=api_key)
+                
+                # Check model type for parameter compatibility
+                is_gpt5 = 'gpt-5' in model.lower()
+                is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
+                
+                # Build request parameters
+                request_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                }
+                
+                # GPT-5 only supports default temperature (1), so don't set it
+                if not is_gpt5:
+                    request_params["temperature"] = 0.8
+                
+                # Use appropriate parameter based on model
+                if is_newer_model:
+                    request_params["max_completion_tokens"] = 2000
+                else:
+                    request_params["max_tokens"] = 2000
+                
+                response = client.chat.completions.create(**request_params)
+                response_text = response.choices[0].message.content.strip()
+                
             elif provider == 'gemini':
-                return False, 0, [], f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.'
+                # Call Gemini
+                api_key = getattr(settings, 'GEMINI_API_KEY', None)
+                if not api_key:
+                    api_error = 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue
+                
+                try:
+                    import google.generativeai as genai
+                except ImportError:
+                    api_error = 'google-generativeai library required. Install with: pip install google-generativeai'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue
+                
+                genai.configure(api_key=api_key)
+                genai_model = genai.GenerativeModel(model)
+                response = genai_model.generate_content(
+                    prompt,
+                    generation_config={
+                        "temperature": 0.8,
+                        "max_output_tokens": 2000,
+                    }
+                )
+                response_text = response.text.strip()
             else:
-                return False, 0, [], f'Authentication error: {error_str}'
-        else:
-            return False, 0, [], f'Error generating ideas with {provider.upper()}: {error_str}'
+                api_error = f'Invalid provider: {provider}'
+                if total_attempts >= max_retries:
+                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                continue
+            
+            # Parse JSON response
+            if response_text:
+                # Try to extract JSON from response
+                start_idx = response_text.find('{')
+                end_idx = response_text.rfind('}')
+                
+                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                    json_str = response_text[start_idx:end_idx + 1]
+                    try:
+                        parsed = json.loads(json_str)
+                        ideas = parsed.get('ideas', [])
+                        
+                        # Process ideas: check similarity and create valid ones
+                        batch_created_count = 0
+                        batch_created_ideas = []
+                        batch_skipped_similar = 0
+                        batch_skipped_titles = []
+                        
+                        for idea_data in ideas:
+                            title = idea_data.get('title', '').strip()
+                            description = idea_data.get('description', '').strip()
+                            
+                            if not title:
+                                continue
+                            
+                            # Check for similarity using embeddings if available
+                            too_similar = False
+                            if embedding_service and existing_ideas_with_embeddings:
+                                too_similar = is_idea_too_similar_with_embeddings(
+                                    title, 
+                                    existing_ideas_with_embeddings,
+                                    embedding_service,
+                                    similarity_threshold
+                                )
+                            
+                            if too_similar:
+                                batch_skipped_similar += 1
+                                batch_skipped_titles.append(title)
+                                print(f"Skipping similar idea: {title}")
+                                continue
+                            
+                            # Generate embedding for the new idea
+                            new_embedding = None
+                            if embedding_service:
+                                try:
+                                    new_embedding = embedding_service.generate_embedding(title)
+                                except Exception as e:
+                                    print(f"Warning: Could not generate embedding for '{title}': {str(e)}")
+                            
+                            # Create the post idea
+                            post_idea = PostIdea.objects.create(
+                                title=title,
+                                description=description,
+                                title_embedding=new_embedding
+                            )
+                            batch_created_count += 1
+                            batch_created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
+                            
+                            # Add to existing list for checking against in the same batch
+                            if new_embedding:
+                                existing_ideas_with_embeddings.append(post_idea)
+                            
+                            # Stop if we have enough ideas
+                            if batch_created_count >= ideas_still_needed:
+                                break
+                        
+                        # Update totals
+                        total_created_count += batch_created_count
+                        total_created_ideas.extend(batch_created_ideas)
+                        total_skipped_similar += batch_skipped_similar
+                        total_skipped_titles.extend(batch_skipped_titles)
+                        ideas_still_needed -= batch_created_count
+                        
+                        # If we got some valid ideas but not enough, continue the loop
+                        if ideas_still_needed > 0:
+                            print(f"Generated {batch_created_count} valid ideas, {ideas_still_needed} still needed. Retrying...")
+                            continue
+                        else:
+                            # We have enough ideas, break out of retry loop
+                            break
+                        
+                    except json.JSONDecodeError:
+                        api_error = f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue
+                else:
+                    api_error = f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue
+            else:
+                api_error = f'No response received from {provider.upper()}.'
+                if total_attempts >= max_retries:
+                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                continue
+                        
+        except requests.exceptions.ConnectionError as e:
+            if provider == 'ollama':
+                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+                api_error = f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
+            else:
+                api_error = f'Connection error: {str(e)}'
+            if total_attempts >= max_retries:
+                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+            continue
+        except Exception as e:
+            error_str = str(e)
+            # Check for API key errors
+            if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
+                if provider == 'openai':
+                    api_error = f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.'
+                elif provider == 'gemini':
+                    api_error = f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.'
+                else:
+                    api_error = f'Authentication error: {error_str}'
+            else:
+                api_error = f'Error generating ideas with {provider.upper()}: {error_str}'
+            if total_attempts >= max_retries:
+                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+            continue
+    
+    # After retry loop completes
+    if total_created_count > 0 or total_skipped_similar > 0:
+        # Log activity
+        message = f'{total_created_count} post idea(s) were generated using AI'
+        if total_skipped_similar > 0:
+            message += f' ({total_skipped_similar} similar ideas skipped)'
+        if total_attempts > 1:
+            message += f' (after {total_attempts} generation attempts)'
+        
+        log_activity(
+            'post_ideas_generated',
+            message,
+            user=user,
+            metadata={
+                'count': total_created_count,
+                'skipped_similar': total_skipped_similar,
+                'num_requested': num_ideas,
+                'total_attempts': total_attempts,
+                'provider': provider,
+                'model': model,
+                'similarity_check': embedding_service is not None,
+                'similarity_threshold': similarity_threshold if embedding_service else None,
+                'tags_selected': [tag.id for tag in selected_tags] if selected_tags else [],
+                'tags_names': [tag.name for tag in selected_tags] if selected_tags else [],
+                'contents_selected': [content.id for content in selected_contents] if selected_contents else [],
+                'created_ideas': total_created_ideas,
+                'skipped_titles': total_skipped_titles if total_skipped_titles else [],
+                'api_generated': user is None
+            }
+        )
+    
+    # Return success if we got at least some ideas, or if we exhausted retries
+    if total_created_count > 0:
+        return True, total_created_count, total_created_ideas, None, total_skipped_similar
+    elif total_attempts >= max_retries:
+        # All retries exhausted, return with error
+        error_msg = api_error if 'api_error' in locals() and api_error else f'Could not generate valid ideas after {max_retries} attempts. {total_skipped_similar} ideas were skipped as duplicates.'
+        return False, 0, [], error_msg, total_skipped_similar
+    else:
+        # Should not reach here, but handle it
+        return False, 0, [], 'Unexpected error during idea generation', total_skipped_similar
 
 
 @csrf_exempt
@@ -2954,7 +3042,7 @@ def post_idea_generate_api(request):
         return JsonResponse({'error': 'provider must be one of: ollama, openai, gemini'}, status=400)
     
     # Generate ideas
-    success, created_count, created_ideas, error_message = _generate_post_ideas(
+    success, created_count, created_ideas, error_message, skipped_similar = _generate_post_ideas(
         num_ideas=num_ideas,
         provider=provider,
         model=model,
@@ -2964,14 +3052,18 @@ def post_idea_generate_api(request):
     )
     
     if success:
-        return JsonResponse({
+        response_data = {
             'success': True,
             'created_count': created_count,
             'num_requested': num_ideas,
             'provider': provider,
             'model': model,
             'ideas': created_ideas
-        })
+        }
+        if skipped_similar > 0:
+            response_data['skipped_similar'] = skipped_similar
+            response_data['message'] = f'Generated {created_count} idea(s), {skipped_similar} similar idea(s) were skipped'
+        return JsonResponse(response_data)
     else:
         return JsonResponse({
             'success': False,

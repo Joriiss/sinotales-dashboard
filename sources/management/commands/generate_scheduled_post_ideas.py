@@ -204,7 +204,7 @@ Response:
                         
                         # Initialize embedding service for similarity checking
                         embedding_service = None
-                        similarity_threshold = 0.85  # 85% similarity threshold
+                        similarity_threshold = 0.8  # 80% similarity threshold
                         try:
                             embedding_service = EmbeddingService()
                         except (ValueError, ImportError):
