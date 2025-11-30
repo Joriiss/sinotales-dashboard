@@ -61,9 +61,10 @@ def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_ser
     # Check against existing ideas using vector similarity search
     # CosineDistance: 0 = identical, 2 = opposite
     # Based on find_similar_post_ideas_embeddings.py: similarity = 1.0 - distance
-    # And max_distance = 2.0 - threshold (matching the command's formula)
-    # If similarity_threshold = 0.92, max_distance = 2.0 - 0.92 = 1.08
-    max_distance = 2.0 - similarity_threshold
+    # So if similarity_threshold = 0.92, we need distance <= 0.08
+    # max_distance = 1.0 - similarity_threshold
+    # If similarity_threshold = 0.92, max_distance = 1.0 - 0.92 = 0.08
+    max_distance = 1.0 - similarity_threshold
     
     # Use database vector search for efficiency
     similar_ideas = PostIdea.objects.filter(
