@@ -36,7 +36,7 @@ def log_activity(activity_type, description, user=None, source=None, content=Non
     )
 
 
-def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_service, similarity_threshold=0.8):
+def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_service, similarity_threshold=0.85):
     """
     Check if a new idea is too similar to existing ideas using embeddings.
     
