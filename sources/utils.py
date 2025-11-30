@@ -36,7 +36,7 @@ def log_activity(activity_type, description, user=None, source=None, content=Non
     )
 
 
-def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_service, similarity_threshold=0.85):
+def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_service, similarity_threshold=0.92, debug=False):
     """
     Check if a new idea is too similar to existing ideas using embeddings.
     
@@ -45,6 +45,7 @@ def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_ser
         existing_ideas: List of PostIdea objects with embeddings
         embedding_service: EmbeddingService instance
         similarity_threshold: Cosine similarity threshold (0.0-1.0, higher = more strict)
+        debug: If True, print similarity scores for debugging
     
     Returns:
         True if the idea is too similar to any existing idea, False otherwise
@@ -59,7 +60,9 @@ def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_ser
     
     # Check against existing ideas using vector similarity search
     # CosineDistance: 0 = identical, 2 = opposite
-    # Convert threshold to distance: distance = 2 - similarity_threshold
+    # Based on find_similar_post_ideas_embeddings.py: similarity = 1.0 - distance
+    # And max_distance = 2.0 - threshold (matching the command's formula)
+    # If similarity_threshold = 0.92, max_distance = 2.0 - 0.92 = 1.08
     max_distance = 2.0 - similarity_threshold
     
     # Use database vector search for efficiency
@@ -70,7 +73,15 @@ def is_idea_too_similar_with_embeddings(new_title, existing_ideas, embedding_ser
         distance=CosineDistance('title_embedding', new_embedding)
     ).filter(
         distance__lte=max_distance
-    )
+    ).order_by('distance')[:5]  # Get top 5 most similar for debugging
     
-    return similar_ideas.exists()
+    if similar_ideas.exists():
+        if debug:
+            print(f"  [DEBUG] '{new_title}' flagged as similar (threshold: {similarity_threshold:.2f}, max_distance: {max_distance:.3f}):")
+            for idea in similar_ideas:
+                similarity = max(0.0, min(1.0, 1.0 - float(idea.distance)))  # Convert distance back to similarity
+                print(f"    - Distance: {idea.distance:.3f}, Similarity: {similarity:.3f} ({similarity*100:.1f}%) to: {idea.title}")
+        return True
+    
+    return False
 

@@ -13,6 +13,7 @@ from django.conf import settings
 from django.utils.html import json_script
 import json
 from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration
+import random
 from .forms import SourceForm, ContentForm, SettingsForm
 from .rag_service import RAGService
 from .utils import log_activity, is_idea_too_similar_with_embeddings
@@ -2617,7 +2618,9 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
     
     # Initialize embedding service for similarity checking
     embedding_service = None
-    similarity_threshold = 0.8  # 80% similarity threshold
+    # Higher threshold = more strict (only flag near-duplicates)
+    # 0.92 = very strict (only near-duplicates), 0.9 = strict, 0.85 = moderate
+    similarity_threshold = 0.92  # 92% similarity threshold - only flag near-duplicates
     try:
         embedding_service = EmbeddingService()
     except (ValueError, ImportError):
@@ -2657,10 +2660,37 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
     total_attempts = 0
     ideas_still_needed = num_ideas
     
+    # Get sample of existing idea titles to avoid (for diversity)
+    existing_titles_sample = list(PostIdea.objects.values_list('title', flat=True)[:20])
+    existing_titles_text = ""
+    if existing_titles_sample:
+        existing_titles_text = f"\n\n### AVOID THESE TOPICS (already covered):\n" + "\n".join([f"- {title}" for title in existing_titles_sample[:15]])
+    
+    # Get random tags for diversity (if available)
+    all_tags = list(Tag.objects.all())
+    random_tags = random.sample(all_tags, min(3, len(all_tags))) if len(all_tags) >= 3 else all_tags
+    random_tags_text = ""
+    if random_tags and total_attempts > 1:  # Only add random tags on retries
+        random_tag_names = [tag.name for tag in random_tags]
+        random_tags_text = f"\n\n### EXPLORE THESE TOPICS (for diversity):\n" + ", ".join(random_tag_names)
+    
     # Retry loop: continue generating until we have enough valid ideas
     while ideas_still_needed > 0 and total_attempts < max_retries:
         total_attempts += 1
-        batch_size = max(ideas_still_needed, 5)  # Generate at least 5 ideas per batch, or more if needed
+        # Increase batch size on retries to get more variety
+        batch_size = max(ideas_still_needed, 5 + (total_attempts - 1) * 2)  # 5, 7, 9, 11, 13...
+        
+        # Increase creativity on retries
+        creativity_boost = ""
+        if total_attempts > 1:
+            creativity_boost = f"""
+### CREATIVITY REQUIREMENT (Attempt #{total_attempts}):
+- **BE MORE CREATIVE AND DIVERSE** - Previous attempts generated ideas too similar to existing ones.
+- Explore **less common destinations** (beyond Beijing, Shanghai, Xi'an, Chengdu, Yunnan).
+- Consider **unique angles**: specific neighborhoods, festivals, activities, transportation modes, accommodation types, travel styles (budget, luxury, solo, family, etc.).
+- Think about **niche topics**: photography spots, hiking trails, local markets, traditional crafts, specific dishes, regional dialects, local customs, etc.
+- Avoid repeating the same format (e.g., don't keep generating "X-Day Itinerary" or "Best Time to Visit X").
+"""
         
         prompt = f"""
         Generate {batch_size} high-quality blog post ideas for a China travel blog.
@@ -2669,13 +2699,14 @@ Your ideas must be directly useful for people planning a trip to China.
 Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.
 
 Use the following context (optional reference material):
-{context_text}
+{context_text}{existing_titles_text}{random_tags_text}{creativity_boost}
 
 ### Requirements
 - Each idea must clearly answer a real search intent a traveler might have.
 - Ideas should be practical, specific, and actionable: itineraries, travel guides, food recommendations, destination highlights, logistics, tips, or seasonal advice.
 - Avoid purely cultural or historical analysis unless it connects directly to a travel experience.
 - **IMPORTANT: Ensure each idea is DISTINCT and covers a different topic or angle. Avoid generating multiple variations of the same idea (e.g., don't generate "How to Book Trains" and "Train Booking Guide" - they're too similar).**
+- **CRITICAL: If this is a retry attempt, you MUST generate ideas that are significantly different from common topics. Explore unique angles, less-visited destinations, or specific niches.**
 - Each idea must contain:
   1. A compelling and SEO-friendly title (50–80 characters)
   2. A brief description (1–2 sentences) explaining what the post covers and why it helps a traveler.
@@ -2728,12 +2759,16 @@ Response:
                 ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
                 url = f"{ollama_url}/api/generate"
                 
+                # Increase temperature on retries for more creativity
+                base_temp = 0.8
+                retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+                
                 payload = {
                     "model": model,
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.8,
+                        "temperature": retry_temp,
                         "top_p": 0.9,
                     }
                 }
@@ -2777,7 +2812,10 @@ Response:
                 
                 # GPT-5 only supports default temperature (1), so don't set it
                 if not is_gpt5:
-                    request_params["temperature"] = 0.8
+                    # Increase temperature on retries for more creativity
+                    base_temp = 0.8
+                    retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+                    request_params["temperature"] = retry_temp
                 
                 # Use appropriate parameter based on model
                 if is_newer_model:
@@ -2807,10 +2845,14 @@ Response:
                 
                 genai.configure(api_key=api_key)
                 genai_model = genai.GenerativeModel(model)
+                # Increase temperature on retries for more creativity
+                base_temp = 0.8
+                retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+                
                 response = genai_model.generate_content(
                     prompt,
                     generation_config={
-                        "temperature": 0.8,
+                        "temperature": retry_temp,
                         "max_output_tokens": 2000,
                     }
                 )
@@ -2849,17 +2891,22 @@ Response:
                             # Check for similarity using embeddings if available
                             too_similar = False
                             if embedding_service and existing_ideas_with_embeddings:
+                                # Enable debug logging on retries to see similarity scores
+                                debug_mode = total_attempts > 1
                                 too_similar = is_idea_too_similar_with_embeddings(
                                     title, 
                                     existing_ideas_with_embeddings,
                                     embedding_service,
-                                    similarity_threshold
+                                    similarity_threshold,
+                                    debug=debug_mode
                                 )
                             
                             if too_similar:
                                 batch_skipped_similar += 1
                                 batch_skipped_titles.append(title)
-                                print(f"Skipping similar idea: {title}")
+                                if total_attempts == 1:
+                                    print(f"Skipping similar idea: {title}")
+                                # Debug output is already printed by the function
                                 continue
                             
                             # Generate embedding for the new idea
