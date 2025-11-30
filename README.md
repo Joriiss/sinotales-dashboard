@@ -17,7 +17,7 @@ Django-based dashboard for managing content sources and generating blog posts ab
 - **Content Processing**: One-click transcript fetching for YouTube videos and content extraction for blog posts
 - **Activity Logging**: Comprehensive logging of content operations (fetching, transcript extraction, filtering)
 - **China Filter**: Automatic filtering of videos for China-related content (configurable per source)
-- **Post Ideas Management**: Generate, manage, and organize blog post ideas with AI-powered generation
+- **Post Ideas Management**: Generate, manage, and organize blog post ideas with AI-powered generation and automatic duplicate prevention
 - **REST API**: Token-based API endpoints for programmatic content management
 
 ## Setup Instructions
@@ -142,7 +142,10 @@ china-blog-dashboard/
 │           ├── import_ebooks.py   # Import ebooks from CSV (with translation)
 │           ├── import_videos.py   # Import videos from CSV
 │           ├── auto_tag_content.py  # Automatic content tagging
-│           └── generate_embeddings.py  # Generate vector embeddings
+│           ├── generate_embeddings.py  # Generate vector embeddings
+│           ├── find_similar_post_ideas.py  # Find duplicates (text-based)
+│           ├── find_similar_post_ideas_embeddings.py  # Find duplicates (embedding-based)
+│           └── generate_scheduled_post_ideas.py  # Scheduled post idea generation
 ├── templates/             # HTML templates
 │   ├── base.html          # Base template with sidebar
 │   ├── registration/      # Authentication templates
@@ -176,6 +179,11 @@ The main tables are:
 **content_chunks** - Chunked content with vector embeddings:
 - Content reference, chunk index, text
 - Vector embedding (1536 dimensions) for semantic search
+- HNSW index for fast similarity queries
+
+**post_ideas** - Blog post ideas:
+- Title, description, creation/update timestamps
+- Title embedding (1536 dimensions) for similarity checking
 - HNSW index for fast similarity queries
 
 ## Usage
@@ -733,10 +741,18 @@ curl -X POST \
 ```json
 {
   "success": true,
-  "message": "Successfully generated 5 post ideas",
-  "ideas_created": 5
+  "created_count": 5,
+  "num_requested": 5,
+  "provider": "openai",
+  "model": "gpt-4",
+  "ideas": [
+    {"id": 123, "title": "Post Idea Title 1"},
+    {"id": 124, "title": "Post Idea Title 2"}
+  ]
 }
 ```
+
+**Note**: The API automatically filters out duplicate ideas using embedding-based similarity checking. If some ideas are skipped due to similarity, the `created_count` may be less than `num_requested`. Check the activity log for details about skipped ideas.
 
 **Response (Error)**:
 ```json
@@ -789,11 +805,14 @@ The dashboard includes a Post Ideas feature for generating and managing blog pos
 - **AI Generation**: Generate multiple post ideas using Ollama, OpenAI, or Gemini
 - **Tag-Based Generation**: Generate ideas based on specific tags
 - **Content-Based Generation**: Generate ideas inspired by existing content
+- **Automatic Duplicate Prevention**: New ideas are automatically checked for similarity to prevent duplicates
+- **Similarity Detection**: Find and manage duplicate or similar ideas using text-based or embedding-based methods
+- **Idea Count Display**: View the total number of post ideas in the sidebar and filtered count on the list page
 - **Activity Logging**: All idea creation, updates, and generation activities are logged
 
 ### Generating Post Ideas
 
-1. Navigate to **Post Ideas** in the sidebar
+1. Navigate to **Post Ideas** in the sidebar (shows total count)
 2. Click **Generate Ideas**
 3. Configure generation settings:
    - **Number of Ideas**: How many ideas to generate
@@ -803,11 +822,88 @@ The dashboard includes a Post Ideas feature for generating and managing blog pos
    - **Content** (optional): Search and select existing content to inspire ideas
 4. Click **Generate Ideas**
 
-The system will generate post ideas based on your selected criteria and add them to your ideas list.
+The system will generate post ideas based on your selected criteria and add them to your ideas list. **Duplicate ideas are automatically filtered out** using embedding-based similarity checking (85% similarity threshold).
+
+### Finding and Managing Duplicate Ideas
+
+The dashboard provides two methods to find similar or duplicate post ideas:
+
+#### Text-Based Similarity Checking
+
+Fast, free method using string comparison and keyword overlap:
+
+```bash
+# Find similar ideas (default threshold: 0.8)
+python manage.py find_similar_post_ideas --group
+
+# Use custom threshold
+python manage.py find_similar_post_ideas --threshold 0.85 --group
+
+# Export results to file
+python manage.py find_similar_post_ideas --group --export report.txt
+
+# Preview deletions (dry run)
+python manage.py find_similar_post_ideas --group --threshold 0.8
+
+# Actually delete duplicates (keeps oldest in each group)
+python manage.py find_similar_post_ideas --group --delete
+```
+
+**Options:**
+- `--threshold`: Similarity threshold (0.0-1.0, default: 0.8)
+- `--min-similarity`: Minimum similarity to report (default: 0.5)
+- `--group`: Group similar ideas together for easier review
+- `--export`: Export results to a text file
+- `--delete`: Actually delete duplicates (without this flag, only previews)
+
+#### Embedding-Based Similarity Checking
+
+More accurate semantic similarity detection using OpenAI embeddings:
+
+```bash
+# Generate embeddings for ideas that don't have them
+python manage.py find_similar_post_ideas_embeddings --generate-embeddings
+
+# Find similar ideas using embeddings (default threshold: 0.85)
+python manage.py find_similar_post_ideas_embeddings --group
+
+# Use custom threshold
+python manage.py find_similar_post_ideas_embeddings --threshold 0.9 --group
+
+# Preview deletions
+python manage.py find_similar_post_ideas_embeddings --group
+
+# Actually delete duplicates
+python manage.py find_similar_post_ideas_embeddings --group --delete
+```
+
+**Options:**
+- `--generate-embeddings`: Generate embeddings for ideas without them
+- `--threshold`: Similarity threshold (0.0-1.0, default: 0.85)
+- `--min-similarity`: Minimum similarity to report (default: 0.7)
+- `--group`: Group similar ideas together
+- `--export`: Export results to a text file
+- `--delete`: Actually delete duplicates
+
+**Note**: Embedding-based checking requires OpenAI API key and generates embeddings for ideas that don't have them yet.
+
+### Automatic Duplicate Prevention
+
+When generating new post ideas (via web interface or API), the system automatically:
+
+1. **Generates embeddings** for each new idea title
+2. **Checks similarity** against all existing ideas with embeddings
+3. **Skips ideas** that are ≥80% similar to existing ones
+4. **Stores embeddings** for future similarity checks
+5. **Reports skipped ideas** in the activity log
+
+This prevents duplicate ideas from being created during generation. The similarity threshold is set to 80% (0.8) by default.
 
 ### API Integration
 
 The Post Ideas generation can be triggered via API for automation (e.g., with n8n). See the [API Endpoints](#generate-post-ideas) section for details.
+
+**Note**: The API also includes automatic duplicate prevention - similar ideas will be automatically skipped during generation.
 
 ### Cost Estimation
 
@@ -824,8 +920,9 @@ The Post Ideas generation can be triggered via API for automation (e.g., with n8
 - [x] Add automatic content tagging system
 - [x] Set up embedding generation pipeline
 - [x] Integrate with PostgreSQL pgvector for vector search
-- [ ] Add semantic search functionality (query embeddings and similarity search)
 - [x] Add Post Ideas tab for generated article ideas
+- [x] Add duplicate detection and prevention for post ideas
+- [ ] Add semantic search functionality (query embeddings and similarity search)
 - [ ] Add Blog Posts tab for managing generated posts
 - [ ] Add RAG pipeline for content generation
 
