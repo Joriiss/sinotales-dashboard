@@ -15,8 +15,10 @@ import json
 from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration
 from .forms import SourceForm, ContentForm, SettingsForm
 from .rag_service import RAGService
-from .utils import log_activity
+from .utils import log_activity, is_idea_too_similar_with_embeddings
 from .content_processing_service import ContentProcessingService
+from .embedding_service import EmbeddingService
+from pgvector.django import CosineDistance
 
 
 class CustomLoginView(LoginView):
@@ -2635,6 +2637,7 @@ Use the following context (optional reference material):
 - Each idea must clearly answer a real search intent a traveler might have.
 - Ideas should be practical, specific, and actionable: itineraries, travel guides, food recommendations, destination highlights, logistics, tips, or seasonal advice.
 - Avoid purely cultural or historical analysis unless it connects directly to a travel experience.
+- **IMPORTANT: Ensure each idea is DISTINCT and covers a different topic or angle. Avoid generating multiple variations of the same idea (e.g., don't generate "How to Book Trains" and "Train Booking Guide" - they're too similar).**
 - Each idea must contain:
   1. A compelling and SEO-friendly title (50–80 characters)
   2. A brief description (1–2 sentences) explaining what the post covers and why it helps a traveler.
@@ -2775,36 +2778,93 @@ Response:
                     parsed = json.loads(json_str)
                     ideas = parsed.get('ideas', [])
                     
-                    # Create PostIdea objects
+                    # Initialize embedding service for similarity checking
+                    embedding_service = None
+                    similarity_threshold = 0.85  # 85% similarity threshold
+                    try:
+                        embedding_service = EmbeddingService()
+                    except (ValueError, ImportError):
+                        # Embedding service not available, skip similarity checking
+                        pass
+                    
+                    # Create PostIdea objects with similarity checking
                     created_count = 0
                     created_ideas = []
+                    skipped_similar = 0
+                    skipped_titles = []
+                    
+                    # Get existing ideas with embeddings for comparison
+                    existing_ideas_with_embeddings = list(
+                        PostIdea.objects.filter(title_embedding__isnull=False)
+                    ) if embedding_service else []
+                    
                     for idea_data in ideas:
                         title = idea_data.get('title', '').strip()
                         description = idea_data.get('description', '').strip()
                         
-                        if title:
-                            post_idea = PostIdea.objects.create(
-                                title=title,
-                                description=description
+                        if not title:
+                            continue
+                        
+                        # Check for similarity using embeddings if available
+                        too_similar = False
+                        if embedding_service and existing_ideas_with_embeddings:
+                            too_similar = is_idea_too_similar_with_embeddings(
+                                title, 
+                                existing_ideas_with_embeddings,
+                                embedding_service,
+                                similarity_threshold
                             )
-                            created_count += 1
-                            created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
+                        
+                        if too_similar:
+                            skipped_similar += 1
+                            skipped_titles.append(title)
+                            print(f"Skipping similar idea: {title}")
+                            continue
+                        
+                        # Generate embedding for the new idea
+                        new_embedding = None
+                        if embedding_service:
+                            try:
+                                new_embedding = embedding_service.generate_embedding(title)
+                            except Exception as e:
+                                print(f"Warning: Could not generate embedding for '{title}': {str(e)}")
+                        
+                        # Create the post idea
+                        post_idea = PostIdea.objects.create(
+                            title=title,
+                            description=description,
+                            title_embedding=new_embedding
+                        )
+                        created_count += 1
+                        created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
+                        
+                        # Add to existing list for checking against in the same batch
+                        if new_embedding:
+                            existing_ideas_with_embeddings.append(post_idea)
                     
-                    if created_count > 0:
+                    if created_count > 0 or skipped_similar > 0:
                         # Log activity
+                        message = f'{created_count} post idea(s) were generated using AI'
+                        if skipped_similar > 0:
+                            message += f' ({skipped_similar} similar ideas skipped)'
+                        
                         log_activity(
                             'post_ideas_generated',
-                            f'{created_count} post idea(s) were generated using AI',
+                            message,
                             user=user,
                             metadata={
                                 'count': created_count,
+                                'skipped_similar': skipped_similar,
                                 'num_requested': num_ideas,
                                 'provider': provider,
                                 'model': model,
+                                'similarity_check': embedding_service is not None,
+                                'similarity_threshold': similarity_threshold if embedding_service else None,
                                 'tags_selected': [tag.id for tag in selected_tags] if selected_tags else [],
                                 'tags_names': [tag.name for tag in selected_tags] if selected_tags else [],
                                 'contents_selected': [content.id for content in selected_contents] if selected_contents else [],
                                 'created_ideas': created_ideas,
+                                'skipped_titles': skipped_titles if skipped_titles else [],
                                 'api_generated': user is None
                             }
                         )

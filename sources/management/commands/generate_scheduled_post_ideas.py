@@ -6,7 +6,8 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.utils import timezone
 from sources.models import ScheduledPostIdeaGeneration, PostIdea
-from sources.utils import log_activity
+from sources.utils import log_activity, is_idea_too_similar_with_embeddings
+from sources.embedding_service import EmbeddingService
 import requests
 import json
 
@@ -201,35 +202,92 @@ Response:
                         parsed = json.loads(json_str)
                         ideas = parsed.get('ideas', [])
                         
-                        # Create PostIdea objects
+                        # Initialize embedding service for similarity checking
+                        embedding_service = None
+                        similarity_threshold = 0.85  # 85% similarity threshold
+                        try:
+                            embedding_service = EmbeddingService()
+                        except (ValueError, ImportError):
+                            # Embedding service not available, skip similarity checking
+                            pass
+                        
+                        # Get existing ideas with embeddings for comparison
+                        existing_ideas_with_embeddings = list(
+                            PostIdea.objects.filter(title_embedding__isnull=False)
+                        ) if embedding_service else []
+                        
+                        # Create PostIdea objects with similarity checking
                         created_count = 0
                         created_ideas = []
+                        skipped_similar = 0
+                        skipped_titles = []
+                        
                         for idea_data in ideas:
                             title = idea_data.get('title', '').strip()
                             description = idea_data.get('description', '').strip()
                             
-                            if title:
-                                post_idea = PostIdea.objects.create(
-                                    title=title,
-                                    description=description
+                            if not title:
+                                continue
+                            
+                            # Check for similarity using embeddings if available
+                            too_similar = False
+                            if embedding_service and existing_ideas_with_embeddings:
+                                too_similar = is_idea_too_similar_with_embeddings(
+                                    title, 
+                                    existing_ideas_with_embeddings,
+                                    embedding_service,
+                                    similarity_threshold
                                 )
-                                created_count += 1
-                                created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
-                                self.stdout.write(f'  ✓ Created: {title}')
+                            
+                            if too_similar:
+                                skipped_similar += 1
+                                skipped_titles.append(title)
+                                self.stdout.write(f'  [-] Skipped similar: {title}')
+                                continue
+                            
+                            # Generate embedding for the new idea
+                            new_embedding = None
+                            if embedding_service:
+                                try:
+                                    new_embedding = embedding_service.generate_embedding(title)
+                                except Exception as e:
+                                    self.stdout.write(f'  [!] Warning: Could not generate embedding for "{title}": {str(e)}')
+                            
+                            # Create the post idea
+                            post_idea = PostIdea.objects.create(
+                                title=title,
+                                description=description,
+                                title_embedding=new_embedding
+                            )
+                            created_count += 1
+                            created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
+                            self.stdout.write(f'  [+] Created: {title}')
+                            
+                            # Add to existing list for checking against in the same batch
+                            if new_embedding:
+                                existing_ideas_with_embeddings.append(post_idea)
                         
-                        if created_count > 0:
+                        if created_count > 0 or skipped_similar > 0:
                             # Log activity
+                            message = f'{created_count} post idea(s) were generated using scheduled generation'
+                            if skipped_similar > 0:
+                                message += f' ({skipped_similar} similar ideas skipped)'
+                            
                             log_activity(
                                 'post_ideas_generated',
-                                f'{created_count} post idea(s) were generated using scheduled generation',
+                                message,
                                 user=None,  # System-generated
                                 metadata={
                                     'count': created_count,
+                                    'skipped_similar': skipped_similar,
                                     'num_requested': scheduled_settings.num_ideas,
                                     'provider': scheduled_settings.provider,
                                     'model': scheduled_settings.model,
+                                    'similarity_check': embedding_service is not None,
+                                    'similarity_threshold': similarity_threshold if embedding_service else None,
                                     'scheduled': True,
-                                    'created_ideas': created_ideas
+                                    'created_ideas': created_ideas,
+                                    'skipped_titles': skipped_titles if skipped_titles else []
                                 }
                             )
                             
@@ -237,9 +295,14 @@ Response:
                             scheduled_settings.last_run = timezone.now()
                             scheduled_settings.save()
                             
-                            self.stdout.write(
-                                self.style.SUCCESS(f'\n✓ Successfully generated {created_count} post idea(s)!')
-                            )
+                            if created_count > 0:
+                                self.stdout.write(
+                                    self.style.SUCCESS(f'\n[+] Successfully generated {created_count} post idea(s)!')
+                                )
+                            if skipped_similar > 0:
+                                self.stdout.write(
+                                    self.style.WARNING(f'[!] {skipped_similar} similar idea(s) were skipped.')
+                                )
                         else:
                             self.stdout.write(
                                 self.style.WARNING('No valid ideas were generated.')
