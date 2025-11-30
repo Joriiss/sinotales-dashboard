@@ -518,10 +518,80 @@ class RAGService:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Ollama API error: {str(e)}")
     
+    def _call_openai(self, prompt: str, model: str) -> str:
+        """Call OpenAI API"""
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ImportError("openai library required. Install with: pip install openai")
+        
+        api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.")
+        
+        client = OpenAI(api_key=api_key)
+        
+        # Check model type for parameter compatibility
+        is_gpt5 = 'gpt-5' in model.lower()
+        is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
+        
+        # Build request parameters
+        request_params = {
+            "model": model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+        }
+        
+        # GPT-5 only supports default temperature (1), so don't set it
+        if not is_gpt5:
+            request_params["temperature"] = 0.7
+        
+        # Use appropriate parameter based on model
+        if is_newer_model:
+            request_params["max_completion_tokens"] = 2000
+        else:
+            request_params["max_tokens"] = 2000
+        
+        try:
+            response = client.chat.completions.create(**request_params)
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            error_str = str(e)
+            raise Exception(f"OpenAI API error: {error_str}")
+    
+    def _call_gemini(self, prompt: str, model: str) -> str:
+        """Call Gemini API"""
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise ImportError("google-generativeai library required. Install with: pip install google-generativeai")
+        
+        api_key = getattr(settings, 'GEMINI_API_KEY', None)
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.")
+        
+        genai.configure(api_key=api_key)
+        genai_model = genai.GenerativeModel(model)
+        
+        try:
+            response = genai_model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.7,
+                    "max_output_tokens": 2000,
+                }
+            )
+            return response.text.strip()
+        except Exception as e:
+            error_str = str(e)
+            raise Exception(f"Gemini API error: {error_str}")
+    
     def generate_response(
         self,
         question: str,
-        model: str,
+        provider: str = 'ollama',
+        model: str = '',
         num_chunks: int = 5,
         source_id: Optional[int] = None,
         tag_ids: Optional[List[int]] = None,
@@ -534,7 +604,8 @@ class RAGService:
         
         Args:
             question: User's question
-            model: Ollama model name
+            provider: AI provider ('ollama', 'openai', or 'gemini')
+            model: Model name (provider-specific)
             num_chunks: Number of chunks to retrieve
             source_id: Optional source filter
             tag_ids: Optional tag filter
@@ -560,17 +631,34 @@ class RAGService:
         # Create prompt with web search instructions if enabled
         prompt = self._create_rag_prompt(question, context, conversation_history, web_search_enabled)
         
-        # Generate initial response
+        # Generate initial response based on provider
         try:
-            answer = self._call_ollama(prompt, model)
+            if provider == 'ollama':
+                answer = self._call_ollama(prompt, model)
+            elif provider == 'openai':
+                answer = self._call_openai(prompt, model)
+            elif provider == 'gemini':
+                answer = self._call_gemini(prompt, model)
+            else:
+                answer = f"❌ Error: Invalid provider '{provider}'. Must be one of: ollama, openai, gemini"
+                sources = []
+                return answer, sources
         except ConnectionError as e:
-            answer = f"❌ Connection Error: {str(e)}\n\nPlease make sure Ollama is running."
+            if provider == 'ollama':
+                answer = f"❌ Connection Error: {str(e)}\n\nPlease make sure Ollama is running."
+            else:
+                answer = f"❌ Connection Error: {str(e)}"
+            sources = []
+            return answer, sources
+        except ValueError as e:
+            # API key errors
+            answer = f"❌ Configuration Error: {str(e)}"
             sources = []
             return answer, sources
         except Exception as e:
             error_msg = str(e)
-            # Check if it's a memory error
-            if "memory" in error_msg.lower() or "system memory" in error_msg.lower():
+            # Check if it's a memory error (Ollama specific)
+            if provider == 'ollama' and ("memory" in error_msg.lower() or "system memory" in error_msg.lower()):
                 answer = (
                     f"❌ Memory Error: The model '{model}' requires more memory than available.\n\n"
                     f"💡 Suggestions:\n"
@@ -580,7 +668,8 @@ class RAGService:
                     f"- Check available models with: ollama list"
                 )
             else:
-                answer = f"❌ Error: {error_msg}\n\n💡 Try selecting a different model or check if Ollama is running properly."
+                provider_name = provider.upper()
+                answer = f"❌ Error: {error_msg}\n\n💡 Try selecting a different model or check your {provider_name} configuration."
             sources = []
             return answer, sources
         
@@ -610,7 +699,15 @@ class RAGService:
                         # Generate final answer with web context
                         try:
                             print("Generating followup answer with web results...")
-                            followup_answer = self._call_ollama(followup_prompt, model)
+                            if provider == 'ollama':
+                                followup_answer = self._call_ollama(followup_prompt, model)
+                            elif provider == 'openai':
+                                followup_answer = self._call_openai(followup_prompt, model)
+                            elif provider == 'gemini':
+                                followup_answer = self._call_gemini(followup_prompt, model)
+                            else:
+                                followup_answer = "Error: Invalid provider"
+                            
                             # Remove the SEARCH: line from answer if present
                             answer = re.sub(r'SEARCH:\s*.+', '', followup_answer, flags=re.IGNORECASE).strip()
                             # Also remove any remaining SEARCH: lines

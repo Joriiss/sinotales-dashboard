@@ -431,6 +431,12 @@ class PostIdea(models.Model):
         blank=True,
         help_text="Optional description or notes about the post idea"
     )
+    title_embedding = VectorField(
+        dimensions=1536,  # text-embedding-3-small dimensions (same as ContentChunk)
+        null=True,
+        blank=True,
+        help_text="Vector embedding of the title for semantic similarity checking"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

@@ -2338,6 +2338,9 @@ def post_idea_list(request):
     """Display list of all post ideas"""
     post_ideas = PostIdea.objects.all()
     
+    # Get total count before filtering
+    total_count = post_ideas.count()
+    
     # Apply search filter
     search_query = request.GET.get('search', '').strip()
     if search_query:
@@ -2358,10 +2361,15 @@ def post_idea_list(request):
         # Default: newest first
         post_ideas = post_ideas.order_by('-created_at')
     
+    # Get filtered count
+    filtered_count = post_ideas.count()
+    
     context = {
         'post_ideas': post_ideas,
         'search_query': search_query,
         'sort_by': sort_by,
+        'total_count': total_count,
+        'filtered_count': filtered_count,
     }
     
     return render(request, 'sources/post_idea_list.html', context)
@@ -2912,56 +2920,97 @@ def post_idea_generate_api(request):
 
 
 def agent_models_api(request):
-    """API endpoint to fetch available Ollama models"""
-    try:
-        import requests
-    except ImportError:
-        return JsonResponse({'error': 'requests library required'}, status=500)
+    """API endpoint to fetch available models for a given provider"""
+    provider = request.GET.get('provider', 'ollama').strip().lower()
     
-    ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-    url = f"{ollama_url}/api/tags"
+    if provider == 'ollama':
+        try:
+            import requests
+        except ImportError:
+            return JsonResponse({'error': 'requests library required'}, status=500)
+        
+        ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+        url = f"{ollama_url}/api/tags"
+        
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract model names
+            models = []
+            if 'models' in data:
+                for model_info in data['models']:
+                    model_name = model_info.get('name', '')
+                    if model_name:
+                        models.append(model_name)
+            
+            # Sort models (prefer Chinese models first, then smaller models)
+            chinese_models = [m for m in models if any(keyword in m.lower() for keyword in ['qwen', 'chinese', 'zh', 'cn'])]
+            other_models = [m for m in models if m not in chinese_models]
+            
+            # Within each group, prefer smaller models (3b, 4b) first
+            def sort_key(model_name):
+                name_lower = model_name.lower()
+                # Smaller models first
+                if ':3b' in name_lower or '3b' in name_lower:
+                    return (0, name_lower)
+                elif ':4b' in name_lower or '4b' in name_lower:
+                    return (1, name_lower)
+                elif ':7b' in name_lower or '7b' in name_lower:
+                    return (2, name_lower)
+                elif ':8b' in name_lower or '8b' in name_lower:
+                    return (3, name_lower)
+                else:
+                    return (4, name_lower)
+            
+            chinese_models.sort(key=sort_key)
+            other_models.sort(key=sort_key)
+            sorted_models = chinese_models + other_models
+            
+            return JsonResponse({'models': sorted_models})
+        except requests.exceptions.ConnectionError:
+            return JsonResponse({'error': 'Could not connect to Ollama. Make sure Ollama is running.'}, status=503)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
     
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        data = response.json()
+    elif provider == 'openai':
+        # OpenAI models
+        api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        if not api_key:
+            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
         
-        # Extract model names
-        models = []
-        if 'models' in data:
-            for model_info in data['models']:
-                model_name = model_info.get('name', '')
-                if model_name:
-                    models.append(model_name)
+        # Manual list of OpenAI models
+        models = [
+            'gpt-5.1',
+            'gpt-5',
+            'gpt-5-mini',
+            'gpt-5-nano',
+            'gpt-4o',
+            'gpt-4o-mini',
+            'gpt-4-turbo',
+            'gpt-4',
+            'gpt-3.5-turbo',
+        ]
+        return JsonResponse({'models': models})
+    
+    elif provider == 'gemini':
+        # Gemini models
+        api_key = getattr(settings, 'GEMINI_API_KEY', None)
+        if not api_key:
+            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
         
-        # Sort models (prefer Chinese models first, then smaller models)
-        chinese_models = [m for m in models if any(keyword in m.lower() for keyword in ['qwen', 'chinese', 'zh', 'cn'])]
-        other_models = [m for m in models if m not in chinese_models]
-        
-        # Within each group, prefer smaller models (3b, 4b) first
-        def sort_key(model_name):
-            name_lower = model_name.lower()
-            # Smaller models first
-            if ':3b' in name_lower or '3b' in name_lower:
-                return (0, name_lower)
-            elif ':4b' in name_lower or '4b' in name_lower:
-                return (1, name_lower)
-            elif ':7b' in name_lower or '7b' in name_lower:
-                return (2, name_lower)
-            elif ':8b' in name_lower or '8b' in name_lower:
-                return (3, name_lower)
-            else:
-                return (4, name_lower)
-        
-        chinese_models.sort(key=sort_key)
-        other_models.sort(key=sort_key)
-        sorted_models = chinese_models + other_models
-        
-        return JsonResponse({'models': sorted_models})
-    except requests.exceptions.ConnectionError:
-        return JsonResponse({'error': 'Could not connect to Ollama. Make sure Ollama is running.'}, status=503)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        # Common Gemini models
+        models = [
+            'gemini-3-pro-preview',
+            'gemini-2.5-pro',
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite'
+        ]
+        return JsonResponse({'models': models})
+    
+    else:
+        return JsonResponse({'error': 'Invalid provider'}, status=400)
 
 
 @login_required
@@ -3609,6 +3658,7 @@ def agent_chat_api(request):
     try:
         data = json.loads(request.body)
         question = data.get('question', '').strip()
+        provider = data.get('provider', 'ollama').strip().lower()
         model = data.get('model', '').strip()
         num_chunks = int(data.get('num_chunks', 5))
         source_id = data.get('source_id')
@@ -3620,6 +3670,9 @@ def agent_chat_api(request):
         # Validate inputs
         if not question:
             return JsonResponse({'error': 'Question is required'}, status=400)
+        
+        if provider not in ['ollama', 'openai', 'gemini']:
+            return JsonResponse({'error': 'Invalid provider. Must be one of: ollama, openai, gemini'}, status=400)
         
         if not model:
             return JsonResponse({'error': 'Model is required'}, status=400)
@@ -3658,6 +3711,7 @@ def agent_chat_api(request):
         try:
             answer, sources = rag_service.generate_response(
                 question=question,
+                provider=provider,
                 model=model,
                 num_chunks=num_chunks,
                 source_id=source_id,

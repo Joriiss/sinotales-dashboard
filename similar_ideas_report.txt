@@ -1,0 +1,1167 @@
+Post Ideas Similarity Report
+==================================================
+
+Threshold: 0.7
+Min similarity: 0.5
+Generated: 2025-11-30 09:19:52
+
+
+=== SIMILAR IDEAS (Grouped) ===
+
+--- Group 1 (2 ideas) ---
+  ID 14: Top 10 Must‑Try Street Foods in Chengdu: A Foodie’s Guide
+         A curated list of the top 10 street‑food stalls and markets in Chengdu, with dish descriptions, open...
+         Created: 2025-11-22 09:53
+  ID 34: Must-Try Street Foods in Chengdu: A Culinary Adventure
+         Discover the vibrant street food culture of Chengdu with this guide, offering must-try dishes and th...
+         Created: 2025-11-22 12:53
+
+--- Group 2 (6 ideas) ---
+  ID 21: Best Time to Visit Zhangjiajie Park: Weather, Crowds & Photo Tips
+         Seasonal breakdown of climate, visitor density, and optimal months for photography, plus advice on h...
+         Created: 2025-11-22 09:56
+  ID 64: Best Time to Visit China by Region: Weather, Crowds, and Costs
+         Breaks down the ideal months to visit North, South, East, and Western China, including festivals to ...
+         Created: 2025-11-22 14:07
+  ID 96: Best Time to Visit China by Region: Weather, Crowds & Festivals
+         Breaks down when to visit North, South, East, and West China with month-by-month weather, crowd leve...
+         Created: 2025-11-24 06:24
+  ID 112: Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+         An in-depth seasonal guide to Guilin and Yangshuo, covering when to go for clear karst mountain view...
+         Created: 2025-11-26 06:24
+  ID 115: Best Time to Visit Zhangjiajie: Weather, Crowds, and Viewpoints
+         Month-by-month guide to Zhangjiajie National Forest Park with detailed advice on avoiding tour-bus c...
+         Created: 2025-11-27 06:24
+  ID 133: Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+         Season-by-season advice on visiting Guilin and Yangshuo, with recommendations for river cruises, cyc...
+         Created: 2025-11-30 06:24
+
+--- Group 3 (7 ideas) ---
+  ID 38: Ultimate Chengdu Travel Guide: Pandas, Hotpot & Teahouses in 3–4 Days
+         A step-by-step Chengdu itinerary covering panda bases, Jinli and Kuanzhai Alleys, classic teahouses,...
+         Created: 2025-11-22 13:16
+  ID 55: Chengdu Travel Guide: Pandas, Hotpot, and Teahouses in 3 Days
+         A detailed Chengdu city guide with a 3-day plan covering the Giant Panda Base, best hotpot streets, ...
+         Created: 2025-11-22 13:36
+  ID 59: Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+         A practical 3-day itinerary for Chengdu with details on visiting the Panda Base, choosing the right ...
+         Created: 2025-11-22 13:51
+  ID 66: Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+         Covers how to visit the panda base responsibly, where to eat authentic hotpot, and which Chengdu-bas...
+         Created: 2025-11-22 14:07
+  ID 100: Chengdu Travel Guide: Pandas, Hotpot, and Relaxed Teahouse Culture
+         A practical guide to 3–4 days in Chengdu, including how to visit the panda base ethically, where to ...
+         Created: 2025-11-24 12:18
+  ID 110: Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+         A practical guide to spending 3–4 days in Chengdu, including how to visit the Giant Panda Base ethic...
+         Created: 2025-11-26 06:24
+  ID 125: Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+         A practical 3-day Chengdu itinerary showing how to visit the Panda Base, find the best local hotpot,...
+         Created: 2025-11-29 06:24
+
+--- Group 4 (2 ideas) ---
+  ID 53: 10 Essential First-Timer Tips for Traveling in China (2025 Guide)
+         A practical starter guide covering visas, eSIMs and VPNs, using WeChat/Alipay, trains vs. flights, l...
+         Created: 2025-11-22 13:36
+  ID 94: 10 Essential First-Timer Tips for Traveling in China (2025 Guide)
+         A practical starter guide covering visas, payment apps, trains vs. flights, basic Mandarin phrases, ...
+         Created: 2025-11-24 06:24
+
+--- Group 5 (12 ideas) ---
+  ID 54: 7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route
+         A day-by-day itinerary with recommended sights, time-saving routes, where to stay near major attract...
+         Created: 2025-11-22 13:36
+  ID 58: 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+         A step-by-step route covering must-see sights like the Great Wall, Terracotta Warriors, and the Bund...
+         Created: 2025-11-22 13:51
+  ID 63: Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+         Step-by-step route, must-see sights, transit tips, and budget guidance for first-time visitors wanti...
+         Created: 2025-11-22 14:07
+  ID 89: 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+         Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai, with daily plans, ...
+         Created: 2025-11-23 06:24
+  ID 95: 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+         A step-by-step one-week itinerary with daily plans, must-see sights, sample budgets, transport optio...
+         Created: 2025-11-24 06:24
+  ID 99: 10 Perfect Days in China: Beijing, Xi’an & Shanghai First-Timer Itinerary
+         Step-by-step route for a first trip to China covering Beijing, Xi’an, and Shanghai, with daily sched...
+         Created: 2025-11-24 12:18
+  ID 104: Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+         Step-by-step route for a first trip to China, including must-see sights, daily schedules, transport ...
+         Created: 2025-11-25 06:24
+  ID 109: 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+         A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Shanghai, with details...
+         Created: 2025-11-26 06:24
+  ID 114: 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+         Step-by-step itinerary covering must-see sights, train/flight choices, daily schedules, ticket booki...
+         Created: 2025-11-27 06:24
+  ID 119: Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+         Step-by-step route for a first trip to China, including must-see sights, recommended daily schedules...
+         Created: 2025-11-28 06:24
+  ID 124: 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+         A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shanghai, with daily sch...
+         Created: 2025-11-29 06:24
+  ID 129: 10 Perfect Days in China: Classic Beijing–Xi’an–Shanghai Route
+         Step-by-step itinerary covering must-see sites like the Great Wall, Terracotta Warriors, and the Bun...
+         Created: 2025-11-30 06:24
+
+--- Group 6 (7 ideas) ---
+  ID 56: How to Travel China by High-Speed Train: Routes, Tickets, and Tips
+         Step-by-step advice on booking China high-speed rail tickets, navigating stations, choosing seats, u...
+         Created: 2025-11-22 13:36
+  ID 60: How to Travel by High-Speed Train in China: Tickets, Apps, Tips
+         A clear guide to using China’s high-speed rail network, including how to buy tickets without Chinese...
+         Created: 2025-11-22 13:51
+  ID 91: How to Travel by High-Speed Train in China: Tickets, Apps & Tips
+         A practical how-to for riding China’s high-speed rail, including booking tickets as a foreigner, usi...
+         Created: 2025-11-23 06:24
+  ID 98: How to Travel by High-Speed Train in China: Tickets, Apps & Seat Hacks
+         Explains exactly how to search routes, book and collect tickets, navigate stations, choose seats, an...
+         Created: 2025-11-24 06:24
+  ID 103: How to Use High-Speed Trains in China: Tickets, Apps, and Onboard Tips
+         A detailed guide to riding China’s bullet trains with or without a Chinese phone number, explaining ...
+         Created: 2025-11-24 12:18
+  ID 111: How to Take High-Speed Trains in China: Tickets, Apps, and Tips
+         A detailed walkthrough of using China’s high-speed rail system, explaining how to buy tickets as a f...
+         Created: 2025-11-26 06:24
+  ID 118: How to Travel China by High-Speed Train: Routes, Tickets, and Hacks
+         Hands-on guide explaining how to book G/D trains without Chinese, navigate stations, choose seats, p...
+         Created: 2025-11-27 06:24
+
+--- Group 7 (2 ideas) ---
+  ID 57: Zhangjiajie and Tianmen Mountain: 3-Day Avatar Mountains Itinerary
+         A focused itinerary explaining how to base yourself in Wulingyuan vs. Zhangjiajie City, which glass ...
+         Created: 2025-11-22 13:36
+  ID 61: Zhangjiajie and Tianmen Mountain: 4-Day Avatar Mountains Itinerary
+         A detailed plan for exploring Zhangjiajie National Forest Park and Tianmen Mountain with exact hikin...
+         Created: 2025-11-22 13:51
+
+--- Group 8 (3 ideas) ---
+  ID 70: Best Street Food in Xi’an: Muslim Quarter and Beyond Map Guide
+         Pinpoints must-try dishes (roujiamo, biangbiang noodles, liangpi), where to find them, hygiene tips,...
+         Created: 2025-11-22 14:07
+  ID 113: Where and What to Eat in Xi’an: Muslim Quarter and Beyond
+         A food-focused guide to Xi’an explaining exactly which streets and stalls to visit for biang biang n...
+         Created: 2025-11-26 06:24
+  ID 128: What to Eat in Xi’an: Muslim Quarter and Beyond Food Guide
+         A street-food-focused guide to Xi’an with specific dishes to try (like roujiamo, biangbiang noodles,...
+         Created: 2025-11-29 06:24
+
+--- Group 9 (2 ideas) ---
+  ID 74: Hong Kong to Mainland China: Border Crossings, Visas, and Trains
+         Explains the different ways to cross from Hong Kong to Shenzhen, Guangzhou, and beyond, including tr...
+         Created: 2025-11-22 14:07
+  ID 122: Hong Kong to Mainland China: Border Crossings, Trains and Visas Explained
+         Clear instructions for traveling from Hong Kong into Shenzhen, Guangzhou, and beyond, including high...
+         Created: 2025-11-28 06:24
+
+--- Group 10 (2 ideas) ---
+  ID 85: Chengdu Food Guide: 10 Must-Try Sichuan Dishes & Where to Find Them
+         This guide helps travelers navigate Chengdu's legendary food scene by highlighting essential dishes ...
+         Created: 2025-11-22 15:09
+  ID 121: Chengdu Food Guide: 18 Must-Try Sichuan Dishes and Where to Eat Them
+         An on-the-ground eating guide to Chengdu with specific restaurant recommendations, Chinese dish name...
+         Created: 2025-11-28 06:24
+
+--- Group 11 (2 ideas) ---
+  ID 101: Zhangjiajie vs. Guilin: Which Karst Landscape Is Better for You?
+         A side-by-side comparison of Zhangjiajie and Guilin/Yangshuo that helps you decide where to go based...
+         Created: 2025-11-24 12:18
+  ID 126: Zhangjiajie vs. Guilin: Which Karst Landscape to Visit in China?
+         A side-by-side comparison of Zhangjiajie and Guilin/Yangshuo with sample 3–4 day mini-itineraries, c...
+         Created: 2025-11-29 06:24
+
+--- Group 12 (2 ideas) ---
+  ID 106: Zhangjiajie National Forest Park Guide: Routes, Tickets & Crowds
+         Practical planning guide to China’s ‘Avatar mountains’ covering how many days you need, which entran...
+         Created: 2025-11-25 06:24
+  ID 120: How to Visit Zhangjiajie National Forest Park Without the Crowds
+         A practical planning guide to China’s ‘Avatar mountains’ covering the best 2–4 day routes, where to ...
+         Created: 2025-11-28 06:24
+
+=== DETAILED SIMILAR PAIRS ===
+
+[1] DUPLICATE (Max: 100.00%)
+  Text similarity: 100.00%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 53): 10 Essential First-Timer Tips for Traveling in China (2025 Guide)
+    A practical starter guide covering visas, eSIMs and VPNs, using WeChat/Alipay, t...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 94): 10 Essential First-Timer Tips for Traveling in China (2025 Guide)
+    A practical starter guide covering visas, payment apps, trains vs. flights, basi...
+    Created: 2025-11-24 06:24
+
+[2] DUPLICATE (Max: 100.00%)
+  Text similarity: 96.83%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 54): 7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route
+    A day-by-day itinerary with recommended sights, time-saving routes, where to sta...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 95): 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+    A step-by-step one-week itinerary with daily plans, must-see sights, sample budg...
+    Created: 2025-11-24 06:24
+
+[3] DUPLICATE (Max: 100.00%)
+  Text similarity: 98.48%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 57): Zhangjiajie and Tianmen Mountain: 3-Day Avatar Mountains Itinerary
+    A focused itinerary explaining how to base yourself in Wulingyuan vs. Zhangjiaji...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 61): Zhangjiajie and Tianmen Mountain: 4-Day Avatar Mountains Itinerary
+    A detailed plan for exploring Zhangjiajie National Forest Park and Tianmen Mount...
+    Created: 2025-11-22 13:51
+
+[4] DUPLICATE (Max: 100.00%)
+  Text similarity: 100.00%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+
+[5] DUPLICATE (Max: 100.00%)
+  Text similarity: 100.00%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 59): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day itinerary for Chengdu with details on visiting the Panda Base,...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 125): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day Chengdu itinerary showing how to visit the Panda Base, find th...
+    Created: 2025-11-29 06:24
+
+[6] DUPLICATE (Max: 100.00%)
+  Text similarity: 97.64%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 60): How to Travel by High-Speed Train in China: Tickets, Apps, Tips
+    A clear guide to using China’s high-speed rail network, including how to buy tic...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 91): How to Travel by High-Speed Train in China: Tickets, Apps & Tips
+    A practical how-to for riding China’s high-speed rail, including booking tickets...
+    Created: 2025-11-23 06:24
+
+[7] DUPLICATE (Max: 100.00%)
+  Text similarity: 100.00%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 63): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route, must-see sights, transit tips, and budget guidance for first...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 119): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, recomme...
+    Created: 2025-11-28 06:24
+
+[8] DUPLICATE (Max: 100.00%)
+  Text similarity: 100.00%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 66): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    Covers how to visit the panda base responsibly, where to eat authentic hotpot, a...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 110): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    A practical guide to spending 3–4 days in Chengdu, including how to visit the Gi...
+    Created: 2025-11-26 06:24
+
+[9] DUPLICATE (Max: 100.00%)
+  Text similarity: 100.00%
+  Keyword similarity: 100.00%
+  Idea 1 (ID 112): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    An in-depth seasonal guide to Guilin and Yangshuo, covering when to go for clear...
+    Created: 2025-11-26 06:24
+  Idea 2 (ID 133): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    Season-by-season advice on visiting Guilin and Yangshuo, with recommendations fo...
+    Created: 2025-11-30 06:24
+
+[10] DUPLICATE (Max: 99.19%)
+  Text similarity: 99.19%
+  Keyword similarity: 66.67%
+  Idea 1 (ID 55): Chengdu Travel Guide: Pandas, Hotpot, and Teahouses in 3 Days
+    A detailed Chengdu city guide with a 3-day plan covering the Giant Panda Base, b...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 59): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day itinerary for Chengdu with details on visiting the Panda Base,...
+    Created: 2025-11-22 13:51
+
+[11] DUPLICATE (Max: 99.19%)
+  Text similarity: 99.19%
+  Keyword similarity: 66.67%
+  Idea 1 (ID 55): Chengdu Travel Guide: Pandas, Hotpot, and Teahouses in 3 Days
+    A detailed Chengdu city guide with a 3-day plan covering the Giant Panda Base, b...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 125): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day Chengdu itinerary showing how to visit the Panda Base, find th...
+    Created: 2025-11-29 06:24
+
+[12] DUPLICATE (Max: 95.93%)
+  Text similarity: 95.93%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[13] DUPLICATE (Max: 95.52%)
+  Text similarity: 95.52%
+  Keyword similarity: 88.89%
+  Idea 1 (ID 63): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route, must-see sights, transit tips, and budget guidance for first...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+
+[14] DUPLICATE (Max: 95.52%)
+  Text similarity: 95.52%
+  Keyword similarity: 88.89%
+  Idea 1 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+  Idea 2 (ID 119): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, recomme...
+    Created: 2025-11-28 06:24
+
+[15] DUPLICATE (Max: 95.45%)
+  Text similarity: 95.45%
+  Keyword similarity: 80.00%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+
+[16] DUPLICATE (Max: 95.45%)
+  Text similarity: 95.45%
+  Keyword similarity: 80.00%
+  Idea 1 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+  Idea 2 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+
+[17] DUPLICATE (Max: 95.24%)
+  Text similarity: 95.24%
+  Keyword similarity: 88.89%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[18] DUPLICATE (Max: 95.24%)
+  Text similarity: 95.24%
+  Keyword similarity: 88.89%
+  Idea 1 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[19] DUPLICATE (Max: 95.24%)
+  Text similarity: 95.24%
+  Keyword similarity: 88.89%
+  Idea 1 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[20] DUPLICATE (Max: 94.74%)
+  Text similarity: 94.74%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 56): How to Travel China by High-Speed Train: Routes, Tickets, and Tips
+    Step-by-step advice on booking China high-speed rail tickets, navigating station...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 118): How to Travel China by High-Speed Train: Routes, Tickets, and Hacks
+    Hands-on guide explaining how to book G/D trains without Chinese, navigate stati...
+    Created: 2025-11-27 06:24
+
+[21] DUPLICATE (Max: 92.54%)
+  Text similarity: 92.54%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 91): How to Travel by High-Speed Train in China: Tickets, Apps & Tips
+    A practical how-to for riding China’s high-speed rail, including booking tickets...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 98): How to Travel by High-Speed Train in China: Tickets, Apps & Seat Hacks
+    Explains exactly how to search routes, book and collect tickets, navigate statio...
+    Created: 2025-11-24 06:24
+
+[22] DUPLICATE (Max: 91.47%)
+  Text similarity: 91.47%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+
+[23] DUPLICATE (Max: 91.47%)
+  Text similarity: 91.47%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+
+[24] DUPLICATE (Max: 91.47%)
+  Text similarity: 91.47%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+
+[25] DUPLICATE (Max: 90.48%)
+  Text similarity: 90.48%
+  Keyword similarity: 66.67%
+  Idea 1 (ID 60): How to Travel by High-Speed Train in China: Tickets, Apps, Tips
+    A clear guide to using China’s high-speed rail network, including how to buy tic...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 111): How to Take High-Speed Trains in China: Tickets, Apps, and Tips
+    A detailed walkthrough of using China’s high-speed rail system, explaining how t...
+    Created: 2025-11-26 06:24
+
+[26] DUPLICATE (Max: 90.37%)
+  Text similarity: 90.37%
+  Keyword similarity: 80.00%
+  Idea 1 (ID 85): Chengdu Food Guide: 10 Must-Try Sichuan Dishes & Where to Find Them
+    This guide helps travelers navigate Chengdu's legendary food scene by highlighti...
+    Created: 2025-11-22 15:09
+  Idea 2 (ID 121): Chengdu Food Guide: 18 Must-Try Sichuan Dishes and Where to Eat Them
+    An on-the-ground eating guide to Chengdu with specific restaurant recommendation...
+    Created: 2025-11-28 06:24
+
+[27] DUPLICATE (Max: 90.23%)
+  Text similarity: 90.23%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 60): How to Travel by High-Speed Train in China: Tickets, Apps, Tips
+    A clear guide to using China’s high-speed rail network, including how to buy tic...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 98): How to Travel by High-Speed Train in China: Tickets, Apps & Seat Hacks
+    Explains exactly how to search routes, book and collect tickets, navigate statio...
+    Created: 2025-11-24 06:24
+
+[28] DUPLICATE (Max: 90.23%)
+  Text similarity: 90.23%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 103): How to Use High-Speed Trains in China: Tickets, Apps, and Onboard Tips
+    A detailed guide to riding China’s bullet trains with or without a Chinese phone...
+    Created: 2025-11-24 12:18
+  Idea 2 (ID 111): How to Take High-Speed Trains in China: Tickets, Apps, and Tips
+    A detailed walkthrough of using China’s high-speed rail system, explaining how t...
+    Created: 2025-11-26 06:24
+
+[29] DUPLICATE (Max: 89.76%)
+  Text similarity: 89.76%
+  Keyword similarity: 66.67%
+  Idea 1 (ID 91): How to Travel by High-Speed Train in China: Tickets, Apps & Tips
+    A practical how-to for riding China’s high-speed rail, including booking tickets...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 111): How to Take High-Speed Trains in China: Tickets, Apps, and Tips
+    A detailed walkthrough of using China’s high-speed rail system, explaining how t...
+    Created: 2025-11-26 06:24
+
+[30] DUPLICATE (Max: 89.60%)
+  Text similarity: 89.60%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 64): Best Time to Visit China by Region: Weather, Crowds, and Costs
+    Breaks down the ideal months to visit North, South, East, and Western China, inc...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 96): Best Time to Visit China by Region: Weather, Crowds & Festivals
+    Breaks down when to visit North, South, East, and West China with month-by-month...
+    Created: 2025-11-24 06:24
+
+[31] DUPLICATE (Max: 88.89%)
+  Text similarity: 77.37%
+  Keyword similarity: 88.89%
+  Idea 1 (ID 74): Hong Kong to Mainland China: Border Crossings, Visas, and Trains
+    Explains the different ways to cross from Hong Kong to Shenzhen, Guangzhou, and ...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 122): Hong Kong to Mainland China: Border Crossings, Trains and Visas Explained
+    Clear instructions for traveling from Hong Kong into Shenzhen, Guangzhou, and be...
+    Created: 2025-11-28 06:24
+
+[32] DUPLICATE (Max: 88.89%)
+  Text similarity: 81.54%
+  Keyword similarity: 88.89%
+  Idea 1 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[33] DUPLICATE (Max: 87.69%)
+  Text similarity: 87.69%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 38): Ultimate Chengdu Travel Guide: Pandas, Hotpot & Teahouses in 3–4 Days
+    A step-by-step Chengdu itinerary covering panda bases, Jinli and Kuanzhai Alleys...
+    Created: 2025-11-22 13:16
+  Idea 2 (ID 55): Chengdu Travel Guide: Pandas, Hotpot, and Teahouses in 3 Days
+    A detailed Chengdu city guide with a 3-day plan covering the Giant Panda Base, b...
+    Created: 2025-11-22 13:36
+
+[34] DUPLICATE (Max: 87.02%)
+  Text similarity: 87.02%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 38): Ultimate Chengdu Travel Guide: Pandas, Hotpot & Teahouses in 3–4 Days
+    A step-by-step Chengdu itinerary covering panda bases, Jinli and Kuanzhai Alleys...
+    Created: 2025-11-22 13:16
+  Idea 2 (ID 59): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day itinerary for Chengdu with details on visiting the Panda Base,...
+    Created: 2025-11-22 13:51
+
+[35] DUPLICATE (Max: 87.02%)
+  Text similarity: 87.02%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 38): Ultimate Chengdu Travel Guide: Pandas, Hotpot & Teahouses in 3–4 Days
+    A step-by-step Chengdu itinerary covering panda bases, Jinli and Kuanzhai Alleys...
+    Created: 2025-11-22 13:16
+  Idea 2 (ID 125): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day Chengdu itinerary showing how to visit the Panda Base, find th...
+    Created: 2025-11-29 06:24
+
+[36] DUPLICATE (Max: 86.61%)
+  Text similarity: 86.61%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 63): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route, must-see sights, transit tips, and budget guidance for first...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+
+[37] DUPLICATE (Max: 86.61%)
+  Text similarity: 86.61%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 119): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, recomme...
+    Created: 2025-11-28 06:24
+
+[38] DUPLICATE (Max: 85.48%)
+  Text similarity: 85.48%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 63): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route, must-see sights, transit tips, and budget guidance for first...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[39] DUPLICATE (Max: 85.48%)
+  Text similarity: 85.48%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 119): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, recomme...
+    Created: 2025-11-28 06:24
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[40] DUPLICATE (Max: 84.38%)
+  Text similarity: 84.38%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 95): 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+    A step-by-step one-week itinerary with daily plans, must-see sights, sample budg...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+
+[41] DUPLICATE (Max: 83.08%)
+  Text similarity: 83.08%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 54): 7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route
+    A day-by-day itinerary with recommended sights, time-saving routes, where to sta...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+
+[42] DUPLICATE (Max: 82.81%)
+  Text similarity: 82.81%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 21): Best Time to Visit Zhangjiajie Park: Weather, Crowds & Photo Tips
+    Seasonal breakdown of climate, visitor density, and optimal months for photograp...
+    Created: 2025-11-22 09:56
+  Idea 2 (ID 115): Best Time to Visit Zhangjiajie: Weather, Crowds, and Viewpoints
+    Month-by-month guide to Zhangjiajie National Forest Park with detailed advice on...
+    Created: 2025-11-27 06:24
+
+[43] DUPLICATE (Max: 82.71%)
+  Text similarity: 82.71%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 60): How to Travel by High-Speed Train in China: Tickets, Apps, Tips
+    A clear guide to using China’s high-speed rail network, including how to buy tic...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 103): How to Use High-Speed Trains in China: Tickets, Apps, and Onboard Tips
+    A detailed guide to riding China’s bullet trains with or without a Chinese phone...
+    Created: 2025-11-24 12:18
+
+[44] DUPLICATE (Max: 82.71%)
+  Text similarity: 82.71%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+
+[45] DUPLICATE (Max: 82.09%)
+  Text similarity: 82.09%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 91): How to Travel by High-Speed Train in China: Tickets, Apps & Tips
+    A practical how-to for riding China’s high-speed rail, including booking tickets...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 103): How to Use High-Speed Trains in China: Tickets, Apps, and Onboard Tips
+    A detailed guide to riding China’s bullet trains with or without a Chinese phone...
+    Created: 2025-11-24 12:18
+
+[46] DUPLICATE (Max: 81.74%)
+  Text similarity: 81.74%
+  Keyword similarity: 66.67%
+  Idea 1 (ID 113): Where and What to Eat in Xi’an: Muslim Quarter and Beyond
+    A food-focused guide to Xi’an explaining exactly which streets and stalls to vis...
+    Created: 2025-11-26 06:24
+  Idea 2 (ID 128): What to Eat in Xi’an: Muslim Quarter and Beyond Food Guide
+    A street-food-focused guide to Xi’an with specific dishes to try (like roujiamo,...
+    Created: 2025-11-29 06:24
+
+[47] DUPLICATE (Max: 81.54%)
+  Text similarity: 81.54%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 63): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route, must-see sights, transit tips, and budget guidance for first...
+    Created: 2025-11-22 14:07
+
+[48] DUPLICATE (Max: 81.54%)
+  Text similarity: 81.54%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 119): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, recomme...
+    Created: 2025-11-28 06:24
+
+[49] DUPLICATE (Max: 81.54%)
+  Text similarity: 81.54%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 63): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route, must-see sights, transit tips, and budget guidance for first...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+
+[50] DUPLICATE (Max: 81.54%)
+  Text similarity: 81.54%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 63): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route, must-see sights, transit tips, and budget guidance for first...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+
+[51] DUPLICATE (Max: 81.54%)
+  Text similarity: 81.54%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+  Idea 2 (ID 119): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, recomme...
+    Created: 2025-11-28 06:24
+
+[52] DUPLICATE (Max: 81.54%)
+  Text similarity: 81.54%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+  Idea 2 (ID 119): Ultimate 10-Day First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, recomme...
+    Created: 2025-11-28 06:24
+
+[53] DUPLICATE (Max: 81.20%)
+  Text similarity: 81.20%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 98): How to Travel by High-Speed Train in China: Tickets, Apps & Seat Hacks
+    Explains exactly how to search routes, book and collect tickets, navigate statio...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 111): How to Take High-Speed Trains in China: Tickets, Apps, and Tips
+    A detailed walkthrough of using China’s high-speed rail system, explaining how t...
+    Created: 2025-11-26 06:24
+
+[54] DUPLICATE (Max: 80.31%)
+  Text similarity: 80.31%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 55): Chengdu Travel Guide: Pandas, Hotpot, and Teahouses in 3 Days
+    A detailed Chengdu city guide with a 3-day plan covering the Giant Panda Base, b...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 100): Chengdu Travel Guide: Pandas, Hotpot, and Relaxed Teahouse Culture
+    A practical guide to 3–4 days in Chengdu, including how to visit the panda base ...
+    Created: 2025-11-24 12:18
+
+[55] DUPLICATE (Max: 80.00%)
+  Text similarity: 77.94%
+  Keyword similarity: 80.00%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+
+[56] DUPLICATE (Max: 80.00%)
+  Text similarity: 80.00%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 70): Best Street Food in Xi’an: Muslim Quarter and Beyond Map Guide
+    Pinpoints must-try dishes (roujiamo, biangbiang noodles, liangpi), where to find...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 128): What to Eat in Xi’an: Muslim Quarter and Beyond Food Guide
+    A street-food-focused guide to Xi’an with specific dishes to try (like roujiamo,...
+    Created: 2025-11-29 06:24
+
+[57] DUPLICATE (Max: 80.00%)
+  Text similarity: 77.94%
+  Keyword similarity: 80.00%
+  Idea 1 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+  Idea 2 (ID 109): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Route
+    A step-by-step itinerary covering what to see each day in Beijing, Xi’an, and Sh...
+    Created: 2025-11-26 06:24
+
+[58] DUPLICATE (Max: 80.00%)
+  Text similarity: 77.94%
+  Keyword similarity: 80.00%
+  Idea 1 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+  Idea 2 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+
+[59] DUPLICATE (Max: 79.69%)
+  Text similarity: 79.69%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 59): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day itinerary for Chengdu with details on visiting the Panda Base,...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 100): Chengdu Travel Guide: Pandas, Hotpot, and Relaxed Teahouse Culture
+    A practical guide to 3–4 days in Chengdu, including how to visit the panda base ...
+    Created: 2025-11-24 12:18
+
+[60] DUPLICATE (Max: 79.69%)
+  Text similarity: 79.69%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 95): 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+    A step-by-step one-week itinerary with daily plans, must-see sights, sample budg...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+
+[61] DUPLICATE (Max: 79.69%)
+  Text similarity: 79.69%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 100): Chengdu Travel Guide: Pandas, Hotpot, and Relaxed Teahouse Culture
+    A practical guide to 3–4 days in Chengdu, including how to visit the panda base ...
+    Created: 2025-11-24 12:18
+  Idea 2 (ID 125): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day Chengdu itinerary showing how to visit the Panda Base, find th...
+    Created: 2025-11-29 06:24
+
+[62] DUPLICATE (Max: 79.69%)
+  Text similarity: 79.69%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 101): Zhangjiajie vs. Guilin: Which Karst Landscape Is Better for You?
+    A side-by-side comparison of Zhangjiajie and Guilin/Yangshuo that helps you deci...
+    Created: 2025-11-24 12:18
+  Idea 2 (ID 126): Zhangjiajie vs. Guilin: Which Karst Landscape to Visit in China?
+    A side-by-side comparison of Zhangjiajie and Guilin/Yangshuo with sample 3–4 day...
+    Created: 2025-11-29 06:24
+
+[63] DUPLICATE (Max: 79.07%)
+  Text similarity: 79.07%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 64): Best Time to Visit China by Region: Weather, Crowds, and Costs
+    Breaks down the ideal months to visit North, South, East, and Western China, inc...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 112): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    An in-depth seasonal guide to Guilin and Yangshuo, covering when to go for clear...
+    Created: 2025-11-26 06:24
+
+[64] DUPLICATE (Max: 79.07%)
+  Text similarity: 79.07%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 64): Best Time to Visit China by Region: Weather, Crowds, and Costs
+    Breaks down the ideal months to visit North, South, East, and Western China, inc...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 133): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    Season-by-season advice on visiting Guilin and Yangshuo, with recommendations fo...
+    Created: 2025-11-30 06:24
+
+[65] DUPLICATE (Max: 78.69%)
+  Text similarity: 78.69%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 95): 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+    A step-by-step one-week itinerary with daily plans, must-see sights, sample budg...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[66] DUPLICATE (Max: 78.46%)
+  Text similarity: 78.46%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 54): 7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route
+    A day-by-day itinerary with recommended sights, time-saving routes, where to sta...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+
+[67] DUPLICATE (Max: 78.46%)
+  Text similarity: 78.46%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 54): 7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route
+    A day-by-day itinerary with recommended sights, time-saving routes, where to sta...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 114): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    Step-by-step itinerary covering must-see sights, train/flight choices, daily sch...
+    Created: 2025-11-27 06:24
+
+[68] DUPLICATE (Max: 78.40%)
+  Text similarity: 78.40%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 64): Best Time to Visit China by Region: Weather, Crowds, and Costs
+    Breaks down the ideal months to visit North, South, East, and Western China, inc...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 115): Best Time to Visit Zhangjiajie: Weather, Crowds, and Viewpoints
+    Month-by-month guide to Zhangjiajie National Forest Park with detailed advice on...
+    Created: 2025-11-27 06:24
+
+[69] DUPLICATE (Max: 78.40%)
+  Text similarity: 78.40%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 95): 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+    A step-by-step one-week itinerary with daily plans, must-see sights, sample budg...
+    Created: 2025-11-24 06:24
+
+[70] DUPLICATE (Max: 78.12%)
+  Text similarity: 78.12%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 58): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai Guide
+    A step-by-step route covering must-see sights like the Great Wall, Terracotta Wa...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 95): 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+    A step-by-step one-week itinerary with daily plans, must-see sights, sample budg...
+    Created: 2025-11-24 06:24
+
+[71] DUPLICATE (Max: 77.78%)
+  Text similarity: 77.52%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 56): How to Travel China by High-Speed Train: Routes, Tickets, and Tips
+    Step-by-step advice on booking China high-speed rail tickets, navigating station...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 60): How to Travel by High-Speed Train in China: Tickets, Apps, Tips
+    A clear guide to using China’s high-speed rail network, including how to buy tic...
+    Created: 2025-11-22 13:51
+
+[72] DUPLICATE (Max: 77.78%)
+  Text similarity: 76.92%
+  Keyword similarity: 77.78%
+  Idea 1 (ID 56): How to Travel China by High-Speed Train: Routes, Tickets, and Tips
+    Step-by-step advice on booking China high-speed rail tickets, navigating station...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 91): How to Travel by High-Speed Train in China: Tickets, Apps & Tips
+    A practical how-to for riding China’s high-speed rail, including booking tickets...
+    Created: 2025-11-23 06:24
+
+[73] DUPLICATE (Max: 77.42%)
+  Text similarity: 77.42%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 54): 7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route
+    A day-by-day itinerary with recommended sights, time-saving routes, where to sta...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+[74] DUPLICATE (Max: 77.17%)
+  Text similarity: 77.17%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 54): 7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route
+    A day-by-day itinerary with recommended sights, time-saving routes, where to sta...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 89): 10-Day First-Timer’s China Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for first-time visitors covering Beijing, Xi’an, and Shanghai...
+    Created: 2025-11-23 06:24
+
+[75] DUPLICATE (Max: 75.41%)
+  Text similarity: 75.41%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 55): Chengdu Travel Guide: Pandas, Hotpot, and Teahouses in 3 Days
+    A detailed Chengdu city guide with a 3-day plan covering the Giant Panda Base, b...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 66): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    Covers how to visit the panda base responsibly, where to eat authentic hotpot, a...
+    Created: 2025-11-22 14:07
+
+[76] DUPLICATE (Max: 75.41%)
+  Text similarity: 75.41%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 55): Chengdu Travel Guide: Pandas, Hotpot, and Teahouses in 3 Days
+    A detailed Chengdu city guide with a 3-day plan covering the Giant Panda Base, b...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 110): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    A practical guide to spending 3–4 days in Chengdu, including how to visit the Gi...
+    Created: 2025-11-26 06:24
+
+[77] DUPLICATE (Max: 74.80%)
+  Text similarity: 74.80%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 59): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day itinerary for Chengdu with details on visiting the Panda Base,...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 66): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    Covers how to visit the panda base responsibly, where to eat authentic hotpot, a...
+    Created: 2025-11-22 14:07
+
+[78] DUPLICATE (Max: 74.80%)
+  Text similarity: 74.80%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 59): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day itinerary for Chengdu with details on visiting the Panda Base,...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 110): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    A practical guide to spending 3–4 days in Chengdu, including how to visit the Gi...
+    Created: 2025-11-26 06:24
+
+[79] DUPLICATE (Max: 74.80%)
+  Text similarity: 74.80%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 66): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    Covers how to visit the panda base responsibly, where to eat authentic hotpot, a...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 125): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day Chengdu itinerary showing how to visit the Panda Base, find th...
+    Created: 2025-11-29 06:24
+
+[80] DUPLICATE (Max: 74.80%)
+  Text similarity: 74.80%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 110): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    A practical guide to spending 3–4 days in Chengdu, including how to visit the Gi...
+    Created: 2025-11-26 06:24
+  Idea 2 (ID 125): Chengdu Travel Guide: Pandas, Hotpot, and Tea Houses in 3 Days
+    A practical 3-day Chengdu itinerary showing how to visit the Panda Base, find th...
+    Created: 2025-11-29 06:24
+
+[81] DUPLICATE (Max: 74.45%)
+  Text similarity: 74.45%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 98): How to Travel by High-Speed Train in China: Tickets, Apps & Seat Hacks
+    Explains exactly how to search routes, book and collect tickets, navigate statio...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 118): How to Travel China by High-Speed Train: Routes, Tickets, and Hacks
+    Hands-on guide explaining how to book G/D trains without Chinese, navigate stati...
+    Created: 2025-11-27 06:24
+
+[82] DUPLICATE (Max: 74.29%)
+  Text similarity: 74.29%
+  Keyword similarity: 38.46%
+  Idea 1 (ID 98): How to Travel by High-Speed Train in China: Tickets, Apps & Seat Hacks
+    Explains exactly how to search routes, book and collect tickets, navigate statio...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 103): How to Use High-Speed Trains in China: Tickets, Apps, and Onboard Tips
+    A detailed guide to riding China’s bullet trains with or without a Chinese phone...
+    Created: 2025-11-24 12:18
+
+[83] DUPLICATE (Max: 74.07%)
+  Text similarity: 74.07%
+  Keyword similarity: 25.00%
+  Idea 1 (ID 99): 10 Perfect Days in China: Beijing, Xi’an & Shanghai First-Timer Itinerary
+    Step-by-step route for a first trip to China covering Beijing, Xi’an, and Shangh...
+    Created: 2025-11-24 12:18
+  Idea 2 (ID 129): 10 Perfect Days in China: Classic Beijing–Xi’an–Shanghai Route
+    Step-by-step itinerary covering must-see sites like the Great Wall, Terracotta W...
+    Created: 2025-11-30 06:24
+
+[84] DUPLICATE (Max: 74.02%)
+  Text similarity: 74.02%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 66): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    Covers how to visit the panda base responsibly, where to eat authentic hotpot, a...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 100): Chengdu Travel Guide: Pandas, Hotpot, and Relaxed Teahouse Culture
+    A practical guide to 3–4 days in Chengdu, including how to visit the panda base ...
+    Created: 2025-11-24 12:18
+
+[85] DUPLICATE (Max: 74.02%)
+  Text similarity: 74.02%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 100): Chengdu Travel Guide: Pandas, Hotpot, and Relaxed Teahouse Culture
+    A practical guide to 3–4 days in Chengdu, including how to visit the panda base ...
+    Created: 2025-11-24 12:18
+  Idea 2 (ID 110): Chengdu Travel Guide: Pandas, Hotpot, and Day Trips to Leshan
+    A practical guide to spending 3–4 days in Chengdu, including how to visit the Gi...
+    Created: 2025-11-26 06:24
+
+[86] DUPLICATE (Max: 73.85%)
+  Text similarity: 73.85%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 112): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    An in-depth seasonal guide to Guilin and Yangshuo, covering when to go for clear...
+    Created: 2025-11-26 06:24
+  Idea 2 (ID 115): Best Time to Visit Zhangjiajie: Weather, Crowds, and Viewpoints
+    Month-by-month guide to Zhangjiajie National Forest Park with detailed advice on...
+    Created: 2025-11-27 06:24
+
+[87] DUPLICATE (Max: 73.44%)
+  Text similarity: 73.44%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 106): Zhangjiajie National Forest Park Guide: Routes, Tickets & Crowds
+    Practical planning guide to China’s ‘Avatar mountains’ covering how many days yo...
+    Created: 2025-11-25 06:24
+  Idea 2 (ID 120): How to Visit Zhangjiajie National Forest Park Without the Crowds
+    A practical planning guide to China’s ‘Avatar mountains’ covering the best 2–4 d...
+    Created: 2025-11-28 06:24
+
+[88] DUPLICATE (Max: 72.31%)
+  Text similarity: 72.31%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 96): Best Time to Visit China by Region: Weather, Crowds & Festivals
+    Breaks down when to visit North, South, East, and West China with month-by-month...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 112): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    An in-depth seasonal guide to Guilin and Yangshuo, covering when to go for clear...
+    Created: 2025-11-26 06:24
+
+[89] DUPLICATE (Max: 72.31%)
+  Text similarity: 72.31%
+  Keyword similarity: 45.45%
+  Idea 1 (ID 96): Best Time to Visit China by Region: Weather, Crowds & Festivals
+    Breaks down when to visit North, South, East, and West China with month-by-month...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 133): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    Season-by-season advice on visiting Guilin and Yangshuo, with recommendations fo...
+    Created: 2025-11-30 06:24
+
+[90] DUPLICATE (Max: 72.31%)
+  Text similarity: 72.31%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 115): Best Time to Visit Zhangjiajie: Weather, Crowds, and Viewpoints
+    Month-by-month guide to Zhangjiajie National Forest Park with detailed advice on...
+    Created: 2025-11-27 06:24
+  Idea 2 (ID 133): Best Time to Visit Guilin and Yangshuo: Weather, Crowds, and Routes
+    Season-by-season advice on visiting Guilin and Yangshuo, with recommendations fo...
+    Created: 2025-11-30 06:24
+
+[91] DUPLICATE (Max: 71.32%)
+  Text similarity: 71.32%
+  Keyword similarity: 50.00%
+  Idea 1 (ID 56): How to Travel China by High-Speed Train: Routes, Tickets, and Tips
+    Step-by-step advice on booking China high-speed rail tickets, navigating station...
+    Created: 2025-11-22 13:36
+  Idea 2 (ID 111): How to Take High-Speed Trains in China: Tickets, Apps, and Tips
+    A detailed walkthrough of using China’s high-speed rail system, explaining how t...
+    Created: 2025-11-26 06:24
+
+[92] DUPLICATE (Max: 71.21%)
+  Text similarity: 71.21%
+  Keyword similarity: 54.55%
+  Idea 1 (ID 95): 7-Day Classic China Itinerary: Beijing, Xi’an & Shanghai Route
+    A step-by-step one-week itinerary with daily plans, must-see sights, sample budg...
+    Created: 2025-11-24 06:24
+  Idea 2 (ID 104): Ultimate 10-Day China First-Timer Itinerary: Beijing, Xi’an & Shanghai
+    Step-by-step route for a first trip to China, including must-see sights, daily s...
+    Created: 2025-11-25 06:24
+
+[93] DUPLICATE (Max: 70.77%)
+  Text similarity: 70.77%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 60): How to Travel by High-Speed Train in China: Tickets, Apps, Tips
+    A clear guide to using China’s high-speed rail network, including how to buy tic...
+    Created: 2025-11-22 13:51
+  Idea 2 (ID 118): How to Travel China by High-Speed Train: Routes, Tickets, and Hacks
+    Hands-on guide explaining how to book G/D trains without Chinese, navigate stati...
+    Created: 2025-11-27 06:24
+
+[94] DUPLICATE (Max: 70.59%)
+  Text similarity: 70.59%
+  Keyword similarity: 33.33%
+  Idea 1 (ID 70): Best Street Food in Xi’an: Muslim Quarter and Beyond Map Guide
+    Pinpoints must-try dishes (roujiamo, biangbiang noodles, liangpi), where to find...
+    Created: 2025-11-22 14:07
+  Idea 2 (ID 113): Where and What to Eat in Xi’an: Muslim Quarter and Beyond
+    A food-focused guide to Xi’an explaining exactly which streets and stalls to vis...
+    Created: 2025-11-26 06:24
+
+[95] DUPLICATE (Max: 70.31%)
+  Text similarity: 70.31%
+  Keyword similarity: 41.67%
+  Idea 1 (ID 21): Best Time to Visit Zhangjiajie Park: Weather, Crowds & Photo Tips
+    Seasonal breakdown of climate, visitor density, and optimal months for photograp...
+    Created: 2025-11-22 09:56
+  Idea 2 (ID 96): Best Time to Visit China by Region: Weather, Crowds & Festivals
+    Breaks down when to visit North, South, East, and West China with month-by-month...
+    Created: 2025-11-24 06:24
+
+[96] DUPLICATE (Max: 70.27%)
+  Text similarity: 70.27%
+  Keyword similarity: 30.00%
+  Idea 1 (ID 14): Top 10 Must‑Try Street Foods in Chengdu: A Foodie’s Guide
+    A curated list of the top 10 street‑food stalls and markets in Chengdu, with dis...
+    Created: 2025-11-22 09:53
+  Idea 2 (ID 34): Must-Try Street Foods in Chengdu: A Culinary Adventure
+    Discover the vibrant street food culture of Chengdu with this guide, offering mu...
+    Created: 2025-11-22 12:53
+
+[97] DUPLICATE (Max: 70.23%)
+  Text similarity: 70.23%
+  Keyword similarity: 60.00%
+  Idea 1 (ID 91): How to Travel by High-Speed Train in China: Tickets, Apps & Tips
+    A practical how-to for riding China’s high-speed rail, including booking tickets...
+    Created: 2025-11-23 06:24
+  Idea 2 (ID 118): How to Travel China by High-Speed Train: Routes, Tickets, and Hacks
+    Hands-on guide explaining how to book G/D trains without Chinese, navigate stati...
+    Created: 2025-11-27 06:24
+
+[98] DUPLICATE (Max: 70.00%)
+  Text similarity: 57.14%
+  Keyword similarity: 70.00%
+  Idea 1 (ID 99): 10 Perfect Days in China: Beijing, Xi’an & Shanghai First-Timer Itinerary
+    Step-by-step route for a first trip to China covering Beijing, Xi’an, and Shangh...
+    Created: 2025-11-24 12:18
+  Idea 2 (ID 124): 10-Day First-Timer China Itinerary: Beijing, Xi’an, Shanghai
+    A step-by-step 10-day route covering must-see sights in Beijing, Xi’an, and Shan...
+    Created: 2025-11-29 06:24
+
+=== SUMMARY ===
+Total ideas analyzed: 121
+Total comparisons: 7260
+Duplicate pairs (>= 0.7): 98

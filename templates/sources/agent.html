@@ -16,13 +16,24 @@
                 <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Settings</h5>
             </div>
             <div class="card-body">
+                <!-- Provider Selection -->
+                <div class="mb-3">
+                    <label for="providerSelect" class="form-label">Provider</label>
+                    <select class="form-select" id="providerSelect">
+                        <option value="ollama">Ollama</option>
+                        <option value="gemini">Gemini</option>
+                        <option value="openai">OpenAI</option>
+                    </select>
+                    <small class="text-muted">Select AI provider</small>
+                </div>
+                
                 <!-- Model Selection -->
                 <div class="mb-3">
                     <label for="modelSelect" class="form-label">Model</label>
                     <select class="form-select" id="modelSelect">
                         <option value="">Loading models...</option>
                     </select>
-                    <small class="text-muted">Select Ollama model</small>
+                    <small class="text-muted">Select model</small>
                 </div>
                 
                 <!-- Chunk Count -->
@@ -295,59 +306,79 @@
         setupEventListeners();
     });
     
-    // Load available models from API
+    // Load available models from API based on selected provider
     async function loadModels() {
+        const provider = document.getElementById('providerSelect').value;
+        const modelSelect = document.getElementById('modelSelect');
+        
+        // Show loading state
+        modelSelect.innerHTML = '<option value="">Loading models...</option>';
+        modelSelect.disabled = true;
+        
         try {
-            const response = await fetch('{% url "sources:agent_models_api" %}');
+            const response = await fetch(`{% url "sources:agent_models_api" %}?provider=${provider}`);
             const data = await response.json();
+            
+            if (data.error) {
+                modelSelect.innerHTML = `<option value="">Error: ${data.error}</option>`;
+                modelSelect.disabled = false;
+                return;
+            }
             
             if (data.models && data.models.length > 0) {
                 availableModels = data.models;
-                const select = document.getElementById('modelSelect');
-                select.innerHTML = '';
+                modelSelect.innerHTML = '';
                 
                 // Add default option
                 const defaultOption = document.createElement('option');
                 defaultOption.value = '';
                 defaultOption.textContent = 'Select a model...';
-                select.appendChild(defaultOption);
+                modelSelect.appendChild(defaultOption);
                 
                 // Add models
                 data.models.forEach(model => {
                     const option = document.createElement('option');
                     option.value = model;
                     option.textContent = model;
-                    select.appendChild(option);
+                    modelSelect.appendChild(option);
                 });
                 
-                // Auto-select first Chinese model if available, otherwise select smallest model
-                const chineseModel = data.models.find(m => 
-                    m.toLowerCase().includes('qwen') || 
-                    m.toLowerCase().includes('chinese') ||
-                    m.toLowerCase().includes('zh')
-                );
-                if (chineseModel) {
-                    select.value = chineseModel;
-                } else {
-                    // Prefer smaller models (3b, 4b) over larger ones
-                    const smallModel = data.models.find(m => 
-                        m.includes(':3b') || m.includes(':4b') || m.includes('3b') || m.includes('4b')
+                // Auto-select first model (or preferred model based on provider)
+                if (provider === 'ollama') {
+                    // Auto-select first Chinese model if available, otherwise select smallest model
+                    const chineseModel = data.models.find(m => 
+                        m.toLowerCase().includes('qwen') || 
+                        m.toLowerCase().includes('chinese') ||
+                        m.toLowerCase().includes('zh')
                     );
-                    if (smallModel) {
-                        select.value = smallModel;
-                    } else if (data.models.length > 0) {
-                        // Fallback to first model
-                        select.value = data.models[0];
+                    if (chineseModel) {
+                        modelSelect.value = chineseModel;
+                    } else {
+                        // Prefer smaller models (3b, 4b) over larger ones
+                        const smallModel = data.models.find(m => 
+                            m.includes(':3b') || m.includes(':4b') || m.includes('3b') || m.includes('4b')
+                        );
+                        if (smallModel) {
+                            modelSelect.value = smallModel;
+                        } else if (data.models.length > 0) {
+                            modelSelect.value = data.models[0];
+                        }
                     }
+                } else if (data.models.length > 0) {
+                    // For OpenAI and Gemini, select first model
+                    modelSelect.value = data.models[0];
                 }
             } else {
-                document.getElementById('modelSelect').innerHTML = 
-                    '<option value="">No models available. Make sure Ollama is running.</option>';
+                const errorMsg = provider === 'ollama' 
+                    ? 'No models available. Make sure Ollama is running.'
+                    : 'No models available.';
+                modelSelect.innerHTML = `<option value="">${errorMsg}</option>`;
             }
         } catch (error) {
             console.error('Error loading models:', error);
-            document.getElementById('modelSelect').innerHTML = 
-                '<option value="">Error loading models</option>';
+            modelSelect.innerHTML = '<option value="">Error loading models</option>';
+        } finally {
+            modelSelect.disabled = false;
         }
     }
     
@@ -355,6 +386,11 @@
     function setupEventListeners() {
         // Chat form submission
         document.getElementById('chatForm').addEventListener('submit', handleSubmit);
+        
+        // Provider selection change
+        document.getElementById('providerSelect').addEventListener('change', function() {
+            loadModels();
+        });
         
         // Chunk count slider
         document.getElementById('chunkCount').addEventListener('input', function(e) {
@@ -378,6 +414,7 @@
         e.preventDefault();
         
         const question = document.getElementById('questionInput').value.trim();
+        const provider = document.getElementById('providerSelect').value;
         const model = document.getElementById('modelSelect').value;
         const numChunks = parseInt(document.getElementById('chunkCount').value);
         const sourceId = document.getElementById('sourceFilter').value || null;
@@ -408,6 +445,7 @@
             // Prepare request data
             const requestData = {
                 question: question,
+                provider: provider,
                 model: model,
                 num_chunks: numChunks,
                 source_id: sourceId,
@@ -453,13 +491,18 @@
                 }
             } else {
                 const errorMsg = data.error || 'Unknown error occurred';
-                let suggestion = '💡 Try selecting a different model or check if Ollama is running.';
+                const provider = document.getElementById('providerSelect').value;
+                let suggestion = `💡 Try selecting a different model or check your ${provider.toUpperCase()} configuration.`;
                 
                 // Provide specific suggestions based on error type
                 if (data.error_type === 'missing_openai_key' || errorMsg.includes('OPENAI_API_KEY')) {
-                    suggestion = '💡 OpenAI API key is required for semantic search. Please set OPENAI_API_KEY in your settings. Note: Ollama is used for generation, but OpenAI embeddings are needed to find relevant content.';
+                    suggestion = '💡 OpenAI API key is required for semantic search. Please set OPENAI_API_KEY in your settings. Note: OpenAI embeddings are needed to find relevant content.';
                 } else if (errorMsg.includes('Ollama') || errorMsg.includes('ollama')) {
                     suggestion = '💡 Make sure Ollama is running and the selected model is available.';
+                } else if (errorMsg.includes('GEMINI_API_KEY')) {
+                    suggestion = '💡 Gemini API key is required. Please set GEMINI_API_KEY in your settings.';
+                } else if (errorMsg.includes('OPENAI_API_KEY')) {
+                    suggestion = '💡 OpenAI API key is required. Please set OPENAI_API_KEY in your settings.';
                 }
                 
                 addMessage('agent', `❌ Error: ${errorMsg}\n\n${suggestion}`);
