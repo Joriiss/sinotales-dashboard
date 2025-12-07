@@ -4846,24 +4846,14 @@ def post_ideas_api(request):
                 blog_posts_count=Count('blog_posts')
             ).filter(blog_posts_count=0)
         
-        # Build response data
+        # Build response data - only return essential fields for lighter payload
         ideas = []
         for idea in post_ideas:
-            # Only count blog posts if we haven't already annotated it
-            if exclude_with_posts != 'true':
-                blog_posts_count = idea.blog_posts.count()
-            else:
-                # Use the annotated count if available
-                blog_posts_count = getattr(idea, 'blog_posts_count', 0)
-            
             ideas.append({
                 'id': idea.id,
                 'title': idea.title,
                 'description': idea.description,
-                'primary_keyword': idea.primary_keyword,
-                'created_at': idea.created_at.isoformat() if idea.created_at else None,
-                'updated_at': idea.updated_at.isoformat() if idea.updated_at else None,
-                'blog_posts_count': blog_posts_count,
+                'keyword': idea.primary_keyword,  # Using 'keyword' instead of 'primary_keyword' for consistency
             })
         
         return JsonResponse({
