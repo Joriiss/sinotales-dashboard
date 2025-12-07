@@ -2751,6 +2751,31 @@ def blog_post_edit(request, pk):
         blog_post.featured_image_description = request.POST.get('featured_image_description', '')
         blog_post.published = request.POST.get('published', 'off') == 'on'
         
+        # Handle FAQ
+        faq_text = request.POST.get('faq', '').strip()
+        if faq_text:
+            try:
+                faq_data = json.loads(faq_text)
+                # Validate it's a list with proper structure
+                if isinstance(faq_data, list):
+                    # Ensure each item has question and answer
+                    valid_faq = []
+                    for item in faq_data:
+                        if isinstance(item, dict) and 'question' in item and 'answer' in item:
+                            valid_faq.append({
+                                'question': str(item['question']).strip(),
+                                'answer': str(item['answer']).strip()
+                            })
+                    blog_post.faq = valid_faq
+                else:
+                    blog_post.faq = []
+            except (json.JSONDecodeError, ValueError, KeyError):
+                # If JSON parsing fails, keep existing FAQ or set to empty
+                if not blog_post.faq:
+                    blog_post.faq = []
+        else:
+            blog_post.faq = []
+        
         # Handle featured image upload
         if 'featured_image' in request.FILES:
             blog_post.featured_image = request.FILES['featured_image']
@@ -2783,10 +2808,16 @@ def blog_post_edit(request, pk):
     # Prefetch blog post tags to avoid N+1 queries in template
     blog_post_tags = set(blog_post.tags.all())
     
+    # Format FAQ as JSON string for textarea
+    faq_json = ''
+    if blog_post.faq:
+        faq_json = json.dumps(blog_post.faq, indent=2, ensure_ascii=False)
+    
     context = {
         'blog_post': blog_post,
         'all_tags': all_tags,
         'blog_post_tags': blog_post_tags,
+        'faq_json': faq_json,
     }
     
     return render(request, 'sources/blog_post_edit.html', context)

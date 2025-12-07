@@ -118,6 +118,23 @@
                         </div>
                     </div>
                     
+                    <!-- FAQ -->
+                    <div class="mb-3">
+                        <label for="faq" class="form-label">FAQ (JSON Format)</label>
+                        <textarea class="form-control font-monospace" id="faq" name="faq" rows="12" 
+                                  placeholder='[{"question": "Question 1?", "answer": "Answer 1"}, {"question": "Question 2?", "answer": "Answer 2"}]'>{% if blog_post.faq %}{{ faq_json }}{% endif %}</textarea>
+                        <small class="text-muted">JSON array with question/answer pairs. Format: [{"question": "...", "answer": "..."}, ...]</small>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="formatFaqBtn">
+                                <i class="bi bi-code-square me-1"></i> Format JSON
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="clearFaqBtn">
+                                <i class="bi bi-x-circle me-1"></i> Clear
+                            </button>
+                        </div>
+                        <div id="faqError" class="text-danger small mt-1" style="display: none;"></div>
+                    </div>
+                    
                     <!-- Submit Buttons -->
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
@@ -221,6 +238,66 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update on input
     metaTitleInput.addEventListener('input', updateMetaTitleCount);
     metaDescriptionInput.addEventListener('input', updateMetaDescriptionCount);
+    
+    // FAQ JSON formatting
+    const faqInput = document.getElementById('faq');
+    const formatFaqBtn = document.getElementById('formatFaqBtn');
+    const clearFaqBtn = document.getElementById('clearFaqBtn');
+    const faqError = document.getElementById('faqError');
+    
+    formatFaqBtn.addEventListener('click', function() {
+        try {
+            const faqText = faqInput.value.trim();
+            if (faqText) {
+                const parsed = JSON.parse(faqText);
+                faqInput.value = JSON.stringify(parsed, null, 2);
+                faqError.style.display = 'none';
+            }
+        } catch (e) {
+            faqError.textContent = 'Invalid JSON: ' + e.message;
+            faqError.style.display = 'block';
+        }
+    });
+    
+    clearFaqBtn.addEventListener('click', function() {
+        faqInput.value = '';
+        faqError.style.display = 'none';
+    });
+    
+    // Validate FAQ JSON on form submit
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const faqText = faqInput.value.trim();
+        if (faqText) {
+            try {
+                const parsed = JSON.parse(faqText);
+                if (!Array.isArray(parsed)) {
+                    e.preventDefault();
+                    faqError.textContent = 'FAQ must be a JSON array';
+                    faqError.style.display = 'block';
+                    faqInput.focus();
+                    return;
+                }
+                // Validate structure
+                for (let item of parsed) {
+                    if (!item.question || !item.answer) {
+                        e.preventDefault();
+                        faqError.textContent = 'Each FAQ item must have "question" and "answer" fields';
+                        faqError.style.display = 'block';
+                        faqInput.focus();
+                        return;
+                    }
+                }
+                faqError.style.display = 'none';
+            } catch (e) {
+                e.preventDefault();
+                faqError.textContent = 'Invalid JSON: ' + e.message;
+                faqError.style.display = 'block';
+                faqInput.focus();
+                return;
+            }
+        }
+    });
     
     // Auto-generate slug from title if slug is empty or matches old title
     const titleInput = document.getElementById('title');

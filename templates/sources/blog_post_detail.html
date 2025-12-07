@@ -115,6 +115,24 @@
                     <br><small class="text-muted fst-italic">(No image uploaded yet)</small>
                 </div>
                 {% endif %}
+                
+                {% if blog_post.faq %}
+                <div class="mb-3">
+                    <strong>FAQ:</strong><br>
+                    <div class="mt-2">
+                        {% for item in blog_post.faq %}
+                        <div class="mb-3 p-2 border rounded">
+                            <div class="fw-bold text-primary mb-1">
+                                <i class="bi bi-question-circle me-1"></i>{{ item.question }}
+                            </div>
+                            <div class="text-muted small ms-3">
+                                {{ item.answer }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
         
