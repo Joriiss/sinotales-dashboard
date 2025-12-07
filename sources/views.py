@@ -11,6 +11,7 @@ from django.db.models.functions import Length
 from django.http import JsonResponse
 from django.conf import settings
 from django.utils.html import json_script
+from django.utils.text import slugify
 import json
 from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration, BlogPost
 import random
@@ -2520,11 +2521,13 @@ def post_idea_add(request):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         description = request.POST.get('description', '').strip()
+        primary_keyword = request.POST.get('primary_keyword', '').strip()
         
         if title:
             post_idea = PostIdea.objects.create(
                 title=title,
-                description=description
+                description=description,
+                primary_keyword=primary_keyword
             )
             # Log activity
             log_activity(
@@ -2553,11 +2556,13 @@ def post_idea_edit(request, pk):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         description = request.POST.get('description', '').strip()
+        primary_keyword = request.POST.get('primary_keyword', '').strip()
         
         if title:
             old_title = post_idea.title
             post_idea.title = title
             post_idea.description = description
+            post_idea.primary_keyword = primary_keyword
             post_idea.save()
             # Log activity
             log_activity(
@@ -2771,6 +2776,202 @@ def blog_post_delete(request, pk):
 
 
 @login_required
+def blog_post_generate_metadata(request, pk):
+    """Generate metadata (slug, meta title, meta description, tags) for a blog post"""
+    blog_post = get_object_or_404(BlogPost, pk=pk)
+    
+    if not blog_post.content:
+        messages.error(request, 'Blog post has no content. Please generate content first.')
+        return redirect('sources:blog_post_detail', pk=blog_post.pk)
+    
+    # Load the prompt template
+    import os
+    from django.conf import settings as django_settings
+    
+    prompt_file_path = os.path.join(django_settings.BASE_DIR, 'prompt-metadata-generator')
+    try:
+        with open(prompt_file_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
+    except FileNotFoundError:
+        messages.error(request, 'Prompt template file not found. Please ensure prompt-metadata-generator exists.')
+        return redirect('sources:blog_post_detail', pk=blog_post.pk)
+    
+    if request.method == 'POST':
+        provider = request.POST.get('provider', 'gemini').strip().lower()
+        model = request.POST.get('model', 'gemini-3-pro-preview').strip()
+        
+        # Validate provider
+        if provider not in ['ollama', 'openai', 'gemini']:
+            messages.error(request, 'Invalid provider selected.')
+            return redirect('sources:blog_post_detail', pk=blog_post.pk)
+        
+        # Get default model if not provided
+        if not model:
+            if provider == 'ollama':
+                try:
+                    app_settings = Settings.get_settings()
+                    model = app_settings.default_tagging_model
+                except Exception:
+                    model = 'gpt-oss:20b-cloud'
+            elif provider == 'openai':
+                model = 'gpt-4o-mini'
+            elif provider == 'gemini':
+                model = 'gemini-3-pro-preview'
+        
+        try:
+            # Strip HTML tags from content before sending to AI (HTML might trigger safety filters)
+            import re
+            # Remove HTML tags but keep the text content
+            text_content = re.sub(r'<[^>]+>', ' ', blog_post.content)
+            # Clean up extra whitespace
+            text_content = ' '.join(text_content.split())
+            
+            # Build the prompt with the cleaned text content
+            prompt = prompt_template.replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
+            
+            # Call the appropriate AI provider
+            # Use higher token limits for metadata generation (especially for Gemini which uses "thoughts" tokens)
+            rag_service = RAGService()
+            if provider == 'ollama':
+                generated_metadata = rag_service._call_ollama(prompt, model, max_tokens=2000)
+            elif provider == 'openai':
+                generated_metadata = rag_service._call_openai(prompt, model, max_tokens=2000)
+            elif provider == 'gemini':
+                # Gemini models (especially gemini-3-pro) use "thoughts" tokens, so we need more headroom
+                # Increase to 4000 to account for thoughts tokens (999 used) + actual response
+                generated_metadata = rag_service._call_gemini(prompt, model, max_tokens=4000)
+            else:
+                messages.error(request, 'Invalid provider.')
+                return redirect('sources:blog_post_detail', pk=blog_post.pk)
+            
+            # Parse the generated metadata
+            import re
+            
+            # Extract meta title - try multiple patterns
+            meta_title = None
+            patterns = [
+                r'\*\*Meta Title:\*\*\s*(.+?)(?:\n|$)',
+                r'Meta Title:\s*(.+?)(?:\n|$)',
+                r'Title:\s*(.+?)(?:\n|$)',
+            ]
+            for pattern in patterns:
+                meta_title_match = re.search(pattern, generated_metadata, re.IGNORECASE)
+                if meta_title_match:
+                    meta_title = meta_title_match.group(1).strip()
+                    # Remove markdown formatting if present
+                    meta_title = re.sub(r'\*\*|\*|\[|\]|`', '', meta_title).strip()
+                    if meta_title and len(meta_title) <= 60:
+                        blog_post.meta_title = meta_title
+                        break
+            
+            # Extract meta description - try multiple patterns
+            meta_description = None
+            patterns = [
+                r'\*\*Meta Description:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'Meta Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
+            ]
+            for pattern in patterns:
+                meta_desc_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+                if meta_desc_match:
+                    meta_description = meta_desc_match.group(1).strip()
+                    # Remove markdown formatting if present
+                    meta_description = re.sub(r'\*\*|\*|\[|\]|`', '', meta_description).strip()
+                    # Remove newlines and extra spaces
+                    meta_description = ' '.join(meta_description.split())
+                    if meta_description and len(meta_description) <= 160:
+                        blog_post.meta_description = meta_description
+                        break
+            
+            # Extract URL slug - try multiple patterns
+            slug = None
+            patterns = [
+                r'\*\*URL Slug:\*\*\s*(.+?)(?:\n|$)',
+                r'URL Slug:\s*(.+?)(?:\n|$)',
+                r'Slug:\s*(.+?)(?:\n|$)',
+            ]
+            for pattern in patterns:
+                slug_match = re.search(pattern, generated_metadata, re.IGNORECASE)
+                if slug_match:
+                    slug = slug_match.group(1).strip()
+                    # Remove markdown formatting and ensure it's a valid slug
+                    slug = re.sub(r'\*\*|\*|\[|\]|`', '', slug).strip()
+                    slug = slugify(slug)
+                    if slug and len(slug) <= 255:
+                        # Check if slug is unique (excluding current post)
+                        if not BlogPost.objects.filter(slug=slug).exclude(pk=blog_post.pk).exists():
+                            blog_post.slug = slug
+                        else:
+                            messages.warning(request, f'Slug "{slug}" already exists. Keeping current slug.')
+                        break
+            
+            # Extract tags - try multiple patterns
+            tags_text = None
+            patterns = [
+                r'\*\*Tags:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'Tags:\s*(.+?)(?=\n\*\*|\n\n|$)',
+            ]
+            for pattern in patterns:
+                tags_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+                if tags_match:
+                    tags_text = tags_match.group(1).strip()
+                    break
+            
+            if tags_text:
+                # Remove markdown formatting
+                tags_text = re.sub(r'\*\*|\*|\[|\]|`', '', tags_text)
+                # Split by comma and clean up
+                tag_names = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
+                
+                # Get or create tags
+                tags_to_add = []
+                for tag_name in tag_names[:10]:  # Limit to 10 tags
+                    if tag_name:  # Ensure tag name is not empty
+                        tag, created = Tag.objects.get_or_create(
+                            name=tag_name,
+                            defaults={'slug': slugify(tag_name)}
+                        )
+                        tags_to_add.append(tag)
+                
+                # Set tags (this replaces existing tags)
+                if tags_to_add:
+                    blog_post.tags.set(tags_to_add)
+            
+            # Save the blog post
+            blog_post.save()
+            
+            # Log activity
+            log_activity(
+                'blog_post_updated',
+                f'Metadata generated for blog post "{blog_post.title}"',
+                user=request.user,
+                metadata={
+                    'blog_post_id': blog_post.id,
+                    'provider': provider,
+                    'model': model
+                }
+            )
+            
+            messages.success(request, 'Metadata generated successfully!')
+            return redirect('sources:blog_post_detail', pk=blog_post.pk)
+            
+        except Exception as e:
+            error_msg = str(e)
+            messages.error(request, f'Error generating metadata: {error_msg}')
+            import traceback
+            traceback.print_exc()
+    
+    # GET request - show the generation form
+    context = {
+        'blog_post': blog_post,
+        'default_provider': 'gemini',
+        'default_model': 'gemini-3-pro-preview',
+    }
+    
+    return render(request, 'sources/blog_post_generate_metadata.html', context)
+
+
+@login_required
 def blog_post_generate(request, pk):
     """Generate a blog post from a post idea"""
     post_idea = get_object_or_404(PostIdea, pk=pk)
@@ -2827,9 +3028,12 @@ def blog_post_generate(request, pk):
                     messages.warning(request, f'RAG context retrieval failed: {str(e)}. Continuing without context.')
             
             # Build the prompt
+            # Include primary keyword if available, otherwise use title as fallback
+            primary_keyword = post_idea.primary_keyword or post_idea.title
             prompt = prompt_template.format(
                 title=post_idea.title,
-                description=post_idea.description or "No description provided."
+                description=post_idea.description or "No description provided.",
+                primary_keyword=primary_keyword
             )
             
             # Add RAG context if available
@@ -3062,7 +3266,8 @@ Respond in JSON only:
   "ideas": [
     {{
       "title": "Post title here",
-      "description": "Brief summary explaining the travel value"
+      "description": "Brief summary explaining the travel value",
+      "primary_keyword": "Main SEO keyword for this post (e.g., 'Chengdu travel guide', 'China visa requirements')"
     }}
   ]
 }}
@@ -3212,6 +3417,7 @@ Response:
                         for idea_data in ideas:
                             title = idea_data.get('title', '').strip()
                             description = idea_data.get('description', '').strip()
+                            primary_keyword = idea_data.get('primary_keyword', '').strip()
                             
                             if not title:
                                 continue
@@ -3249,6 +3455,7 @@ Response:
                             post_idea = PostIdea.objects.create(
                                 title=title,
                                 description=description,
+                                primary_keyword=primary_keyword,
                                 title_embedding=new_embedding
                             )
                             batch_created_count += 1

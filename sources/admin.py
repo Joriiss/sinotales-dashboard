@@ -141,14 +141,14 @@ class ContentAdmin(admin.ModelAdmin):
 
 @admin.register(PostIdea)
 class PostIdeaAdmin(admin.ModelAdmin):
-    list_display = ['title', 'description_preview', 'blog_posts_count', 'created_at', 'updated_at']
+    list_display = ['title', 'primary_keyword', 'description_preview', 'blog_posts_count', 'created_at', 'updated_at']
     list_filter = ['created_at', 'updated_at']
-    search_fields = ['title', 'description']
+    search_fields = ['title', 'description', 'primary_keyword']
     readonly_fields = ['created_at', 'updated_at', 'blog_posts_count', 'blog_posts_list']
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'description')
+            'fields': ('title', 'primary_keyword', 'description')
         }),
         ('Related Blog Posts', {
             'fields': ('blog_posts_count', 'blog_posts_list'),

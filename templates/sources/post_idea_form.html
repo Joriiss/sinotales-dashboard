@@ -26,6 +26,18 @@
             </div>
             
             <div class="mb-3">
+                <label for="primary_keyword" class="form-label">Primary Keyword</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="primary_keyword" 
+                       name="primary_keyword" 
+                       value="{% if post_idea %}{{ post_idea.primary_keyword }}{% endif %}"
+                       placeholder="e.g., 'Chengdu travel guide', 'China visa requirements'"
+                       maxlength="100">
+                <div class="form-text">Primary SEO keyword for this post (will be used in blog post generation)</div>
+            </div>
+            
+            <div class="mb-3">
                 <label for="description" class="form-label">Description</label>
                 <textarea class="form-control" 
                           id="description" 

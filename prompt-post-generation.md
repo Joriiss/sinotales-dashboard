@@ -12,6 +12,7 @@
 
 - **Post Title:** {title}
 - **Description:** {description}
+- **Primary Keyword:** {primary_keyword}
 - **Target Audience:** Travelers planning a trip to China who need practical, actionable information.
 
 ### **Strategic Content Requirements**
@@ -30,7 +31,7 @@
 **3. Structure & Formatting**
 
 - **Output Format:** Write the entire blog post in **HTML format** using proper HTML tags, NOT Markdown
-- **H1:** Must include the Primary Keyword. Use `<h1>` tag.
+- **H1:** Must include the Primary Keyword ({primary_keyword}). Use `<h1>` tag.
 - **H2/H3 Hierarchy:** Use descriptive headers that include Secondary Keywords or Questions (e.g., "How to buy train tickets" instead of just "Trains"). Use `<h2>` and `<h3>` tags.
 - **Paragraphs:** Use `<p>` tags for all paragraphs
 - **Lists:** Use `<ul>`, `<ol>`, and `<li>` tags for bulleted and numbered lists

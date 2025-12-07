@@ -434,6 +434,11 @@ class PostIdea(models.Model):
         blank=True,
         help_text="Optional description or notes about the post idea"
     )
+    primary_keyword = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Primary SEO keyword for this post idea (e.g., 'Chengdu travel guide', 'China visa requirements')"
+    )
     title_embedding = VectorField(
         dimensions=1536,  # text-embedding-3-small dimensions (same as ContentChunk)
         null=True,

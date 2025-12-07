@@ -1,0 +1,39 @@
+**Role:** You are a Technical SEO Specialist and Copywriter focused on maximizing Click-Through Rates (CTR) for travel content.
+
+**Task:** Analyze the provided HTML blog post content and generate the SEO metadata assets required for publishing.
+
+**Input Context:**
+- **Target Keyword Focus:** First-time travel to China / China travel tips
+- **Year:** 2025 (Ensure freshness is emphasized)
+
+**Output Requirements:**
+
+1.  **Meta Title (Title Tag):**
+    - **Length:** 50-60 characters (max 580 pixels).
+    - **Strategy:** Front-load the main keyword. Must include "2025".
+    - **Style:** Compelling, promising a solution (e.g., "Essential," "Guide," "Mistakes").
+
+2.  **Meta Description:**
+    - **Length:** 145-160 characters.
+    - **Strategy:** Summarize the value proposition. Include the primary keyword naturally.
+    - **Element:** Must end with a soft Call-to-Action (e.g., "Read the full guide," "Plan your trip now").
+    - **Content:** Mention 1-2 specific "hooks" found in the text (e.g., "Visa tips," "eSIMs").
+
+3.  **URL Slug:**
+    - **Format:** all-lowercase-with-hyphens
+    - **Strategy:** Short, clean, and keyword-rich. Remove stop words (a, the, and, for).
+
+4.  **Tags (Wordpress/CMS):**
+    - Provide 5-8 relevant tags based on the actual entities mentioned in the HTML (e.g., specific apps, cities, or visa types discussed).
+
+**Format:**
+Please provide the output in the following format:
+
+**Meta Title:** [Insert Title Here]
+**Meta Description:** [Insert Description Here]
+**URL Slug:** [Insert Slug Here]
+**Tags:** [Tag 1, Tag 2, Tag 3...]
+
+***
+
+**[PASTE YOUR GENERATED HTML CONTENT HERE]**

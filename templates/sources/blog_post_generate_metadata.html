@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block title %}Generate Metadata - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1><i class="bi bi-tags me-2"></i>Generate Metadata</h1>
+    <p class="text-muted mb-0">Generate SEO metadata for: <strong>{{ blog_post.title }}</strong></p>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Generation Settings</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="generateForm">
+                    {% csrf_token %}
+                    
+                    <!-- Blog Post Info -->
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <h6 class="mb-2">Blog Post</h6>
+                        <p class="mb-1"><strong>Title:</strong> {{ blog_post.title }}</p>
+                        <p class="mb-0"><strong>Content Length:</strong> {{ blog_post.content|length }} characters</p>
+                    </div>
+                    
+                    <!-- Provider Selection -->
+                    <div class="mb-3">
+                        <label for="provider" class="form-label">AI Provider</label>
+                        <select class="form-select" id="provider" name="provider" required>
+                            <option value="gemini" {% if default_provider == 'gemini' %}selected{% endif %}>Gemini</option>
+                            <option value="openai" {% if default_provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                            <option value="ollama" {% if default_provider == 'ollama' %}selected{% endif %}>Ollama</option>
+                        </select>
+                        <small class="text-muted">Select the AI provider to use for generation</small>
+                    </div>
+                    
+                    <!-- Model Selection -->
+                    <div class="mb-3">
+                        <label for="model" class="form-label">Model</label>
+                        <select class="form-select" id="model" name="model" required>
+                            <option value="">Loading models...</option>
+                        </select>
+                        <small class="text-muted">Select the model to use (default: {{ default_model }})</small>
+                    </div>
+                    
+                    <!-- What will be generated -->
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>What will be generated:</h6>
+                        <ul class="mb-0">
+                            <li><strong>Meta Title:</strong> SEO-optimized title (50-60 characters)</li>
+                            <li><strong>Meta Description:</strong> Compelling description with CTA (145-160 characters)</li>
+                            <li><strong>URL Slug:</strong> Clean, keyword-rich URL slug</li>
+                            <li><strong>Tags:</strong> 5-8 relevant tags based on content</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="generateBtn">
+                            <i class="bi bi-magic me-1"></i> Generate Metadata
+                        </button>
+                        <a href="{% url 'sources:blog_post_detail' blog_post.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-lg-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Current Metadata</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Slug:</strong><br>
+                    <code class="small">{{ blog_post.slug|default:"Not set" }}</code>
+                </div>
+                <div class="mb-3">
+                    <strong>Meta Title:</strong><br>
+                    <small class="text-muted">{{ blog_post.meta_title|default:"Not set" }}</small>
+                </div>
+                <div class="mb-3">
+                    <strong>Meta Description:</strong><br>
+                    <small class="text-muted">{{ blog_post.meta_description|default:"Not set" }}</small>
+                </div>
+                <div class="mb-3">
+                    <strong>Tags:</strong><br>
+                    {% if blog_post.tags.all %}
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        {% for tag in blog_post.tags.all %}
+                        <span class="badge bg-secondary">{{ tag.name }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <small class="text-muted">No tags</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const providerSelect = document.getElementById('provider');
+    const modelSelect = document.getElementById('model');
+    const generateForm = document.getElementById('generateForm');
+    const generateBtn = document.getElementById('generateBtn');
+    
+    // Load models when provider changes
+    function loadModels() {
+        const provider = providerSelect.value;
+        modelSelect.innerHTML = '<option value="">Loading models...</option>';
+        modelSelect.disabled = true;
+        
+        fetch(`/post-ideas/api/models/?provider=${provider}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    modelSelect.innerHTML = `<option value="">Error: ${data.error}</option>`;
+                    return;
+                }
+                
+                modelSelect.innerHTML = '';
+                const defaultModel = '{{ default_model }}';
+                let defaultSelected = false;
+                
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    if (model === defaultModel && !defaultSelected) {
+                        option.selected = true;
+                        defaultSelected = true;
+                    }
+                    modelSelect.appendChild(option);
+                });
+                
+                // If no default was found, select first option
+                if (!defaultSelected && data.models.length > 0) {
+                    modelSelect.options[0].selected = true;
+                }
+                
+                modelSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error loading models:', error);
+                modelSelect.innerHTML = '<option value="">Error loading models</option>';
+            });
+    }
+    
+    // Load models on provider change
+    providerSelect.addEventListener('change', loadModels);
+    
+    // Load initial models
+    loadModels();
+    
+    // Handle form submission
+    generateForm.addEventListener('submit', function(e) {
+        if (!modelSelect.value) {
+            e.preventDefault();
+            alert('Please wait for models to load, or select a model.');
+            return false;
+        }
+        
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating...';
+    });
+});
+</script>
+{% endblock %}
+

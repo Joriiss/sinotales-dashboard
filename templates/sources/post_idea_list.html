@@ -65,6 +65,7 @@
                     <thead>
                         <tr>
                             <th>Title</th>
+                            <th>Primary Keyword</th>
                             <th>Description</th>
                             <th>Blog Post</th>
                             <th>Created</th>
@@ -76,6 +77,13 @@
                         {% for idea in post_ideas %}
                         <tr>
                             <td><strong>{{ idea.title }}</strong></td>
+                            <td>
+                                {% if idea.primary_keyword %}
+                                    <span class="badge bg-info text-dark">{{ idea.primary_keyword }}</span>
+                                {% else %}
+                                    <span class="text-muted fst-italic">Not set</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if idea.description %}
                                     <span class="text-muted">{{ idea.description|truncatewords:20 }}</span>

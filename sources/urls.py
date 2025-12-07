@@ -55,6 +55,7 @@ urlpatterns = [
     path('blog-posts/<int:pk>/', views.blog_post_detail, name='blog_post_detail'),
     path('blog-posts/<int:pk>/edit/', views.blog_post_edit, name='blog_post_edit'),
     path('blog-posts/<int:pk>/delete/', views.blog_post_delete, name='blog_post_delete'),
+    path('blog-posts/<int:pk>/generate-metadata/', views.blog_post_generate_metadata, name='blog_post_generate_metadata'),
 ]
 
 
