@@ -4817,3 +4817,107 @@ def blog_post_image_upload(request, pk):
             messages.error(request, f'Error uploading image: {str(e)}')
     
     return redirect('sources:blog_post_images_list')
+
+
+@csrf_exempt
+def post_ideas_api(request):
+    """API endpoint to list all post ideas (token-based authentication)"""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Get all post ideas, ordered by creation date (newest first)
+        post_ideas = PostIdea.objects.all().order_by('-created_at')
+        
+        # Build response data
+        ideas = []
+        for idea in post_ideas:
+            ideas.append({
+                'id': idea.id,
+                'title': idea.title,
+                'description': idea.description,
+                'primary_keyword': idea.primary_keyword,
+                'created_at': idea.created_at.isoformat() if idea.created_at else None,
+                'updated_at': idea.updated_at.isoformat() if idea.updated_at else None,
+                'blog_posts_count': idea.blog_posts.count(),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'post_ideas': ideas,
+            'count': len(ideas)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def blog_posts_api(request):
+    """API endpoint to list blog posts (token-based authentication)
+    
+    Query parameters:
+    - published: Filter by published status (true/false). If not provided, returns all posts.
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Get all blog posts, ordered by creation date (newest first)
+        blog_posts = BlogPost.objects.select_related('post_idea').prefetch_related('tags').order_by('-created_at')
+        
+        # Filter by published status if provided
+        published_param = request.GET.get('published', '').strip().lower()
+        if published_param == 'true':
+            blog_posts = blog_posts.filter(published=True)
+        elif published_param == 'false':
+            blog_posts = blog_posts.filter(published=False)
+        # If not provided or empty, return all posts
+        
+        # Build response data
+        posts = []
+        for post in blog_posts:
+            # Get tag names
+            tag_names = [tag.name for tag in post.tags.all()]
+            
+            posts.append({
+                'id': post.id,
+                'title': post.title,
+                'slug': post.slug,
+                'meta_title': post.meta_title,
+                'meta_description': post.meta_description,
+                'published': post.published,
+                'created_at': post.created_at.isoformat() if post.created_at else None,
+                'updated_at': post.updated_at.isoformat() if post.updated_at else None,
+                'post_idea_id': post.post_idea.id if post.post_idea else None,
+                'post_idea_title': post.post_idea.title if post.post_idea else None,
+                'tags': tag_names,
+                'featured_image_url': post.featured_image.url if post.featured_image else None,
+                'featured_image_description': post.featured_image_description,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'blog_posts': posts,
+            'count': len(posts),
+            'filter_applied': {
+                'published': published_param if published_param else None
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

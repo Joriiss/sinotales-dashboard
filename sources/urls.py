@@ -31,6 +31,10 @@ urlpatterns = [
     path('api/video-content', views.create_video_content_api, name='create_video_content_api_no_slash'),  # Support both with and without trailing slash
     path('api/blog-post/', views.create_blog_post_api, name='create_blog_post_api'),
     path('api/blog-post', views.create_blog_post_api, name='create_blog_post_api_no_slash'),  # Support both with and without trailing slash
+    path('api/post-ideas/', views.post_ideas_api, name='post_ideas_api'),
+    path('api/post-ideas', views.post_ideas_api, name='post_ideas_api_no_slash'),  # Support both with and without trailing slash
+    path('api/blog-posts/', views.blog_posts_api, name='blog_posts_api'),
+    path('api/blog-posts', views.blog_posts_api, name='blog_posts_api_no_slash'),  # Support both with and without trailing slash
     
     # Logs
     path('logs/', views.logs_view, name='logs'),
