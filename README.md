@@ -18,6 +18,9 @@ Django-based dashboard for managing content sources and generating blog posts ab
 - **Activity Logging**: Comprehensive logging of content operations (fetching, transcript extraction, filtering)
 - **China Filter**: Automatic filtering of videos for China-related content (configurable per source)
 - **Post Ideas Management**: Generate, manage, and organize blog post ideas with AI-powered generation and automatic duplicate prevention
+- **Blog Post Generation**: Generate complete blog posts from post ideas using AI (Ollama, OpenAI, or Gemini) with RAG support
+- **Automatic Metadata Generation**: Generate SEO metadata including meta title, meta description, URL slug, tags, featured image alt text, and FAQ
+- **FAQ Generation**: Automatically generate 4 FAQ items (question/answer pairs) during metadata generation
 - **REST API**: Token-based API endpoints for programmatic content management
 
 ## Setup Instructions
@@ -185,6 +188,13 @@ The main tables are:
 - Title, description, creation/update timestamps
 - Title embedding (1536 dimensions) for similarity checking
 - HNSW index for fast similarity queries
+
+**blog_posts** - Generated blog posts:
+- Title, content (HTML), slug, published status
+- SEO metadata: meta_title, meta_description, featured_image_description
+- FAQ field: JSON array with question/answer pairs (4 items)
+- Post idea reference, tags (many-to-many)
+- Featured image, creation/update timestamps
 
 ## Usage
 
@@ -911,6 +921,146 @@ The Post Ideas generation can be triggered via API for automation (e.g., with n8
 - Average content item (~8000 chars) ≈ ~2000 tokens
 - **Cost per 1000 items**: ~$0.04 (very affordable)
 
+## Blog Post Generation
+
+The dashboard includes a comprehensive blog post generation system that creates complete blog posts from post ideas using AI.
+
+### Features
+
+- **AI-Powered Content Generation**: Generate full blog post content using Ollama, OpenAI, or Gemini
+- **RAG Support**: Use Retrieval-Augmented Generation (RAG) to include relevant context from your content library
+- **Automatic Metadata Generation**: Generate SEO metadata including:
+  - Meta title (50-60 characters)
+  - Meta description (145-160 characters)
+  - URL slug (SEO-friendly)
+  - Tags (5-8 relevant tags)
+  - Featured image alt text (50-125 characters)
+  - **FAQ Section**: 4 FAQ items with question/answer pairs
+- **FAQ Management**: View and edit FAQ items in the blog post detail and edit pages
+- **Content Processing**: Automatic image extraction and management from blog post content
+
+### Generating a Blog Post
+
+1. Navigate to **Post Ideas** in the sidebar
+2. Find a post idea you want to turn into a blog post
+3. Click **Generate Blog Post** next to the idea
+4. Configure generation settings:
+   - **Provider**: Choose between Ollama, OpenAI, or Gemini
+   - **Model**: Select the specific model to use
+   - **Use RAG**: Enable to include relevant context from your content library
+   - **Number of Chunks**: How many content chunks to include (if RAG is enabled)
+5. Click **Generate Blog Post**
+
+The system will:
+1. Generate the full blog post content based on the post idea
+2. Extract and create image records from the content
+3. Optionally generate metadata (if not done separately)
+
+### Generating Metadata
+
+After generating blog post content, you can generate SEO metadata:
+
+1. Navigate to the blog post detail page
+2. Click **Generate Metadata**
+3. Select provider and model
+4. Click **Generate Metadata**
+
+The system will automatically generate:
+- Meta title optimized for SEO
+- Meta description with call-to-action
+- URL slug
+- Relevant tags
+- Featured image alt text
+- **4 FAQ items** with question/answer pairs
+
+### FAQ Generation
+
+FAQ items are automatically generated during metadata generation. The system:
+
+- Generates exactly 4 FAQ items related to the blog post content
+- Creates "People Also Ask" style questions that travelers might search for
+- Provides concise answers (2-4 sentences) that directly address each question
+- Stores FAQ items as JSON in the database
+
+**Viewing FAQ**: FAQ items are displayed in the blog post detail page sidebar with a clean, readable format.
+
+**Editing FAQ**: FAQ items can be edited in the blog post edit form. The FAQ field accepts JSON format:
+```json
+[
+  {
+    "question": "Question 1?",
+    "answer": "Answer 1"
+  },
+  {
+    "question": "Question 2?",
+    "answer": "Answer 2"
+  }
+]
+```
+
+The edit form includes:
+- JSON formatting button
+- JSON validation
+- Clear button to remove FAQ
+
+### API: Generate Blog Post
+
+**Endpoint**: `POST /api/generate-blog-post`
+
+Generates a complete blog post from a post idea, including content and metadata.
+
+**Request Body**:
+```json
+{
+  "post_idea_id": 123,
+  "provider": "gemini",
+  "model": "gemini-3-pro-preview",
+  "use_rag": true,
+  "num_chunks": 5,
+  "metadata_provider": "gemini",
+  "metadata_model": "gemini-3-pro-preview"
+}
+```
+
+**Required Fields**:
+- `post_idea_id`: ID of the post idea to generate from
+
+**Optional Fields**:
+- `provider`: AI provider for content generation (`ollama`, `openai`, `gemini`). Default: `gemini`
+- `model`: Model name for content generation. Default: `gemini-3-pro-preview`
+- `use_rag`: Whether to use RAG context. Default: `false`
+- `num_chunks`: Number of RAG chunks to use. Default: `5`
+- `metadata_provider`: AI provider for metadata generation. Default: same as `provider`
+- `metadata_model`: Model name for metadata generation. Default: same as `model`
+
+**Response (Success)**:
+```json
+{
+  "success": true,
+  "blog_post": {
+    "id": 456,
+    "title": "Blog Post Title",
+    "slug": "blog-post-slug",
+    "meta_title": "SEO Meta Title",
+    "meta_description": "SEO meta description...",
+    "published": false,
+    "created_at": "2025-01-15T10:30:00Z",
+    "post_idea_id": 123,
+    "tags": ["tag1", "tag2"],
+    "featured_image_description": "Alt text for featured image"
+  },
+  "generation_info": {
+    "content_provider": "gemini",
+    "content_model": "gemini-3-pro-preview",
+    "metadata_provider": "gemini",
+    "metadata_model": "gemini-3-pro-preview",
+    "used_rag": true
+  }
+}
+```
+
+**Note**: The API automatically generates both blog post content and metadata (including FAQ) in a single request.
+
 ## Next Steps
 
 - [x] Add Contents tab for managing collected content
@@ -922,8 +1072,11 @@ The Post Ideas generation can be triggered via API for automation (e.g., with n8
 - [x] Integrate with PostgreSQL pgvector for vector search
 - [x] Add Post Ideas tab for generated article ideas
 - [x] Add duplicate detection and prevention for post ideas
+- [x] Add Blog Posts tab for managing generated posts
+- [x] Add blog post generation from post ideas
+- [x] Add automatic metadata generation (meta title, description, slug, tags, alt text)
+- [x] Add FAQ generation (4 FAQ items with question/answer pairs)
+- [x] Add RAG pipeline for content generation
 - [ ] Add semantic search functionality (query embeddings and similarity search)
-- [ ] Add Blog Posts tab for managing generated posts
-- [ ] Add RAG pipeline for content generation
 
 
