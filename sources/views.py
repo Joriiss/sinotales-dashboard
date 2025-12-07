@@ -3367,117 +3367,152 @@ Response:
     except ImportError:
         return False, 0, [], 'requests library required. Install with: pip install requests', 0
     
-    try:
-        if provider == 'ollama':
-            # Call Ollama
-            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-            url = f"{ollama_url}/api/generate"
-            
-            # Increase temperature on retries for more creativity
-            base_temp = 0.8
-            retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
-            
-            payload = {
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
+    # Retry loop: continue generating until we have enough valid ideas
+    while ideas_still_needed > 0 and total_attempts < max_retries:
+        total_attempts += 1
+        # Increase batch size on retries to get more variety
+        batch_size = max(ideas_still_needed, 5 + (total_attempts - 1) * 2)  # 5, 7, 9, 11, 13...
+        
+        response_text = None
+        api_error = None
+        
+        try:
+            if provider == 'ollama':
+                # Call Ollama
+                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+                url = f"{ollama_url}/api/generate"
+                
+                # Increase temperature on retries for more creativity
+                base_temp = 0.8
+                retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+                
+                payload = {
+                    "model": model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
                         "temperature": retry_temp,
-                    "top_p": 0.9,
+                        "top_p": 0.9,
+                    }
                 }
-            }
+                
+                response = requests.post(url, json=payload, timeout=120)
+                response.raise_for_status()
+                result = response.json()
+                response_text = result.get('response', '').strip()
+                
+            elif provider == 'openai':
+                # Call OpenAI
+                api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                if not api_key:
+                    api_error = 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue  # Continue while loop
             
-            response = requests.post(url, json=payload, timeout=120)
-            response.raise_for_status()
-            result = response.json()
-            response_text = result.get('response', '').strip()
-            
-        elif provider == 'openai':
-            # Call OpenAI
-            api_key = getattr(settings, 'OPENAI_API_KEY', None)
-            if not api_key:
-                api_error = 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
-                if total_attempts >= max_retries:
-                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                break  # Break out of try to continue loop
-            
-            try:
-                from openai import OpenAI
-            except ImportError:
-                api_error = 'openai library required. Install with: pip install openai'
-                if total_attempts >= max_retries:
-                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                break  # Break out of try to continue loop
-            
-            client = OpenAI(api_key=api_key)
-            
-            # Check model type for parameter compatibility
-            is_gpt5 = 'gpt-5' in model.lower()
-            is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
-            
-            # Build request parameters
-            request_params = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-            }
-            
-            # GPT-5 only supports default temperature (1), so don't set it
-            if not is_gpt5:
+                try:
+                    from openai import OpenAI
+                except ImportError:
+                    api_error = 'openai library required. Install with: pip install openai'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue  # Continue while loop
+                
+                client = OpenAI(api_key=api_key)
+                
+                # Check model type for parameter compatibility
+                is_gpt5 = 'gpt-5' in model.lower()
+                is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
+                
+                # Build request parameters
+                request_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                }
+                
+                # GPT-5 only supports default temperature (1), so don't set it
+                if not is_gpt5:
                     # Increase temperature on retries for more creativity
                     base_temp = 0.8
                     retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
                     request_params["temperature"] = retry_temp
-            
-            # Use appropriate parameter based on model
-            if is_newer_model:
-                request_params["max_completion_tokens"] = 2000
+                
+                # Use appropriate parameter based on model
+                if is_newer_model:
+                    request_params["max_completion_tokens"] = 2000
+                else:
+                    request_params["max_tokens"] = 2000
+                
+                response = client.chat.completions.create(**request_params)
+                response_text = response.choices[0].message.content.strip()
+                
+            elif provider == 'gemini':
+                # Call Gemini
+                api_key = getattr(settings, 'GEMINI_API_KEY', None)
+                if not api_key:
+                    api_error = 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue  # Continue while loop
+                
+                try:
+                    import google.generativeai as genai
+                except ImportError:
+                    api_error = 'google-generativeai library required. Install with: pip install google-generativeai'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue  # Continue while loop
+                
+                genai.configure(api_key=api_key)
+                genai_model = genai.GenerativeModel(model)
+                # Increase temperature on retries for more creativity
+                base_temp = 0.8
+                retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+                
+                response = genai_model.generate_content(
+                    prompt,
+                    generation_config={
+                        "temperature": retry_temp,
+                        "max_output_tokens": 2000,
+                    }
+                )
+                response_text = response.text.strip()
             else:
-                request_params["max_tokens"] = 2000
-            
-            response = client.chat.completions.create(**request_params)
-            response_text = response.choices[0].message.content.strip()
-            
-        elif provider == 'gemini':
-            # Call Gemini
-            api_key = getattr(settings, 'GEMINI_API_KEY', None)
-            if not api_key:
-                api_error = 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
+                api_error = f'Invalid provider: {provider}'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                break  # Break out of try to continue loop
+                continue  # Continue while loop
             
-            try:
-                import google.generativeai as genai
-            except ImportError:
-                api_error = 'google-generativeai library required. Install with: pip install google-generativeai'
-                if total_attempts >= max_retries:
-                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                break  # Break out of try to continue loop
-            
-            genai.configure(api_key=api_key)
-            genai_model = genai.GenerativeModel(model)
-            # Increase temperature on retries for more creativity
-            base_temp = 0.8
-            retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
-            
-            response = genai_model.generate_content(
-                prompt,
-                generation_config={
-                    "temperature": retry_temp,
-                    "max_output_tokens": 2000,
-                }
-            )
-            response_text = response.text.strip()
-        else:
-            api_error = f'Invalid provider: {provider}'
+            # Parse JSON response
+        
+        except requests.exceptions.ConnectionError as e:
+            if provider == 'ollama':
+                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+                api_error = f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
+            else:
+                api_error = f'Connection error: {str(e)}'
             if total_attempts >= max_retries:
                 return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-            break  # Break out of try to continue loop
+            continue  # Continue while loop
+        except Exception as e:
+            error_str = str(e)
+            # Check for API key errors
+            if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
+                if provider == 'openai':
+                    api_error = f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.'
+                elif provider == 'gemini':
+                    api_error = f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.'
+                else:
+                    api_error = f'Authentication error: {error_str}'
+            else:
+                api_error = f'Error generating ideas with {provider.upper()}: {error_str}'
+            if total_attempts >= max_retries:
+                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+            continue  # Continue while loop
         
-        # Parse JSON response
         if response_text:
             # Try to extract JSON from response
             start_idx = response_text.find('{')
@@ -3560,7 +3595,8 @@ Response:
                     # If we got some valid ideas but not enough, continue the loop
                     if ideas_still_needed > 0:
                         print(f"Generated {batch_created_count} valid ideas, {ideas_still_needed} still needed. Retrying...")
-                        break  # Break out of try to continue while loop
+                        # Break out of try to continue while loop
+                        break
                     else:
                         # We have enough ideas, break out of retry loop
                         break
@@ -3569,42 +3605,17 @@ Response:
                     api_error = f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}'
                     if total_attempts >= max_retries:
                         return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    break  # Break out of try to continue while loop
+                    continue  # Continue while loop
             else:
                 api_error = f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                break  # Break out of try to continue while loop
+                continue  # Continue while loop
         else:
             api_error = f'No response received from {provider.upper()}.'
             if total_attempts >= max_retries:
                 return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-            break  # Break out of try to continue while loop
-            
-    except requests.exceptions.ConnectionError as e:
-        if provider == 'ollama':
-            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-            api_error = f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
-        else:
-            api_error = f'Connection error: {str(e)}'
-        if total_attempts >= max_retries:
-            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-        # Continue while loop
-    except Exception as e:
-        error_str = str(e)
-        # Check for API key errors
-        if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
-            if provider == 'openai':
-                api_error = f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.'
-            elif provider == 'gemini':
-                api_error = f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.'
-            else:
-                api_error = f'Authentication error: {error_str}'
-        else:
-            api_error = f'Error generating ideas with {provider.upper()}: {error_str}'
-            if total_attempts >= max_retries:
-                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-            continue
+            continue  # Continue while loop
     
     # After retry loop completes
     if total_created_count > 0 or total_skipped_similar > 0:
