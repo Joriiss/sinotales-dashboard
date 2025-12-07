@@ -4821,7 +4821,11 @@ def blog_post_image_upload(request, pk):
 
 @csrf_exempt
 def post_ideas_api(request):
-    """API endpoint to list all post ideas (token-based authentication)"""
+    """API endpoint to list all post ideas (token-based authentication)
+    
+    Query parameters:
+    - exclude_with_posts: If set to 'true', filters out post ideas that already have blog posts associated with them.
+    """
     if request.method != 'GET':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
@@ -4834,9 +4838,24 @@ def post_ideas_api(request):
         # Get all post ideas, ordered by creation date (newest first)
         post_ideas = PostIdea.objects.all().order_by('-created_at')
         
+        # Filter out ideas with blog posts if requested
+        exclude_with_posts = request.GET.get('exclude_with_posts', '').strip().lower()
+        if exclude_with_posts == 'true':
+            # Exclude post ideas that have at least one blog post
+            post_ideas = post_ideas.annotate(
+                blog_posts_count=Count('blog_posts')
+            ).filter(blog_posts_count=0)
+        
         # Build response data
         ideas = []
         for idea in post_ideas:
+            # Only count blog posts if we haven't already annotated it
+            if exclude_with_posts != 'true':
+                blog_posts_count = idea.blog_posts.count()
+            else:
+                # Use the annotated count if available
+                blog_posts_count = getattr(idea, 'blog_posts_count', 0)
+            
             ideas.append({
                 'id': idea.id,
                 'title': idea.title,
@@ -4844,13 +4863,16 @@ def post_ideas_api(request):
                 'primary_keyword': idea.primary_keyword,
                 'created_at': idea.created_at.isoformat() if idea.created_at else None,
                 'updated_at': idea.updated_at.isoformat() if idea.updated_at else None,
-                'blog_posts_count': idea.blog_posts.count(),
+                'blog_posts_count': blog_posts_count,
             })
         
         return JsonResponse({
             'success': True,
             'post_ideas': ideas,
-            'count': len(ideas)
+            'count': len(ideas),
+            'filter_applied': {
+                'exclude_with_posts': exclude_with_posts == 'true' if exclude_with_posts else False
+            }
         })
     except Exception as e:
         return JsonResponse({
