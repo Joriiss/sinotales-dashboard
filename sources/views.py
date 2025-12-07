@@ -3029,7 +3029,6 @@ def blog_post_generate_metadata(request, pk):
                     faq_text = faq_match.group(1).strip()
                     try:
                         # Try to parse as JSON
-                        import json
                         faq_data = json.loads(faq_text)
                         # Validate it's a list with proper structure
                         if isinstance(faq_data, list) and len(faq_data) > 0:
@@ -5023,6 +5022,9 @@ def generate_blog_post_api(request):
     if not token_valid:
         return error_response
     
+    import re
+    import json  # Ensure json is available in function scope
+    
     try:
         data = json.loads(request.body)
         
@@ -5322,7 +5324,6 @@ def generate_blog_post_api(request):
                 faq_text = faq_match.group(1).strip()
                 try:
                     # Try to parse as JSON
-                    import json
                     faq_data = json.loads(faq_text)
                     # Validate it's a list with proper structure
                     if isinstance(faq_data, list) and len(faq_data) > 0:
