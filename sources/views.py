@@ -4825,6 +4825,7 @@ def post_ideas_api(request):
     
     Query parameters:
     - exclude_with_posts: If set to 'true', filters out post ideas that already have blog posts associated with them.
+    - search: Search query to filter ideas by title, description, or primary keyword (case-insensitive partial match).
     """
     if request.method != 'GET':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -4846,6 +4847,15 @@ def post_ideas_api(request):
                 blog_posts_count=Count('blog_posts')
             ).filter(blog_posts_count=0)
         
+        # Search filter - search in title, description, and primary_keyword
+        search_query = request.GET.get('search', '').strip()
+        if search_query:
+            post_ideas = post_ideas.filter(
+                Q(title__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(primary_keyword__icontains=search_query)
+            )
+        
         # Build response data - only return essential fields for lighter payload
         ideas = []
         for idea in post_ideas:
@@ -4861,7 +4871,8 @@ def post_ideas_api(request):
             'post_ideas': ideas,
             'count': len(ideas),
             'filter_applied': {
-                'exclude_with_posts': exclude_with_posts == 'true' if exclude_with_posts else False
+                'exclude_with_posts': exclude_with_posts == 'true' if exclude_with_posts else False,
+                'search': search_query if search_query else None
             }
         })
     except Exception as e:
