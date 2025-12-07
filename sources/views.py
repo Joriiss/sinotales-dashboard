@@ -12,7 +12,7 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.utils.html import json_script
 import json
-from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration
+from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration, BlogPost
 import random
 from .forms import SourceForm, ContentForm, SettingsForm
 from .rag_service import RAGService
@@ -2339,7 +2339,7 @@ def agent_view(request):
 @login_required
 def post_idea_list(request):
     """Display list of all post ideas"""
-    post_ideas = PostIdea.objects.all()
+    post_ideas = PostIdea.objects.all().prefetch_related('blog_posts')
     
     # Get total count before filtering
     total_count = post_ideas.count()
@@ -2605,6 +2605,334 @@ def post_idea_delete(request, pk):
         'post_idea': post_idea
     }
     return render(request, 'sources/post_idea_confirm_delete.html', context)
+
+
+@login_required
+def blog_post_list(request):
+    """Display list of all blog posts"""
+    blog_posts = BlogPost.objects.all()
+    
+    # Get total count before filtering
+    total_count = blog_posts.count()
+    
+    # Apply search filter
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        blog_posts = blog_posts.filter(
+            Q(title__icontains=search_query) | 
+            Q(content__icontains=search_query) |
+            Q(meta_title__icontains=search_query) |
+            Q(meta_description__icontains=search_query)
+        )
+    
+    # Filter by published status if provided
+    published_filter = request.GET.get('published', '').strip()
+    if published_filter == 'true':
+        blog_posts = blog_posts.filter(published=True)
+    elif published_filter == 'false':
+        blog_posts = blog_posts.filter(published=False)
+    
+    # Filter by tag if provided
+    tag_id = request.GET.get('tag', '').strip()
+    if tag_id:
+        try:
+            tag = Tag.objects.get(pk=tag_id)
+            blog_posts = blog_posts.filter(tags=tag)
+        except Tag.DoesNotExist:
+            pass
+    
+    # Filter by post idea if provided
+    post_idea_id = request.GET.get('post_idea', '').strip()
+    if post_idea_id:
+        try:
+            post_idea = PostIdea.objects.get(pk=post_idea_id)
+            blog_posts = blog_posts.filter(post_idea=post_idea)
+        except PostIdea.DoesNotExist:
+            pass
+    
+    # Apply sorting (default: newest first)
+    sort_by = request.GET.get('sort', 'newest').strip()
+    if sort_by == 'oldest':
+        blog_posts = blog_posts.order_by('created_at')
+    elif sort_by == 'title_asc':
+        blog_posts = blog_posts.order_by('title')
+    elif sort_by == 'title_desc':
+        blog_posts = blog_posts.order_by('-title')
+    elif sort_by == 'updated':
+        blog_posts = blog_posts.order_by('-updated_at')
+    else:
+        # Default: newest first
+        blog_posts = blog_posts.order_by('-created_at')
+    
+    # Get filtered count
+    filtered_count = blog_posts.count()
+    
+    # Get all tags for filter dropdown
+    all_tags = Tag.objects.all().order_by('name')
+    
+    context = {
+        'blog_posts': blog_posts,
+        'search_query': search_query,
+        'sort_by': sort_by,
+        'total_count': total_count,
+        'filtered_count': filtered_count,
+        'all_tags': all_tags,
+        'selected_tag_id': tag_id,
+        'selected_post_idea_id': post_idea_id,
+        'published_filter': published_filter,
+    }
+    
+    return render(request, 'sources/blog_post_list.html', context)
+
+
+@login_required
+def blog_post_detail(request, pk):
+    """Display detail view of a blog post"""
+    blog_post = get_object_or_404(BlogPost, pk=pk)
+    
+    context = {
+        'blog_post': blog_post,
+    }
+    
+    return render(request, 'sources/blog_post_detail.html', context)
+
+
+@login_required
+def blog_post_edit(request, pk):
+    """Edit a blog post"""
+    blog_post = get_object_or_404(BlogPost, pk=pk)
+    all_tags = Tag.objects.all().order_by('name')
+    
+    if request.method == 'POST':
+        # Update fields
+        blog_post.title = request.POST.get('title', blog_post.title)
+        blog_post.slug = request.POST.get('slug', blog_post.slug)
+        blog_post.content = request.POST.get('content', blog_post.content)
+        blog_post.meta_title = request.POST.get('meta_title', '')
+        blog_post.meta_description = request.POST.get('meta_description', '')
+        blog_post.published = request.POST.get('published', 'off') == 'on'
+        
+        # Handle tags
+        selected_tag_ids = request.POST.getlist('tags')
+        blog_post.tags.set(selected_tag_ids)
+        
+        # Save
+        try:
+            blog_post.save()
+            messages.success(request, f'Blog post "{blog_post.title}" updated successfully!')
+            
+            # Log activity
+            log_activity(
+                'blog_post_updated',
+                f'Blog post "{blog_post.title}" was updated',
+                user=request.user,
+                metadata={'blog_post_id': blog_post.id}
+            )
+            
+            return redirect('sources:blog_post_detail', pk=blog_post.pk)
+        except Exception as e:
+            messages.error(request, f'Error updating blog post: {str(e)}')
+    
+    context = {
+        'blog_post': blog_post,
+        'all_tags': all_tags,
+    }
+    
+    return render(request, 'sources/blog_post_edit.html', context)
+
+
+@login_required
+def blog_post_delete(request, pk):
+    """Delete a blog post"""
+    try:
+        blog_post = BlogPost.objects.get(pk=pk)
+    except BlogPost.DoesNotExist:
+        messages.error(request, 'Blog post not found')
+        return redirect('sources:blog_post_list')
+    
+    if request.method == 'POST':
+        title = blog_post.title
+        blog_post_id = blog_post.id
+        blog_post.delete()
+        # Log activity
+        log_activity(
+            'blog_post_deleted',
+            f'Blog post "{title}" was deleted',
+            user=request.user,
+            metadata={'blog_post_id': blog_post_id, 'title': title}
+        )
+        messages.success(request, f'Blog post "{title}" deleted successfully')
+        return redirect('sources:blog_post_list')
+    
+    context = {
+        'blog_post': blog_post
+    }
+    return render(request, 'sources/blog_post_confirm_delete.html', context)
+
+
+@login_required
+def blog_post_generate(request, pk):
+    """Generate a blog post from a post idea"""
+    post_idea = get_object_or_404(PostIdea, pk=pk)
+    
+    # Load the prompt template
+    import os
+    from django.conf import settings as django_settings
+    
+    prompt_file_path = os.path.join(django_settings.BASE_DIR, 'prompt-post-generation.md')
+    try:
+        with open(prompt_file_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
+    except FileNotFoundError:
+        messages.error(request, 'Prompt template file not found. Please ensure prompt-post-generation.md exists.')
+        return redirect('sources:post_idea_list')
+    
+    if request.method == 'POST':
+        provider = request.POST.get('provider', 'gemini').strip().lower()
+        model = request.POST.get('model', 'gemini-3-pro-preview').strip()
+        use_rag = request.POST.get('use_rag', 'off') == 'on'
+        num_chunks = int(request.POST.get('num_chunks', 5))
+        
+        # Validate provider
+        if provider not in ['ollama', 'openai', 'gemini']:
+            messages.error(request, 'Invalid provider selected.')
+            return redirect('sources:post_idea_list')
+        
+        # Get default model if not provided
+        if not model:
+            if provider == 'ollama':
+                try:
+                    app_settings = Settings.get_settings()
+                    model = app_settings.default_tagging_model
+                except Exception:
+                    model = 'gpt-oss:20b-cloud'
+            elif provider == 'openai':
+                model = 'gpt-4o-mini'
+            elif provider == 'gemini':
+                model = 'gemini-3-pro-preview'
+        
+        try:
+            # Get RAG context if enabled
+            rag_context = ""
+            if use_rag:
+                try:
+                    rag_service = RAGService()
+                    chunks = rag_service.search_similar_chunks(
+                        query_text=post_idea.title,
+                        num_chunks=num_chunks
+                    )
+                    if chunks:
+                        rag_context = rag_service._format_context(chunks)
+                except Exception as e:
+                    messages.warning(request, f'RAG context retrieval failed: {str(e)}. Continuing without context.')
+            
+            # Build the prompt
+            prompt = prompt_template.format(
+                title=post_idea.title,
+                description=post_idea.description or "No description provided."
+            )
+            
+            # Add RAG context if available
+            if rag_context:
+                prompt = f"{prompt}\n\n### Additional Context from Content Library:\n{rag_context}"
+            
+            # Call the appropriate AI provider with higher token limits for blog posts
+            rag_service = RAGService()
+            # Set higher token limits for blog post generation
+            # Blog posts need much more content than regular Q&A responses
+            if provider == 'ollama':
+                # Ollama: 8000 tokens (or None for unlimited if model supports it)
+                generated_content = rag_service._call_ollama(prompt, model, max_tokens=8000)
+            elif provider == 'openai':
+                # OpenAI: 8000-16000 tokens depending on model capabilities
+                # GPT-4o and newer models support up to 16k
+                max_tokens = 16000 if any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-4-turbo', 'gpt-4']) else 8000
+                generated_content = rag_service._call_openai(prompt, model, max_tokens=max_tokens)
+            elif provider == 'gemini':
+                # Gemini: gemini-3-pro-preview supports up to 32k tokens
+                # Use 16k for comprehensive blog posts
+                max_tokens = 16000 if 'gemini-3-pro' in model.lower() else 8000
+                generated_content = rag_service._call_gemini(prompt, model, max_tokens=max_tokens)
+            else:
+                messages.error(request, 'Invalid provider.')
+                return redirect('sources:post_idea_list')
+            
+            # The prompt generates the blog post content
+            # We'll use the post idea title as the blog post title for now
+            # Other fields (meta_title, meta_description) will be handled later
+            blog_title = post_idea.title
+            blog_content = generated_content.strip()
+            
+            # Post-process to remove any unwanted intro text or JSON
+            import re
+            # Remove any text before the first <h1> tag
+            h1_match = re.search(r'<h1>', blog_content, re.IGNORECASE)
+            if h1_match:
+                blog_content = blog_content[h1_match.start():]
+            
+            # Remove any JSON-LD schema blocks at the end
+            # Look for ```json or ``` followed by JSON content
+            json_pattern = r'```(?:json)?\s*\{.*?\}\s*```'
+            blog_content = re.sub(json_pattern, '', blog_content, flags=re.DOTALL | re.IGNORECASE)
+            
+            # Remove standalone JSON blocks (without code fences)
+            json_block_pattern = r'\s*\{[^{}]*"@context"[^{}]*"@type"[^{}]*\}'
+            blog_content = re.sub(json_block_pattern, '', blog_content, flags=re.DOTALL | re.IGNORECASE)
+            
+            # Remove common intro phrases if they appear at the start
+            intro_phrases = [
+                r'^Here is a comprehensive.*?optimized for.*?\n+',
+                r'^This is a comprehensive.*?guide.*?\n+',
+                r'^Below is.*?\n+',
+            ]
+            for pattern in intro_phrases:
+                blog_content = re.sub(pattern, '', blog_content, flags=re.IGNORECASE | re.MULTILINE)
+            
+            blog_content = blog_content.strip()
+            
+            # Create the blog post with just the content field populated
+            blog_post = BlogPost.objects.create(
+                title=blog_title,
+                content=blog_content,
+                post_idea=post_idea
+                # meta_title and meta_description will be handled later
+            )
+            
+            # Copy tags from post idea if any (we'll need to add tags to PostIdea or handle differently)
+            # For now, we'll leave tags empty
+            
+            # Log activity
+            log_activity(
+                'blog_post_created',
+                f'Blog post "{blog_title}" was generated from post idea "{post_idea.title}"',
+                user=request.user,
+                metadata={
+                    'blog_post_id': blog_post.id,
+                    'post_idea_id': post_idea.id,
+                    'provider': provider,
+                    'model': model
+                }
+            )
+            
+            messages.success(request, f'Blog post "{blog_title}" generated successfully!')
+            # Redirect to blog post detail page
+            return redirect('sources:blog_post_detail', pk=blog_post.id)
+            
+        except Exception as e:
+            error_msg = str(e)
+            messages.error(request, f'Error generating blog post: {error_msg}')
+            import traceback
+            traceback.print_exc()
+    
+    # GET request - show the generation form
+    # Get available models for the default provider (Gemini)
+    context = {
+        'post_idea': post_idea,
+        'default_provider': 'gemini',
+        'default_model': 'gemini-3-pro-preview',
+    }
+    
+    return render(request, 'sources/blog_post_generate.html', context)
 
 
 def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selected_contents=None, user=None, max_retries=5):

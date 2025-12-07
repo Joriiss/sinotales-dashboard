@@ -365,6 +365,9 @@ class ActivityLog(models.Model):
         ('post_idea_updated', 'Post Idea Updated'),
         ('post_idea_deleted', 'Post Idea Deleted'),
         ('post_ideas_generated', 'Post Ideas Generated'),
+        ('blog_post_created', 'Blog Post Created'),
+        ('blog_post_updated', 'Blog Post Updated'),
+        ('blog_post_deleted', 'Blog Post Deleted'),
     ]
     
     activity_type = models.CharField(
@@ -568,6 +571,81 @@ class ScheduledPostIdeaGeneration(models.Model):
     def save(self, *args, **kwargs):
         """Ensure only one settings instance exists"""
         self.pk = 1
+        super().save(*args, **kwargs)
+
+
+class BlogPost(models.Model):
+    """
+    Blog posts for the China travel blog
+    """
+    title = models.CharField(
+        max_length=255,
+        help_text="Title of the blog post"
+    )
+    slug = models.SlugField(
+        max_length=255,
+        unique=True,
+        help_text="URL-friendly version of the title (auto-generated if not provided)"
+    )
+    content = models.TextField(
+        help_text="Full content of the blog post (HTML or Markdown)"
+    )
+    meta_title = models.CharField(
+        max_length=60,
+        blank=True,
+        help_text="SEO meta title (recommended: 50-60 characters)"
+    )
+    meta_description = models.CharField(
+        max_length=160,
+        blank=True,
+        help_text="SEO meta description (recommended: 150-160 characters)"
+    )
+    post_idea = models.ForeignKey(
+        PostIdea,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='blog_posts',
+        help_text="Post idea this blog post was created from (optional)"
+    )
+    published = models.BooleanField(
+        default=False,
+        help_text="Whether this blog post is published"
+    )
+    tags = models.ManyToManyField(
+        Tag,
+        related_name='blog_posts',
+        blank=True,
+        help_text="Tags for categorizing this blog post"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'blog_posts'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['slug']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['post_idea']),
+            models.Index(fields=['published']),
+        ]
+    
+    def __str__(self):
+        return self.title
+    
+    def save(self, *args, **kwargs):
+        """Auto-generate slug from title if not provided"""
+        if not self.slug:
+            base_slug = slugify(self.title)
+            self.slug = base_slug
+            # Handle slug collisions by appending a number
+            counter = 1
+            while BlogPost.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+                self.slug = f"{base_slug}-{counter}"
+                counter += 1
         super().save(*args, **kwargs)
 
 

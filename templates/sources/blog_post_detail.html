@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ blog_post.title }} - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-column flex-md-row">
+    <div>
+        <h1><i class="bi bi-file-earmark-text me-2"></i>{{ blog_post.title }}</h1>
+        <p class="text-muted mb-0">
+            Created: {{ blog_post.created_at|date:"M d, Y H:i" }} | 
+            Updated: {{ blog_post.updated_at|date:"M d, Y H:i" }}
+        </p>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0">
+        <a href="{% url 'sources:blog_post_edit' blog_post.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        <a href="{% url 'sources:blog_post_delete' blog_post.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash me-1"></i> Delete
+        </a>
+        <a href="{% url 'sources:blog_post_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-9">
+        <!-- Main Content -->
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Content</h5>
+            </div>
+            <div class="card-body">
+                <div class="blog-content">
+                    {{ blog_post.content|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-lg-3">
+        <!-- Metadata -->
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Metadata</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Slug:</strong><br>
+                    <code class="small">{{ blog_post.slug }}</code>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Status:</strong><br>
+                    {% if blog_post.published %}
+                    <span class="badge bg-success">Published</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Draft</span>
+                    {% endif %}
+                </div>
+                
+                {% if blog_post.post_idea %}
+                <div class="mb-3">
+                    <strong>Source Post Idea:</strong><br>
+                    <a href="{% url 'sources:post_idea_list' %}?search={{ blog_post.post_idea.title|urlencode }}" 
+                       class="text-decoration-none">
+                        <i class="bi bi-lightbulb me-1"></i>{{ blog_post.post_idea.title }}
+                    </a>
+                </div>
+                {% endif %}
+                
+                {% if blog_post.tags.all %}
+                <div class="mb-3">
+                    <strong>Tags:</strong><br>
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        {% for tag in blog_post.tags.all %}
+                        <span class="badge bg-secondary">{{ tag.name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if blog_post.meta_title %}
+                <div class="mb-3">
+                    <strong>Meta Title:</strong><br>
+                    <small class="text-muted">{{ blog_post.meta_title }}</small>
+                </div>
+                {% endif %}
+                
+                {% if blog_post.meta_description %}
+                <div class="mb-3">
+                    <strong>Meta Description:</strong><br>
+                    <small class="text-muted">{{ blog_post.meta_description }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'sources:blog_post_edit' blog_post.pk %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil me-1"></i> Edit
+                    </a>
+                    <a href="{% url 'sources:blog_post_delete' blog_post.pk %}" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </a>
+                    {% if blog_post.post_idea %}
+                    <a href="{% url 'sources:blog_post_generate' blog_post.post_idea.pk %}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Regenerate
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.blog-content {
+    line-height: 1.8;
+    color: #1e293b;
+}
+
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4,
+.blog-content h5,
+.blog-content h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.blog-content h1 { font-size: 2rem; }
+.blog-content h2 { font-size: 1.75rem; }
+.blog-content h3 { font-size: 1.5rem; }
+.blog-content h4 { font-size: 1.25rem; }
+
+.blog-content p {
+    margin-bottom: 1rem;
+}
+
+.blog-content ul,
+.blog-content ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.blog-content li {
+    margin-bottom: 0.5rem;
+}
+
+.blog-content strong {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.blog-content code {
+    background-color: #f1f5f9;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+}
+
+.blog-content pre {
+    background-color: #f1f5f9;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+.blog-content blockquote {
+    border-left: 4px solid #3b82f6;
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #64748b;
+    font-style: italic;
+}
+</style>
+{% endblock %}
+

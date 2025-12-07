@@ -455,8 +455,14 @@ class RAGService:
         
         return "\n".join(prompt_parts)
     
-    def _call_ollama(self, prompt: str, model: str) -> str:
-        """Call Ollama API"""
+    def _call_ollama(self, prompt: str, model: str, max_tokens: int = None) -> str:
+        """Call Ollama API
+        
+        Args:
+            prompt: The prompt to send
+            model: The model name
+            max_tokens: Optional maximum tokens (default: None, uses model default)
+        """
         try:
             import requests
         except ImportError:
@@ -485,6 +491,10 @@ class RAGService:
                 "top_p": 0.9,
             }
         }
+        
+        # Add num_predict (max_tokens) if specified
+        if max_tokens is not None:
+            payload["options"]["num_predict"] = max_tokens
         
         try:
             response = self._session.post(url, json=payload, timeout=180)
@@ -518,8 +528,14 @@ class RAGService:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Ollama API error: {str(e)}")
     
-    def _call_openai(self, prompt: str, model: str) -> str:
-        """Call OpenAI API"""
+    def _call_openai(self, prompt: str, model: str, max_tokens: int = 2000) -> str:
+        """Call OpenAI API
+        
+        Args:
+            prompt: The prompt to send
+            model: The model name
+            max_tokens: Maximum tokens to generate (default: 2000)
+        """
         try:
             from openai import OpenAI
         except ImportError:
@@ -549,9 +565,9 @@ class RAGService:
         
         # Use appropriate parameter based on model
         if is_newer_model:
-            request_params["max_completion_tokens"] = 2000
+            request_params["max_completion_tokens"] = max_tokens
         else:
-            request_params["max_tokens"] = 2000
+            request_params["max_tokens"] = max_tokens
         
         try:
             response = client.chat.completions.create(**request_params)
@@ -560,8 +576,14 @@ class RAGService:
             error_str = str(e)
             raise Exception(f"OpenAI API error: {error_str}")
     
-    def _call_gemini(self, prompt: str, model: str) -> str:
-        """Call Gemini API"""
+    def _call_gemini(self, prompt: str, model: str, max_tokens: int = 2000) -> str:
+        """Call Gemini API
+        
+        Args:
+            prompt: The prompt to send
+            model: The model name
+            max_tokens: Maximum tokens to generate (default: 2000)
+        """
         try:
             import google.generativeai as genai
         except ImportError:
@@ -579,7 +601,7 @@ class RAGService:
                 prompt,
                 generation_config={
                     "temperature": 0.7,
-                    "max_output_tokens": 2000,
+                    "max_output_tokens": max_tokens,
                 }
             )
             return response.text.strip()

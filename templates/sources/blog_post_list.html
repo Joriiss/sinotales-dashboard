@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Blog Posts - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-column flex-md-row">
+    <div>
+        <h1><i class="bi bi-file-earmark-text me-2"></i>Blog Posts
+            {% if filtered_count > 0 %}
+                <span class="badge bg-primary ms-2">{{ filtered_count }} post{{ filtered_count|pluralize }}</span>
+            {% endif %}
+        </h1>
+        <p class="text-muted mb-0">Manage your blog posts</p>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0">
+        <a href="/admin/sources/blogpost/add/" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Add New Post
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Filters</h6>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-12 col-md-4">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" name="search" id="search" class="form-control" 
+                       placeholder="Search by title, content, or meta..." value="{{ search_query }}">
+            </div>
+            <div class="col-12 col-md-2">
+                <label for="published" class="form-label">Status</label>
+                <select name="published" id="published" class="form-select">
+                    <option value="">All</option>
+                    <option value="true" {% if published_filter == 'true' %}selected{% endif %}>Published</option>
+                    <option value="false" {% if published_filter == 'false' %}selected{% endif %}>Draft</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label for="tag" class="form-label">Tag</label>
+                <select name="tag" id="tag" class="form-select">
+                    <option value="">All Tags</option>
+                    {% for tag in all_tags %}
+                    <option value="{{ tag.id }}" {% if selected_tag_id == tag.id|stringformat:"s" %}selected{% endif %}>
+                        {{ tag.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label for="sort" class="form-label">Sort By</label>
+                <select name="sort" id="sort" class="form-select">
+                    <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                    <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
+                    <option value="updated" {% if sort_by == 'updated' %}selected{% endif %}>Recently Updated</option>
+                    <option value="title_asc" {% if sort_by == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
+                    <option value="title_desc" {% if sort_by == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-funnel me-1"></i> Apply
+                </button>
+                {% if search_query or published_filter or selected_tag_id or sort_by != 'newest' %}
+                <a href="{% url 'sources:blog_post_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if blog_posts %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Post Idea</th>
+                            <th>Status</th>
+                            <th>Tags</th>
+                            <th>Created</th>
+                            <th>Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for post in blog_posts %}
+                        <tr>
+                            <td>
+                                <strong>{{ post.title }}</strong>
+                                {% if post.meta_title %}
+                                <br><small class="text-muted">Meta: {{ post.meta_title|truncatewords:8 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if post.post_idea %}
+                                <a href="{% url 'sources:post_idea_list' %}?search={{ post.post_idea.title|urlencode }}" 
+                                   class="text-decoration-none" title="{{ post.post_idea.title }}">
+                                    <i class="bi bi-lightbulb me-1"></i>{{ post.post_idea.title|truncatewords:5 }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted fst-italic">No source idea</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if post.published %}
+                                <span class="badge bg-success">Published</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Draft</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if post.tags.all %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for tag in post.tags.all|slice:":3" %}
+                                    <span class="badge bg-secondary">{{ tag.name }}</span>
+                                    {% endfor %}
+                                    {% if post.tags.count > 3 %}
+                                    <span class="badge bg-light text-dark">+{{ post.tags.count|add:"-3" }}</span>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <span class="text-muted fst-italic">No tags</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ post.created_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ post.updated_at|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'sources:blog_post_detail' post.pk %}" class="btn btn-outline-info" title="View">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a href="{% url 'sources:blog_post_edit' post.pk %}" class="btn btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <a href="{% url 'sources:blog_post_delete' post.pk %}" class="btn btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5 class="mt-3 mb-2">No blog posts found</h5>
+                <p class="text-muted mb-4">Get started by generating a blog post from a post idea</p>
+                <a href="{% url 'sources:post_idea_list' %}" class="btn btn-primary">
+                    <i class="bi bi-lightbulb me-1"></i> Go to Post Ideas
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

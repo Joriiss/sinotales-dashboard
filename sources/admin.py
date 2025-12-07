@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ImproperlyConfigured
 
 try:
-    from .models import Source, Content, Tag, ContentChunk, PostIdea, ScheduledPostIdeaGeneration
+    from .models import Source, Content, Tag, ContentChunk, PostIdea, ScheduledPostIdeaGeneration, BlogPost
 except ImportError as e:
     raise ImproperlyConfigured(f"Error importing models in admin.py: {e}")
 
@@ -141,14 +141,18 @@ class ContentAdmin(admin.ModelAdmin):
 
 @admin.register(PostIdea)
 class PostIdeaAdmin(admin.ModelAdmin):
-    list_display = ['title', 'description_preview', 'created_at', 'updated_at']
+    list_display = ['title', 'description_preview', 'blog_posts_count', 'created_at', 'updated_at']
     list_filter = ['created_at', 'updated_at']
     search_fields = ['title', 'description']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at', 'blog_posts_count', 'blog_posts_list']
     
     fieldsets = (
         ('Basic Information', {
             'fields': ('title', 'description')
+        }),
+        ('Related Blog Posts', {
+            'fields': ('blog_posts_count', 'blog_posts_list'),
+            'classes': ('collapse',),
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -162,6 +166,19 @@ class PostIdeaAdmin(admin.ModelAdmin):
             return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
         return '-'
     description_preview.short_description = 'Description'
+    
+    def blog_posts_count(self, obj):
+        """Count of blog posts created from this idea"""
+        return obj.blog_posts.count()
+    blog_posts_count.short_description = 'Blog Posts'
+    
+    def blog_posts_list(self, obj):
+        """List of blog posts created from this idea"""
+        posts = obj.blog_posts.all()
+        if posts:
+            return '\n'.join([f'• {post.title}' for post in posts])
+        return 'No blog posts created yet'
+    blog_posts_list.short_description = 'Blog Posts List'
 
 
 @admin.register(ScheduledPostIdeaGeneration)
@@ -193,5 +210,40 @@ class ScheduledPostIdeaGenerationAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Don't allow deletion
         return False
+
+
+@admin.register(BlogPost)
+class BlogPostAdmin(admin.ModelAdmin):
+    list_display = ['title', 'slug', 'post_idea', 'published', 'meta_title', 'tags_display', 'created_at', 'updated_at']
+    list_filter = ['published', 'created_at', 'updated_at', 'tags', 'post_idea']
+    search_fields = ['title', 'slug', 'content', 'meta_title', 'meta_description', 'post_idea__title']
+    readonly_fields = ['created_at', 'updated_at']
+    prepopulated_fields = {'slug': ('title',)}
+    filter_horizontal = ['tags']
+    raw_id_fields = ['post_idea']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'slug', 'post_idea', 'published')
+        }),
+        ('Content', {
+            'fields': ('content',)
+        }),
+        ('SEO', {
+            'fields': ('meta_title', 'meta_description')
+        }),
+        ('Tags', {
+            'fields': ('tags',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+    
+    def tags_display(self, obj):
+        """Display tags as comma-separated list"""
+        return ', '.join([tag.name for tag in obj.tags.all()[:5]])
+    tags_display.short_description = 'Tags'
 
 

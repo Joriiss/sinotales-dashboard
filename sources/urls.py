@@ -48,6 +48,13 @@ urlpatterns = [
     path('post-ideas/api/generate', views.post_idea_generate_api, name='post_idea_generate_api_no_slash'),  # Support both with and without trailing slash
     path('post-ideas/<int:pk>/edit/', views.post_idea_edit, name='post_idea_edit'),
     path('post-ideas/<int:pk>/delete/', views.post_idea_delete, name='post_idea_delete'),
+    path('post-ideas/<int:pk>/generate-blog-post/', views.blog_post_generate, name='blog_post_generate'),
+    
+    # Blog Posts
+    path('blog-posts/', views.blog_post_list, name='blog_post_list'),
+    path('blog-posts/<int:pk>/', views.blog_post_detail, name='blog_post_detail'),
+    path('blog-posts/<int:pk>/edit/', views.blog_post_edit, name='blog_post_edit'),
+    path('blog-posts/<int:pk>/delete/', views.blog_post_delete, name='blog_post_delete'),
 ]
 
 

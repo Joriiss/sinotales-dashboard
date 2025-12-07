@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Blog Post - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1><i class="bi bi-pencil me-2"></i>Edit Blog Post</h1>
+    <p class="text-muted mb-0">{{ blog_post.title }}</p>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-9">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Blog Post Content</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Title -->
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{{ blog_post.title }}" required maxlength="255">
+                    </div>
+                    
+                    <!-- Slug -->
+                    <div class="mb-3">
+                        <label for="slug" class="form-label">Slug <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="slug" name="slug" 
+                               value="{{ blog_post.slug }}" required maxlength="255">
+                        <small class="text-muted">URL-friendly version of the title</small>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Content <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="content" name="content" rows="20" required>{{ blog_post.content }}</textarea>
+                        <small class="text-muted">Full blog post content (HTML or Markdown)</small>
+                    </div>
+                    
+                    <!-- Meta Title -->
+                    <div class="mb-3">
+                        <label for="meta_title" class="form-label">Meta Title</label>
+                        <input type="text" class="form-control" id="meta_title" name="meta_title" 
+                               value="{{ blog_post.meta_title }}" maxlength="60">
+                        <small class="text-muted">SEO meta title (recommended: 50-60 characters)</small>
+                        <div class="mt-1">
+                            <small id="meta_title_count" class="text-muted">0 / 60 characters</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Meta Description -->
+                    <div class="mb-3">
+                        <label for="meta_description" class="form-label">Meta Description</label>
+                        <textarea class="form-control" id="meta_description" name="meta_description" 
+                                  rows="3" maxlength="160">{{ blog_post.meta_description }}</textarea>
+                        <small class="text-muted">SEO meta description (recommended: 150-160 characters)</small>
+                        <div class="mt-1">
+                            <small id="meta_description_count" class="text-muted">0 / 160 characters</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Published -->
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="published" name="published" 
+                                   {% if blog_post.published %}checked{% endif %}>
+                            <label class="form-check-label" for="published">
+                                <strong>Published</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">When published, the blog post is live and visible</small>
+                    </div>
+                    
+                    <!-- Tags -->
+                    <div class="mb-3">
+                        <label class="form-label">Tags</label>
+                        <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            {% for tag in all_tags %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tags" value="{{ tag.id }}" 
+                                       id="tag_{{ tag.id }}" {% if tag in blog_post.tags.all %}checked{% endif %}>
+                                <label class="form-check-label" for="tag_{{ tag.id }}">
+                                    {{ tag.name }}
+                                </label>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted mb-0">No tags available. <a href="/admin/sources/tag/add/">Create tags in admin</a></p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Buttons -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i> Save Changes
+                        </button>
+                        <a href="{% url 'sources:blog_post_detail' blog_post.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-lg-3">
+        <!-- Info Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Created:</strong><br>
+                    <small class="text-muted">{{ blog_post.created_at|date:"M d, Y H:i" }}</small>
+                </div>
+                <div class="mb-3">
+                    <strong>Last Updated:</strong><br>
+                    <small class="text-muted">{{ blog_post.updated_at|date:"M d, Y H:i" }}</small>
+                </div>
+                {% if blog_post.post_idea %}
+                <div class="mb-3">
+                    <strong>Source Post Idea:</strong><br>
+                    <a href="{% url 'sources:post_idea_list' %}?search={{ blog_post.post_idea.title|urlencode }}" 
+                       class="text-decoration-none small">
+                        <i class="bi bi-lightbulb me-1"></i>{{ blog_post.post_idea.title|truncatewords:5 }}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'sources:blog_post_detail' blog_post.pk %}" class="btn btn-outline-info btn-sm">
+                        <i class="bi bi-eye me-1"></i> View Post
+                    </a>
+                    {% if blog_post.post_idea %}
+                    <a href="{% url 'sources:blog_post_generate' blog_post.post_idea.pk %}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Regenerate
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Character counters for meta fields
+    const metaTitleInput = document.getElementById('meta_title');
+    const metaTitleCount = document.getElementById('meta_title_count');
+    const metaDescriptionInput = document.getElementById('meta_description');
+    const metaDescriptionCount = document.getElementById('meta_description_count');
+    
+    function updateMetaTitleCount() {
+        const length = metaTitleInput.value.length;
+        metaTitleCount.textContent = `${length} / 60 characters`;
+        if (length > 60) {
+            metaTitleCount.classList.add('text-danger');
+        } else if (length > 50) {
+            metaTitleCount.classList.remove('text-danger');
+            metaTitleCount.classList.add('text-warning');
+        } else {
+            metaTitleCount.classList.remove('text-danger', 'text-warning');
+        }
+    }
+    
+    function updateMetaDescriptionCount() {
+        const length = metaDescriptionInput.value.length;
+        metaDescriptionCount.textContent = `${length} / 160 characters`;
+        if (length > 160) {
+            metaDescriptionCount.classList.add('text-danger');
+        } else if (length > 150) {
+            metaDescriptionCount.classList.remove('text-danger');
+            metaDescriptionCount.classList.add('text-warning');
+        } else {
+            metaDescriptionCount.classList.remove('text-danger', 'text-warning');
+        }
+    }
+    
+    // Initialize counts
+    updateMetaTitleCount();
+    updateMetaDescriptionCount();
+    
+    // Update on input
+    metaTitleInput.addEventListener('input', updateMetaTitleCount);
+    metaDescriptionInput.addEventListener('input', updateMetaDescriptionCount);
+    
+    // Auto-generate slug from title if slug is empty or matches old title
+    const titleInput = document.getElementById('title');
+    const slugInput = document.getElementById('slug');
+    const originalTitle = '{{ blog_post.title }}';
+    
+    titleInput.addEventListener('blur', function() {
+        // Only auto-update slug if it hasn't been manually changed
+        if (slugInput.value === '' || slugInput.value === '{{ blog_post.slug }}') {
+            // Simple slug generation (you might want to use a library for better results)
+            const slug = titleInput.value
+                .toLowerCase()
+                .trim()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/[\s_-]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            slugInput.value = slug;
+        }
+    });
+});
+</script>
+{% endblock %}
+
