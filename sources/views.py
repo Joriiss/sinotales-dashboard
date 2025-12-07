@@ -2521,7 +2521,7 @@ def post_idea_add(request):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         description = request.POST.get('description', '').strip()
-        primary_keyword = request.POST.get('primary_keyword', '').strip()
+        primary_keyword = request.POST.get('primary_keyword', '').strip() or None
         
         if title:
             post_idea = PostIdea.objects.create(
@@ -2556,7 +2556,7 @@ def post_idea_edit(request, pk):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         description = request.POST.get('description', '').strip()
-        primary_keyword = request.POST.get('primary_keyword', '').strip()
+        primary_keyword = request.POST.get('primary_keyword', '').strip() or None
         
         if title:
             old_title = post_idea.title
@@ -2715,7 +2715,12 @@ def blog_post_edit(request, pk):
         blog_post.content = request.POST.get('content', blog_post.content)
         blog_post.meta_title = request.POST.get('meta_title', '')
         blog_post.meta_description = request.POST.get('meta_description', '')
+        blog_post.featured_image_description = request.POST.get('featured_image_description', '')
         blog_post.published = request.POST.get('published', 'off') == 'on'
+        
+        # Handle featured image upload
+        if 'featured_image' in request.FILES:
+            blog_post.featured_image = request.FILES['featured_image']
         
         # Handle tags
         selected_tag_ids = request.POST.getlist('tags')
@@ -2738,9 +2743,13 @@ def blog_post_edit(request, pk):
         except Exception as e:
             messages.error(request, f'Error updating blog post: {str(e)}')
     
+    # Prefetch blog post tags to avoid N+1 queries in template
+    blog_post_tags = set(blog_post.tags.all())
+    
     context = {
         'blog_post': blog_post,
         'all_tags': all_tags,
+        'blog_post_tags': blog_post_tags,
     }
     
     return render(request, 'sources/blog_post_edit.html', context)
@@ -2927,15 +2936,43 @@ def blog_post_generate_metadata(request, pk):
                 tags_to_add = []
                 for tag_name in tag_names[:10]:  # Limit to 10 tags
                     if tag_name:  # Ensure tag name is not empty
-                        tag, created = Tag.objects.get_or_create(
-                            name=tag_name,
-                            defaults={'slug': slugify(tag_name)}
-                        )
+                        tag_slug = slugify(tag_name)
+                        # First try to get by slug (since slug is unique)
+                        try:
+                            tag = Tag.objects.get(slug=tag_slug)
+                        except Tag.DoesNotExist:
+                            # If slug doesn't exist, try to get by name (case-insensitive)
+                            try:
+                                tag = Tag.objects.get(name__iexact=tag_name)
+                            except Tag.DoesNotExist:
+                                # Create new tag
+                                tag = Tag.objects.create(
+                                    name=tag_name,
+                                    slug=tag_slug
+                                )
                         tags_to_add.append(tag)
                 
                 # Set tags (this replaces existing tags)
                 if tags_to_add:
                     blog_post.tags.set(tags_to_add)
+            
+            # Extract featured image description - try multiple patterns
+            featured_image_desc = None
+            patterns = [
+                r'\*\*Featured Image Description:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'Featured Image Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
+            ]
+            for pattern in patterns:
+                img_desc_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+                if img_desc_match:
+                    featured_image_desc = img_desc_match.group(1).strip()
+                    # Remove markdown formatting
+                    featured_image_desc = re.sub(r'\*\*|\*|\[|\]|`', '', featured_image_desc).strip()
+                    # Remove newlines and extra spaces
+                    featured_image_desc = ' '.join(featured_image_desc.split())
+                    if featured_image_desc:
+                        blog_post.featured_image_description = featured_image_desc
+                        break
             
             # Save the blog post
             blog_post.save()
@@ -3417,7 +3454,7 @@ Response:
                         for idea_data in ideas:
                             title = idea_data.get('title', '').strip()
                             description = idea_data.get('description', '').strip()
-                            primary_keyword = idea_data.get('primary_keyword', '').strip()
+                            primary_keyword = idea_data.get('primary_keyword', '').strip() or None  # Use None instead of empty string
                             
                             if not title:
                                 continue

@@ -437,6 +437,7 @@ class PostIdea(models.Model):
     primary_keyword = models.CharField(
         max_length=100,
         blank=True,
+        null=True,
         help_text="Primary SEO keyword for this post idea (e.g., 'Chengdu travel guide', 'China visa requirements')"
     )
     title_embedding = VectorField(
@@ -622,6 +623,16 @@ class BlogPost(models.Model):
         related_name='blog_posts',
         blank=True,
         help_text="Tags for categorizing this blog post"
+    )
+    featured_image = models.ImageField(
+        upload_to='blog_posts/featured_images/',
+        blank=True,
+        null=True,
+        help_text="Featured image for the blog post"
+    )
+    featured_image_description = models.TextField(
+        blank=True,
+        help_text="Description of what the featured image should show (generated during metadata generation)"
     )
     
     # Timestamps

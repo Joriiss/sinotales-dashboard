@@ -216,7 +216,7 @@ class ScheduledPostIdeaGenerationAdmin(admin.ModelAdmin):
 class BlogPostAdmin(admin.ModelAdmin):
     list_display = ['title', 'slug', 'post_idea', 'published', 'meta_title', 'tags_display', 'created_at', 'updated_at']
     list_filter = ['published', 'created_at', 'updated_at', 'tags', 'post_idea']
-    search_fields = ['title', 'slug', 'content', 'meta_title', 'meta_description', 'post_idea__title']
+    search_fields = ['title', 'slug', 'content', 'meta_title', 'meta_description', 'post_idea__title', 'featured_image_description']
     readonly_fields = ['created_at', 'updated_at']
     prepopulated_fields = {'slug': ('title',)}
     filter_horizontal = ['tags']
@@ -228,6 +228,9 @@ class BlogPostAdmin(admin.ModelAdmin):
         }),
         ('Content', {
             'fields': ('content',)
+        }),
+        ('Featured Image', {
+            'fields': ('featured_image', 'featured_image_description')
         }),
         ('SEO', {
             'fields': ('meta_title', 'meta_description')

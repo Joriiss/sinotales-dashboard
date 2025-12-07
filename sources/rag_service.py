@@ -863,4 +863,3 @@ class RAGService:
             })
         
         return answer, sources
-

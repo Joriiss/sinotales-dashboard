@@ -15,7 +15,7 @@
                 <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Blog Post Content</h5>
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     
                     <!-- Title -->
@@ -74,6 +74,31 @@
                         <small class="text-muted">When published, the blog post is live and visible</small>
                     </div>
                     
+                    <!-- Featured Image -->
+                    <div class="mb-3">
+                        <label for="featured_image" class="form-label">Featured Image</label>
+                        {% if blog_post.featured_image %}
+                        <div class="mb-2">
+                            <img src="{{ blog_post.featured_image.url }}" alt="Current featured image" 
+                                 class="img-thumbnail" style="max-width: 300px; max-height: 200px;">
+                            <div class="mt-1">
+                                <small class="text-muted">Current image: {{ blog_post.featured_image.name }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <input type="file" class="form-control" id="featured_image" name="featured_image" 
+                               accept="image/*">
+                        <small class="text-muted">Upload a featured image for this blog post</small>
+                    </div>
+                    
+                    <!-- Featured Image Description -->
+                    <div class="mb-3">
+                        <label for="featured_image_description" class="form-label">Featured Image Description</label>
+                        <textarea class="form-control" id="featured_image_description" name="featured_image_description" 
+                                  rows="3">{{ blog_post.featured_image_description }}</textarea>
+                        <small class="text-muted">Description of what the featured image should show (generated during metadata generation)</small>
+                    </div>
+                    
                     <!-- Tags -->
                     <div class="mb-3">
                         <label class="form-label">Tags</label>
@@ -81,7 +106,7 @@
                             {% for tag in all_tags %}
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="tags" value="{{ tag.id }}" 
-                                       id="tag_{{ tag.id }}" {% if tag in blog_post.tags.all %}checked{% endif %}>
+                                       id="tag_{{ tag.id }}" {% if tag in blog_post_tags %}checked{% endif %}>
                                 <label class="form-check-label" for="tag_{{ tag.id }}">
                                     {{ tag.name }}
                                 </label>
