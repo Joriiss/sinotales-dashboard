@@ -44,59 +44,59 @@ def dashboard(request):
     
     if cached_stats is None:
         # Basic counts - combine where possible
-    total_sources = Source.objects.count()
-    total_contents = Content.objects.count()
-    active_sources = Source.objects.filter(is_active=True).count()
+        total_sources = Source.objects.count()
+        total_contents = Content.objects.count()
+        active_sources = Source.objects.filter(is_active=True).count()
     
-    # Content breakdown by type
+        # Content breakdown by type
         content_by_type = list(Content.objects.values('content_type').annotate(
         count=Count('id')
         ).order_by('-count'))
     
-    # Source breakdown by type
+        # Source breakdown by type
         sources_by_type = list(Source.objects.values('source_type').annotate(
         count=Count('id')
         ).order_by('-count'))
     
-    # Content with text
-    contents_with_text = Content.objects.filter(has_content=True).count()
-    contents_processed = Content.objects.filter(processed=True).count()
+        # Content with text
+        contents_with_text = Content.objects.filter(has_content=True).count()
+        contents_processed = Content.objects.filter(processed=True).count()
     
-    # Calculate total words and data size
-    # Use database aggregation for better performance
-    total_chars_result = Content.objects.filter(has_content=True).aggregate(
+        # Calculate total words and data size
+        # Use database aggregation for better performance
+        total_chars_result = Content.objects.filter(has_content=True).aggregate(
         total_length=Sum(Length('content'))
-    )
-    total_chars = total_chars_result['total_length'] or 0
+        )
+        total_chars = total_chars_result['total_length'] or 0
     
-    # Estimate: ~5 chars per word on average
-    total_words = total_chars // 5 if total_chars else 0
-    # Estimate: UTF-8 encoding, average 2 bytes per character
-    total_mb = (total_chars * 2) / (1024 * 1024) if total_chars else 0
+        # Estimate: ~5 chars per word on average
+        total_words = total_chars // 5 if total_chars else 0
+        # Estimate: UTF-8 encoding, average 2 bytes per character
+        total_mb = (total_chars * 2) / (1024 * 1024) if total_chars else 0
     
-    # Language breakdown
+        # Language breakdown
         sources_by_language = list(Source.objects.values('language').annotate(
         count=Count('id')
         ).order_by('-count'))
     
-    # Tags statistics
-    total_tags = Tag.objects.count()
-    contents_with_tags = Content.objects.filter(tags__isnull=False).distinct().count()
+        # Tags statistics
+        total_tags = Tag.objects.count()
+        contents_with_tags = Content.objects.filter(tags__isnull=False).distinct().count()
     
-    # Chunks and embeddings statistics
-    total_chunks = ContentChunk.objects.count()
-    chunks_with_embeddings = ContentChunk.objects.filter(embedding__isnull=False).count()
-    contents_with_embeddings = Content.objects.filter(
+        # Chunks and embeddings statistics
+        total_chunks = ContentChunk.objects.count()
+        chunks_with_embeddings = ContentChunk.objects.filter(embedding__isnull=False).count()
+        contents_with_embeddings = Content.objects.filter(
         chunks__embedding__isnull=False
-    ).distinct().count()
+        ).distinct().count()
     
-    # Calculate embedding percentage
-    embedding_percentage = (
+        # Calculate embedding percentage
+        embedding_percentage = (
         (chunks_with_embeddings / total_chunks * 100) 
         if total_chunks > 0 else 0
-    )
+        )
     
-    # Top tags
+        # Top tags
         top_tags = list(Tag.objects.annotate(
         content_count=Count('contents')
         ).filter(content_count__gt=0).order_by('-content_count')[:10])
@@ -2474,8 +2474,8 @@ def post_idea_generate(request):
                         f'All {skipped_similar} generated idea(s) were too similar to existing ideas and were skipped. '
                         f'Try generating ideas with different tags/content, or lower the similarity threshold.'
                     )
-            else:
-                messages.warning(request, 'No valid ideas were generated. Please try again.')
+                else:
+                    messages.warning(request, 'No valid ideas were generated. Please try again.')
             return redirect('sources:post_idea_list')
         else:
             messages.error(request, error_message)
@@ -3295,6 +3295,8 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
         batch_size = max(ideas_still_needed, 5 + (total_attempts - 1) * 2)  # 5, 7, 9, 11, 13...
         
         # Increase creativity on retries
+        response_text = None
+        api_error = None
         creativity_boost = ""
         if total_attempts > 1:
             creativity_boost = f"""
@@ -3365,9 +3367,6 @@ Response:
     except ImportError:
         return False, 0, [], 'requests library required. Install with: pip install requests', 0
     
-    response_text = None
-    api_error = None
-    
     try:
         if provider == 'ollama':
             # Call Ollama
@@ -3400,7 +3399,7 @@ Response:
                 api_error = 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
+                break  # Break out of try to continue loop
             
             try:
                 from openai import OpenAI
@@ -3408,7 +3407,7 @@ Response:
                 api_error = 'openai library required. Install with: pip install openai'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
+                break  # Break out of try to continue loop
             
             client = OpenAI(api_key=api_key)
             
@@ -3448,7 +3447,7 @@ Response:
                 api_error = 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
+                break  # Break out of try to continue loop
             
             try:
                 import google.generativeai as genai
@@ -3456,7 +3455,7 @@ Response:
                 api_error = 'google-generativeai library required. Install with: pip install google-generativeai'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
+                break  # Break out of try to continue loop
             
             genai.configure(api_key=api_key)
             genai_model = genai.GenerativeModel(model)
@@ -3476,7 +3475,7 @@ Response:
             api_error = f'Invalid provider: {provider}'
             if total_attempts >= max_retries:
                 return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-            continue
+            break  # Break out of try to continue loop
         
         # Parse JSON response
         if response_text:
@@ -3499,98 +3498,98 @@ Response:
                     for idea_data in ideas:
                         title = idea_data.get('title', '').strip()
                         description = idea_data.get('description', '').strip()
-                            primary_keyword = idea_data.get('primary_keyword', '').strip() or None  # Use None instead of empty string
-                            
-                            if not title:
-                                continue
-                            
-                            # Check for similarity using embeddings if available
-                            too_similar = False
-                            if embedding_service and existing_ideas_with_embeddings:
-                                # Enable debug logging on retries to see similarity scores
-                                debug_mode = total_attempts > 1
-                                too_similar = is_idea_too_similar_with_embeddings(
-                                    title, 
-                                    existing_ideas_with_embeddings,
-                                    embedding_service,
-                                    similarity_threshold,
-                                    debug=debug_mode
-                                )
-                            
-                            if too_similar:
-                                batch_skipped_similar += 1
-                                batch_skipped_titles.append(title)
-                                if total_attempts == 1:
-                                    print(f"Skipping similar idea: {title}")
-                                # Debug output is already printed by the function
-                                continue
-                            
-                            # Generate embedding for the new idea
-                            new_embedding = None
-                            if embedding_service:
-                                try:
-                                    new_embedding = embedding_service.generate_embedding(title)
-                                except Exception as e:
-                                    print(f"Warning: Could not generate embedding for '{title}': {str(e)}")
-                            
-                            # Create the post idea
-                            post_idea = PostIdea.objects.create(
-                                title=title,
-                                description=description,
-                                primary_keyword=primary_keyword,
-                                title_embedding=new_embedding
-                            )
-                            batch_created_count += 1
-                            batch_created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
-                            
-                            # Add to existing list for checking against in the same batch
-                            if new_embedding:
-                                existing_ideas_with_embeddings.append(post_idea)
-                            
-                            # Stop if we have enough ideas
-                            if batch_created_count >= ideas_still_needed:
-                                break
+                        primary_keyword = idea_data.get('primary_keyword', '').strip() or None  # Use None instead of empty string
                         
-                        # Update totals
-                        total_created_count += batch_created_count
-                        total_created_ideas.extend(batch_created_ideas)
-                        total_skipped_similar += batch_skipped_similar
-                        total_skipped_titles.extend(batch_skipped_titles)
-                        ideas_still_needed -= batch_created_count
-                        
-                        # If we got some valid ideas but not enough, continue the loop
-                        if ideas_still_needed > 0:
-                            print(f"Generated {batch_created_count} valid ideas, {ideas_still_needed} still needed. Retrying...")
+                        if not title:
                             continue
-                        else:
-                            # We have enough ideas, break out of retry loop
+                        
+                        # Check for similarity using embeddings if available
+                        too_similar = False
+                        if embedding_service and existing_ideas_with_embeddings:
+                            # Enable debug logging on retries to see similarity scores
+                            debug_mode = total_attempts > 1
+                            too_similar = is_idea_too_similar_with_embeddings(
+                                title, 
+                                existing_ideas_with_embeddings,
+                                embedding_service,
+                                similarity_threshold,
+                                debug=debug_mode
+                            )
+                        
+                        if too_similar:
+                            batch_skipped_similar += 1
+                            batch_skipped_titles.append(title)
+                            if total_attempts == 1:
+                                print(f"Skipping similar idea: {title}")
+                            # Debug output is already printed by the function
+                            continue
+                        
+                        # Generate embedding for the new idea
+                        new_embedding = None
+                        if embedding_service:
+                            try:
+                                new_embedding = embedding_service.generate_embedding(title)
+                            except Exception as e:
+                                print(f"Warning: Could not generate embedding for '{title}': {str(e)}")
+                        
+                        # Create the post idea
+                        post_idea = PostIdea.objects.create(
+                            title=title,
+                            description=description,
+                            primary_keyword=primary_keyword,
+                            title_embedding=new_embedding
+                        )
+                        batch_created_count += 1
+                        batch_created_ideas.append({'id': post_idea.id, 'title': post_idea.title})
+                        
+                        # Add to existing list for checking against in the same batch
+                        if new_embedding:
+                            existing_ideas_with_embeddings.append(post_idea)
+                        
+                        # Stop if we have enough ideas
+                        if batch_created_count >= ideas_still_needed:
                             break
+                        
+                    # Update totals
+                    total_created_count += batch_created_count
+                    total_created_ideas.extend(batch_created_ideas)
+                    total_skipped_similar += batch_skipped_similar
+                    total_skipped_titles.extend(batch_skipped_titles)
+                    ideas_still_needed -= batch_created_count
+                    
+                    # If we got some valid ideas but not enough, continue the loop
+                    if ideas_still_needed > 0:
+                        print(f"Generated {batch_created_count} valid ideas, {ideas_still_needed} still needed. Retrying...")
+                        break  # Break out of try to continue while loop
+                    else:
+                        # We have enough ideas, break out of retry loop
+                        break
                     
                 except json.JSONDecodeError:
                     api_error = f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}'
                     if total_attempts >= max_retries:
                         return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
+                    break  # Break out of try to continue while loop
             else:
                 api_error = f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
+                break  # Break out of try to continue while loop
         else:
-                api_error = f'No response received from {provider.upper()}.'
-                if total_attempts >= max_retries:
-                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                continue
+            api_error = f'No response received from {provider.upper()}.'
+            if total_attempts >= max_retries:
+                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+            break  # Break out of try to continue while loop
             
     except requests.exceptions.ConnectionError as e:
         if provider == 'ollama':
             ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-                api_error = f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
+            api_error = f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
         else:
-                api_error = f'Connection error: {str(e)}'
-            if total_attempts >= max_retries:
-                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-            continue
+            api_error = f'Connection error: {str(e)}'
+        if total_attempts >= max_retries:
+            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+        # Continue while loop
     except Exception as e:
         error_str = str(e)
         # Check for API key errors
