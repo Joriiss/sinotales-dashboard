@@ -368,6 +368,7 @@ class ActivityLog(models.Model):
         ('blog_post_created', 'Blog Post Created'),
         ('blog_post_updated', 'Blog Post Updated'),
         ('blog_post_deleted', 'Blog Post Deleted'),
+        ('blog_post_image_uploaded', 'Blog Post Image Uploaded'),
     ]
     
     activity_type = models.CharField(
@@ -580,6 +581,49 @@ class ScheduledPostIdeaGeneration(models.Model):
         super().save(*args, **kwargs)
 
 
+class BlogPostImage(models.Model):
+    """
+    Images associated with blog posts (from content or featured images)
+    """
+    blog_post = models.ForeignKey(
+        'BlogPost',
+        on_delete=models.CASCADE,
+        related_name='images',
+        help_text="Blog post this image belongs to"
+    )
+    filename = models.CharField(
+        max_length=255,
+        help_text="Original filename or identifier from content (e.g., 'leshan-giant-buddha-river-view.jpg')"
+    )
+    alt_text = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Alt text for the image"
+    )
+    image_file = models.ImageField(
+        upload_to='blog_posts/images/',
+        blank=True,
+        null=True,
+        help_text="Uploaded image file"
+    )
+    is_featured = models.BooleanField(
+        default=False,
+        help_text="Whether this is the featured image"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'blog_post_images'
+        unique_together = [['blog_post', 'filename']]
+        indexes = [
+            models.Index(fields=['blog_post', 'filename']),
+        ]
+    
+    def __str__(self):
+        return f"{self.blog_post.title} - {self.filename}"
+
+
 class BlogPost(models.Model):
     """
     Blog posts for the China travel blog
@@ -630,9 +674,10 @@ class BlogPost(models.Model):
         null=True,
         help_text="Featured image for the blog post"
     )
-    featured_image_description = models.TextField(
+    featured_image_description = models.CharField(
+        max_length=200,
         blank=True,
-        help_text="Description of what the featured image should show (generated during metadata generation)"
+        help_text="Alt text for the featured image (concise description, 50-125 characters recommended)"
     )
     
     # Timestamps

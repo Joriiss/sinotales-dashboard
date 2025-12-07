@@ -56,6 +56,10 @@ urlpatterns = [
     path('blog-posts/<int:pk>/edit/', views.blog_post_edit, name='blog_post_edit'),
     path('blog-posts/<int:pk>/delete/', views.blog_post_delete, name='blog_post_delete'),
     path('blog-posts/<int:pk>/generate-metadata/', views.blog_post_generate_metadata, name='blog_post_generate_metadata'),
+    
+    # Blog Post Images
+    path('blog-posts/images/', views.blog_post_images_list, name='blog_post_images_list'),
+    path('blog-posts/<int:pk>/upload-image/', views.blog_post_image_upload, name='blog_post_image_upload'),
 ]
 
 

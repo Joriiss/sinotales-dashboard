@@ -41,6 +41,7 @@
 
 **4. Visual SEO Instructions**
 
+- **Image Limit:** Include a **maximum of 2 images** per blog post. Choose the 2 most relevant and impactful images that best support the content.
 - **Image Placeholders:** Insert HTML `<img>` tags with placeholder attributes where images should logically go.
 - **Format:** Use `<img src="#" alt="Descriptive alt text here" class="blog-image" data-filename="suggested-filename.jpg">` format
 - **Alt Text Generation:** For every image, write specific, descriptive alt text that describes what's in the image

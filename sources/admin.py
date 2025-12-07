@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ImproperlyConfigured
 
 try:
-    from .models import Source, Content, Tag, ContentChunk, PostIdea, ScheduledPostIdeaGeneration, BlogPost
+    from .models import Source, Content, Tag, ContentChunk, PostIdea, ScheduledPostIdeaGeneration, BlogPost, BlogPostImage
 except ImportError as e:
     raise ImproperlyConfigured(f"Error importing models in admin.py: {e}")
 
@@ -210,6 +210,34 @@ class ScheduledPostIdeaGenerationAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Don't allow deletion
         return False
+
+
+@admin.register(BlogPostImage)
+class BlogPostImageAdmin(admin.ModelAdmin):
+    list_display = ['blog_post', 'filename', 'is_featured', 'has_file', 'created_at']
+    list_filter = ['is_featured', 'created_at']
+    search_fields = ['blog_post__title', 'filename', 'alt_text']
+    readonly_fields = ['created_at', 'updated_at', 'has_file']
+    raw_id_fields = ['blog_post']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('blog_post', 'filename', 'is_featured')
+        }),
+        ('Image', {
+            'fields': ('image_file', 'alt_text', 'has_file')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+    
+    def has_file(self, obj):
+        """Check if image file exists"""
+        return bool(obj.image_file)
+    has_file.boolean = True
+    has_file.short_description = 'Has File'
 
 
 @admin.register(BlogPost)

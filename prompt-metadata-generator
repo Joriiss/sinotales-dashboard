@@ -26,10 +26,11 @@
 4.  **Tags (Wordpress/CMS):**
     - Provide 5-8 relevant tags based on the actual entities mentioned in the HTML (e.g., specific apps, cities, or visa types discussed).
 
-5.  **Featured Image Description:**
-    - Provide a detailed description of what the featured image should show (e.g., "Aerial view of the Great Wall of China at sunset with mountains in the background" or "Street food vendor in Chengdu's night market serving spicy Sichuan noodles").
-    - Be specific about the scene, location, mood, and key visual elements.
-    - This description will be used to guide image selection or generation.
+5.  **Featured Image Alt Text:**
+    - Provide a concise alt text description for the featured image (50-125 characters recommended).
+    - Format: Short, descriptive text suitable for image alt attributes and SEO.
+    - Examples: "Leshan Giant Buddha carved into red sandstone cliff" or "Chengdu night market street food vendor serving Sichuan noodles".
+    - Keep it brief and focused on the main subject and location.
 
 **Format:**
 Please provide the output in the following format:
@@ -38,7 +39,7 @@ Please provide the output in the following format:
 **Meta Description:** [Insert Description Here]
 **URL Slug:** [Insert Slug Here]
 **Tags:** [Tag 1, Tag 2, Tag 3...]
-**Featured Image Description:** [Detailed description of what the featured image should show]
+**Featured Image Alt Text:** [Concise alt text description, 50-125 characters]
 
 ***
 

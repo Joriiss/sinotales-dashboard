@@ -479,8 +479,13 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if 'blog-posts' in request.path %}active{% endif %}" href="{% url 'sources:blog_post_list' %}">
+                            <a class="nav-link {% if 'blog-posts' in request.path and 'images' not in request.path %}active{% endif %}" href="{% url 'sources:blog_post_list' %}">
                                 <i class="bi bi-file-earmark-text"></i> Blog Posts
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'blog-posts/images' in request.path %}active{% endif %}" href="{% url 'sources:blog_post_images_list' %}">
+                                <i class="bi bi-images"></i> Images
                             </a>
                         </li>
                         <li class="nav-item">

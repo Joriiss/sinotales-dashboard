@@ -91,12 +91,13 @@
                         <small class="text-muted">Upload a featured image for this blog post</small>
                     </div>
                     
-                    <!-- Featured Image Description -->
+                    <!-- Featured Image Alt Text -->
                     <div class="mb-3">
-                        <label for="featured_image_description" class="form-label">Featured Image Description</label>
-                        <textarea class="form-control" id="featured_image_description" name="featured_image_description" 
-                                  rows="3">{{ blog_post.featured_image_description }}</textarea>
-                        <small class="text-muted">Description of what the featured image should show (generated during metadata generation)</small>
+                        <label for="featured_image_description" class="form-label">Featured Image Alt Text</label>
+                        <input type="text" class="form-control" id="featured_image_description" name="featured_image_description" 
+                               value="{{ blog_post.featured_image_description }}" maxlength="200"
+                               placeholder="e.g., Leshan Giant Buddha carved into red sandstone cliff">
+                        <small class="text-muted">Concise alt text for the featured image (50-125 characters recommended, max 200)</small>
                     </div>
                     
                     <!-- Tags -->

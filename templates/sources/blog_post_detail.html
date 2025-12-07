@@ -97,6 +97,24 @@
                     <small class="text-muted">{{ blog_post.meta_description }}</small>
                 </div>
                 {% endif %}
+                
+                {% if blog_post.featured_image %}
+                <div class="mb-3">
+                    <strong>Featured Image:</strong><br>
+                    <img src="{{ blog_post.featured_image.url }}" 
+                         alt="{% if blog_post.featured_image_description %}{{ blog_post.featured_image_description }}{% else %}Featured image{% endif %}" 
+                         class="img-thumbnail mt-1" style="max-width: 100%; height: auto;">
+                    {% if blog_post.featured_image_description %}
+                    <small class="text-muted d-block mt-1"><strong>Alt Text:</strong> {{ blog_post.featured_image_description }}</small>
+                    {% endif %}
+                </div>
+                {% elif blog_post.featured_image_description %}
+                <div class="mb-3">
+                    <strong>Featured Image Alt Text:</strong><br>
+                    <small class="text-muted">{{ blog_post.featured_image_description }}</small>
+                    <br><small class="text-muted fst-italic">(No image uploaded yet)</small>
+                </div>
+                {% endif %}
             </div>
         </div>
         

@@ -12,8 +12,9 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.utils.html import json_script
 from django.utils.text import slugify
+from django.core.cache import cache
 import json
-from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration, BlogPost
+from .models import Source, Content, Tag, ContentChunk, ActivityLog, Settings, PostIdea, ScheduledPostIdeaGeneration, BlogPost, BlogPostImage
 import random
 from .forms import SourceForm, ContentForm, SettingsForm
 from .rag_service import RAGService
@@ -37,94 +38,105 @@ class CustomLogoutView(LogoutView):
 @login_required
 def dashboard(request):
     """Dashboard homepage with statistics"""
-    # Basic counts
-    total_sources = Source.objects.count()
-    total_contents = Content.objects.count()
-    active_sources = Source.objects.filter(is_active=True).count()
+    # Cache dashboard statistics for 10 minutes to improve performance
+    cache_key = 'dashboard_stats'
+    cached_stats = cache.get(cache_key)
     
-    # Content breakdown by type
-    content_by_type = Content.objects.values('content_type').annotate(
-        count=Count('id')
-    ).order_by('-count')
+    if cached_stats is None:
+        # Basic counts - combine where possible
+        total_sources = Source.objects.count()
+        total_contents = Content.objects.count()
+        active_sources = Source.objects.filter(is_active=True).count()
+        
+        # Content breakdown by type
+        content_by_type = list(Content.objects.values('content_type').annotate(
+            count=Count('id')
+        ).order_by('-count'))
+        
+        # Source breakdown by type
+        sources_by_type = list(Source.objects.values('source_type').annotate(
+            count=Count('id')
+        ).order_by('-count'))
+        
+        # Content with text
+        contents_with_text = Content.objects.filter(has_content=True).count()
+        contents_processed = Content.objects.filter(processed=True).count()
+        
+        # Calculate total words and data size
+        # Use database aggregation for better performance
+        total_chars_result = Content.objects.filter(has_content=True).aggregate(
+            total_length=Sum(Length('content'))
+        )
+        total_chars = total_chars_result['total_length'] or 0
+        
+        # Estimate: ~5 chars per word on average
+        total_words = total_chars // 5 if total_chars else 0
+        # Estimate: UTF-8 encoding, average 2 bytes per character
+        total_mb = (total_chars * 2) / (1024 * 1024) if total_chars else 0
+        
+        # Language breakdown
+        sources_by_language = list(Source.objects.values('language').annotate(
+            count=Count('id')
+        ).order_by('-count'))
+        
+        # Tags statistics
+        total_tags = Tag.objects.count()
+        contents_with_tags = Content.objects.filter(tags__isnull=False).distinct().count()
+        
+        # Chunks and embeddings statistics
+        total_chunks = ContentChunk.objects.count()
+        chunks_with_embeddings = ContentChunk.objects.filter(embedding__isnull=False).count()
+        contents_with_embeddings = Content.objects.filter(
+            chunks__embedding__isnull=False
+        ).distinct().count()
+        
+        # Calculate embedding percentage
+        embedding_percentage = (
+            (chunks_with_embeddings / total_chunks * 100) 
+            if total_chunks > 0 else 0
+        )
+        
+        # Top tags
+        top_tags = list(Tag.objects.annotate(
+            content_count=Count('contents')
+        ).filter(content_count__gt=0).order_by('-content_count')[:10])
+        
+        # Cache the expensive aggregations
+        cached_stats = {
+            'total_sources': total_sources,
+            'total_contents': total_contents,
+            'active_sources': active_sources,
+            'content_by_type': content_by_type,
+            'sources_by_type': sources_by_type,
+            'contents_with_text': contents_with_text,
+            'contents_processed': contents_processed,
+            'total_words': total_words,
+            'total_mb': total_mb,
+            'sources_by_language': sources_by_language,
+            'total_tags': total_tags,
+            'contents_with_tags': contents_with_tags,
+            'total_chunks': total_chunks,
+            'chunks_with_embeddings': chunks_with_embeddings,
+            'contents_with_embeddings': contents_with_embeddings,
+            'embedding_percentage': embedding_percentage,
+            'top_tags': top_tags,
+        }
+        cache.set(cache_key, cached_stats, 600)  # Cache for 10 minutes
     
-    # Source breakdown by type
-    sources_by_type = Source.objects.values('source_type').annotate(
-        count=Count('id')
-    ).order_by('-count')
-    
-    # Content with text
-    contents_with_text = Content.objects.filter(has_content=True).count()
-    contents_processed = Content.objects.filter(processed=True).count()
-    
-    # Calculate total words and data size
-    # Use database aggregation for better performance
-    total_chars_result = Content.objects.filter(has_content=True).aggregate(
-        total_length=Sum(Length('content'))
-    )
-    total_chars = total_chars_result['total_length'] or 0
-    
-    # Estimate: ~5 chars per word on average
-    total_words = total_chars // 5 if total_chars else 0
-    # Estimate: UTF-8 encoding, average 2 bytes per character
-    total_mb = (total_chars * 2) / (1024 * 1024) if total_chars else 0
-    
-    # Language breakdown
-    sources_by_language = Source.objects.values('language').annotate(
-        count=Count('id')
-    ).order_by('-count')
-    
-    # Recent activity
+    # Recent activity - don't cache, should be fresh
     recent_contents = Content.objects.select_related('source').prefetch_related('tags').order_by('-created_at')[:10]
     recent_sources = Source.objects.order_by('-created_at')[:5]
     
-    # Content by source (top sources)
+    # Content by source (top sources) - don't cache, should be fresh
     top_sources = Source.objects.annotate(
         content_count=Count('contents')
     ).filter(content_count__gt=0).order_by('-content_count')[:10]
     
-    # Tags statistics
-    total_tags = Tag.objects.count()
-    contents_with_tags = Content.objects.filter(tags__isnull=False).distinct().count()
-    
-    # Chunks and embeddings statistics
-    total_chunks = ContentChunk.objects.count()
-    chunks_with_embeddings = ContentChunk.objects.filter(embedding__isnull=False).count()
-    contents_with_embeddings = Content.objects.filter(
-        chunks__embedding__isnull=False
-    ).distinct().count()
-    
-    # Calculate embedding percentage
-    embedding_percentage = (
-        (chunks_with_embeddings / total_chunks * 100) 
-        if total_chunks > 0 else 0
-    )
-    
-    # Top tags
-    top_tags = Tag.objects.annotate(
-        content_count=Count('contents')
-    ).filter(content_count__gt=0).order_by('-content_count')[:10]
-    
     context = {
-        'total_sources': total_sources,
-        'total_contents': total_contents,
-        'active_sources': active_sources,
-        'contents_with_text': contents_with_text,
-        'contents_processed': contents_processed,
-        'content_by_type': content_by_type,
-        'sources_by_type': sources_by_type,
-        'sources_by_language': sources_by_language,
-        'total_words': total_words,
-        'total_mb': total_mb,
+        **cached_stats,  # Unpack cached statistics
         'recent_contents': recent_contents,
         'recent_sources': recent_sources,
         'top_sources': top_sources,
-        'total_tags': total_tags,
-        'contents_with_tags': contents_with_tags,
-        'total_chunks': total_chunks,
-        'chunks_with_embeddings': chunks_with_embeddings,
-        'contents_with_embeddings': contents_with_embeddings,
-        'embedding_percentage': embedding_percentage,
-        'top_tags': top_tags,
     }
     return render(request, 'sources/dashboard.html', context)
 
@@ -1981,11 +1993,16 @@ def content_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    # Optimize: Only load sources and tags once, they're used for filters
+    # These could be cached, but for now just ensure they're efficient
+    sources = Source.objects.all().only('id', 'name', 'source_type')
+    tags = Tag.objects.all().only('id', 'name').order_by('name')
+    
     context = {
         'page_obj': page_obj,
         'contents': page_obj,
-        'sources': Source.objects.all(),
-        'tags': Tag.objects.all().order_by('name'),
+        'sources': sources,
+        'tags': tags,
         'source_filter': source_filter,
         'content_type_filter': content_type_filter,
         'has_content_filter': has_content_filter,
@@ -2615,20 +2632,26 @@ def post_idea_delete(request, pk):
 @login_required
 def blog_post_list(request):
     """Display list of all blog posts"""
-    blog_posts = BlogPost.objects.all()
+    # Optimize queryset: select_related for ForeignKey, prefetch_related for ManyToMany
+    # Base queryset with optimizations
+    base_queryset = BlogPost.objects.select_related('post_idea').prefetch_related('tags')
     
     # Get total count before filtering
-    total_count = blog_posts.count()
+    total_count = base_queryset.count()
     
     # Apply search filter
     search_query = request.GET.get('search', '').strip()
     if search_query:
-        blog_posts = blog_posts.filter(
+        # For search, we need to include content field for searching
+        blog_posts = base_queryset.filter(
             Q(title__icontains=search_query) | 
             Q(content__icontains=search_query) |
             Q(meta_title__icontains=search_query) |
             Q(meta_description__icontains=search_query)
         )
+    else:
+        # For non-search queries, defer the large content field
+        blog_posts = base_queryset.defer('content')
     
     # Filter by published status if provided
     published_filter = request.GET.get('published', '').strip()
@@ -2642,7 +2665,7 @@ def blog_post_list(request):
     if tag_id:
         try:
             tag = Tag.objects.get(pk=tag_id)
-            blog_posts = blog_posts.filter(tags=tag)
+            blog_posts = blog_posts.filter(tags=tag).distinct()
         except Tag.DoesNotExist:
             pass
     
@@ -2669,14 +2692,24 @@ def blog_post_list(request):
         # Default: newest first
         blog_posts = blog_posts.order_by('-created_at')
     
-    # Get filtered count
-    filtered_count = blog_posts.count()
+    # Pagination
+    paginator = Paginator(blog_posts, 25)  # Show 25 blog posts per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
-    # Get all tags for filter dropdown
-    all_tags = Tag.objects.all().order_by('name')
+    # Get filtered count from paginator
+    filtered_count = paginator.count
+    
+    # Get all tags for filter dropdown (cached for 1 hour)
+    cache_key = 'all_tags_list'
+    all_tags = cache.get(cache_key)
+    if all_tags is None:
+        all_tags = list(Tag.objects.all().order_by('name'))
+        cache.set(cache_key, all_tags, 3600)  # Cache for 1 hour
     
     context = {
-        'blog_posts': blog_posts,
+        'blog_posts': page_obj,
+        'page_obj': page_obj,
         'search_query': search_query,
         'sort_by': sort_by,
         'total_count': total_count,
@@ -2729,6 +2762,10 @@ def blog_post_edit(request, pk):
         # Save
         try:
             blog_post.save()
+            
+            # Parse and sync image records from content
+            _parse_and_create_blog_post_images(blog_post)
+            
             messages.success(request, f'Blog post "{blog_post.title}" updated successfully!')
             
             # Log activity
@@ -2956,11 +2993,13 @@ def blog_post_generate_metadata(request, pk):
                 if tags_to_add:
                     blog_post.tags.set(tags_to_add)
             
-            # Extract featured image description - try multiple patterns
+            # Extract featured image alt text - try multiple patterns
             featured_image_desc = None
             patterns = [
-                r'\*\*Featured Image Description:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
-                r'Featured Image Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'\*\*Featured Image Alt Text:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'Featured Image Alt Text:\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'\*\*Featured Image Description:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',  # Fallback for old format
+                r'Featured Image Description:\s*(.+?)(?=\n\*\*|\n\n|$)',  # Fallback for old format
             ]
             for pattern in patterns:
                 img_desc_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
@@ -2970,7 +3009,10 @@ def blog_post_generate_metadata(request, pk):
                     featured_image_desc = re.sub(r'\*\*|\*|\[|\]|`', '', featured_image_desc).strip()
                     # Remove newlines and extra spaces
                     featured_image_desc = ' '.join(featured_image_desc.split())
+                    # Limit to 200 characters for alt text (reasonable limit)
                     if featured_image_desc:
+                        if len(featured_image_desc) > 200:
+                            featured_image_desc = featured_image_desc[:197] + '...'
                         blog_post.featured_image_description = featured_image_desc
                         break
             
@@ -3138,6 +3180,9 @@ def blog_post_generate(request, pk):
                 post_idea=post_idea
                 # meta_title and meta_description will be handled later
             )
+            
+            # Parse and create image records from content
+            _parse_and_create_blog_post_images(blog_post)
             
             # Copy tags from post idea if any (we'll need to add tags to PostIdea or handle differently)
             # For now, we'll leave tags empty
@@ -4564,3 +4609,211 @@ def settings_view(request):
         'settings': settings,
     }
     return render(request, 'sources/settings.html', context)
+
+
+def _parse_and_create_blog_post_images(blog_post):
+    """
+    Parse images from blog post content and create BlogPostImage records.
+    Looks for <img> tags with data-filename attribute.
+    """
+    import re
+    content = blog_post.content
+    
+    # Pattern to match <img> tags with data-filename attribute
+    # Matches: <img src="#" alt="..." class="..." data-filename="filename.jpg">
+    img_pattern = r'<img[^>]*data-filename=["\']([^"\']+)["\'][^>]*>'
+    
+    matches = re.finditer(img_pattern, content, re.IGNORECASE)
+    
+    for match in matches:
+        filename = match.group(1)
+        img_tag = match.group(0)
+        
+        # Extract alt text from the img tag
+        alt_match = re.search(r'alt=["\']([^"\']*)["\']', img_tag, re.IGNORECASE)
+        alt_text = alt_match.group(1) if alt_match else ''
+        
+        # Create or update BlogPostImage record
+        BlogPostImage.objects.get_or_create(
+            blog_post=blog_post,
+            filename=filename,
+            defaults={
+                'alt_text': alt_text,
+                'is_featured': False
+            }
+        )
+    
+    # Also create a record for featured image if it exists
+    if blog_post.featured_image:
+        BlogPostImage.objects.get_or_create(
+            blog_post=blog_post,
+            filename='featured_image',
+            defaults={
+                'alt_text': blog_post.featured_image_description or '',
+                'image_file': blog_post.featured_image,
+                'is_featured': True
+            }
+        )
+
+
+@login_required
+def blog_post_images_list(request):
+    """Display list of all blog post images with upload status"""
+    # Get all blog posts with their images
+    blog_posts = BlogPost.objects.prefetch_related('images').select_related('post_idea').order_by('-created_at')
+    
+    # Collect all images
+    all_images = []
+    for post in blog_posts:
+        # Get images from content
+        content_images = post.images.filter(is_featured=False)
+        for img in content_images:
+            all_images.append({
+                'id': img.id,
+                'blog_post': post,
+                'filename': img.filename,
+                'alt_text': img.alt_text,
+                'image_file': img.image_file,
+                'is_featured': False,
+                'has_file': bool(img.image_file),
+            })
+        
+        # Add featured image if it exists or if there's a description
+        if post.featured_image or post.featured_image_description:
+            featured_img = post.images.filter(is_featured=True).first()
+            all_images.append({
+                'id': featured_img.id if featured_img else None,
+                'blog_post': post,
+                'filename': 'featured_image',
+                'alt_text': post.featured_image_description or '',
+                'image_file': post.featured_image if post.featured_image else (featured_img.image_file if featured_img else None),
+                'is_featured': True,
+                'has_file': bool(post.featured_image or (featured_img and featured_img.image_file)),
+            })
+    
+    # Filter by status if provided
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter == 'missing':
+        all_images = [img for img in all_images if not img['has_file']]
+    elif status_filter == 'uploaded':
+        all_images = [img for img in all_images if img['has_file']]
+    
+    # Filter by blog post if provided
+    post_id = request.GET.get('post', '').strip()
+    if post_id:
+        try:
+            post = BlogPost.objects.get(pk=post_id)
+            all_images = [img for img in all_images if img['blog_post'].id == post.id]
+        except BlogPost.DoesNotExist:
+            pass
+    
+    # Pagination
+    paginator = Paginator(all_images, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get all blog posts for filter dropdown
+    all_blog_posts = BlogPost.objects.all().order_by('-created_at')
+    
+    # Statistics
+    total_images = len(all_images)
+    missing_images = len([img for img in all_images if not img['has_file']])
+    uploaded_images = len([img for img in all_images if img['has_file']])
+    
+    context = {
+        'page_obj': page_obj,
+        'images': page_obj,
+        'all_blog_posts': all_blog_posts,
+        'status_filter': status_filter,
+        'selected_post_id': post_id,
+        'total_images': total_images,
+        'missing_images': missing_images,
+        'uploaded_images': uploaded_images,
+    }
+    return render(request, 'sources/blog_post_images_list.html', context)
+
+
+@login_required
+def blog_post_image_upload(request, pk):
+    """Upload or update an image for a blog post"""
+    blog_post = get_object_or_404(BlogPost, pk=pk)
+    
+    if request.method == 'POST':
+        filename = request.POST.get('filename', '').strip()
+        is_featured = request.POST.get('is_featured', 'false') == 'true'
+        image_file = request.FILES.get('image_file')
+        
+        if not filename:
+            messages.error(request, 'Filename is required.')
+            return redirect('sources:blog_post_images_list')
+        
+        if not image_file:
+            messages.error(request, 'Please select an image file to upload.')
+            return redirect('sources:blog_post_images_list')
+        
+        try:
+            if is_featured:
+                # Update featured image
+                blog_post.featured_image = image_file
+                blog_post.save(update_fields=['featured_image'])
+                
+                # Update or create BlogPostImage record
+                blog_post_image, created = BlogPostImage.objects.get_or_create(
+                    blog_post=blog_post,
+                    filename='featured_image',
+                    defaults={'is_featured': True}
+                )
+                blog_post_image.image_file = image_file
+                blog_post_image.is_featured = True
+                blog_post_image.save()
+                
+                messages.success(request, 'Featured image uploaded successfully!')
+            else:
+                # Update content image
+                blog_post_image = get_object_or_404(
+                    BlogPostImage,
+                    blog_post=blog_post,
+                    filename=filename
+                )
+                blog_post_image.image_file = image_file
+                blog_post_image.save()
+                
+                # Update the content to replace the image src
+                import re
+                old_pattern = rf'<img([^>]*data-filename=["\']{re.escape(filename)}["\'][^>]*)>'
+                new_src = blog_post_image.image_file.url
+                
+                def replace_img_src(match):
+                    img_tag = match.group(0)
+                    # Replace src="#" with actual URL
+                    if 'src="#"' in img_tag or 'src=\'#\'' in img_tag:
+                        img_tag = re.sub(r'src=["\']#["\']', f'src="{new_src}"', img_tag)
+                    elif 'src=' not in img_tag:
+                        # Add src if it doesn't exist
+                        img_tag = img_tag.replace('<img', f'<img src="{new_src}"')
+                    else:
+                        # Replace existing src
+                        img_tag = re.sub(r'src=["\'][^"\']*["\']', f'src="{new_src}"', img_tag)
+                    return img_tag
+                
+                blog_post.content = re.sub(old_pattern, replace_img_src, blog_post.content, flags=re.IGNORECASE)
+                blog_post.save(update_fields=['content'])
+                
+                messages.success(request, f'Image "{filename}" uploaded and content updated successfully!')
+            
+            # Log activity
+            log_activity(
+                'blog_post_image_uploaded',
+                f'Image "{filename}" uploaded for blog post "{blog_post.title}"',
+                user=request.user,
+                metadata={
+                    'blog_post_id': blog_post.id,
+                    'filename': filename,
+                    'is_featured': is_featured
+                }
+            )
+            
+        except Exception as e:
+            messages.error(request, f'Error uploading image: {str(e)}')
+    
+    return redirect('sources:blog_post_images_list')

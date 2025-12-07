@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Blog Post Images - China Blog Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-images me-2"></i>Blog Post Images</h1>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Total Images</h5>
+                <h2 class="mb-0">{{ total_images }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Uploaded</h5>
+                <h2 class="mb-0 text-success">{{ uploaded_images }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Missing</h5>
+                <h2 class="mb-0 text-danger">{{ missing_images }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">All Images</option>
+                    <option value="missing" {% if status_filter == 'missing' %}selected{% endif %}>Missing Files</option>
+                    <option value="uploaded" {% if status_filter == 'uploaded' %}selected{% endif %}>Uploaded</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="post" class="form-label">Blog Post</label>
+                <select name="post" id="post" class="form-select">
+                    <option value="">All Posts</option>
+                    {% for post in all_blog_posts %}
+                    <option value="{{ post.id }}" {% if selected_post_id == post.id|stringformat:"s" %}selected{% endif %}>{{ post.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">Filter</button>
+                <a href="{% url 'sources:blog_post_images_list' %}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Images Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Images</h5>
+    </div>
+    <div class="card-body">
+        {% if images %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Blog Post</th>
+                        <th>Type</th>
+                        <th>Filename</th>
+                        <th>Alt Text</th>
+                        <th>Status</th>
+                        <th>Preview</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for image in images %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'sources:blog_post_detail' pk=image.blog_post.id %}">
+                                {{ image.blog_post.title|truncatewords:8 }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if image.is_featured %}
+                            <span class="badge bg-primary">Featured</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Content</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ image.filename }}</code></td>
+                        <td>
+                            {% if image.alt_text %}
+                            {{ image.alt_text|truncatewords:10 }}
+                            {% else %}
+                            <span class="text-muted fst-italic">No alt text</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if image.has_file %}
+                            <span class="badge bg-success">Uploaded</span>
+                            {% else %}
+                            <span class="badge bg-danger">Missing</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if image.has_file %}
+                            <img src="{{ image.image_file.url }}" alt="{{ image.alt_text }}" style="max-width: 100px; max-height: 100px; object-fit: cover;" class="img-thumbnail">
+                            {% else %}
+                            <span class="text-muted">No preview</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal{% if image.id %}{{ image.id }}{% else %}featured_{{ image.blog_post.id }}{% endif %}">
+                                <i class="bi bi-upload"></i> Upload
+                            </button>
+                        </td>
+                    </tr>
+                    
+                    <!-- Upload Modal -->
+                    <div class="modal fade" id="uploadModal{% if image.id %}{{ image.id }}{% else %}featured_{{ image.blog_post.id }}{% endif %}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Upload Image</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="post" action="{% url 'sources:blog_post_image_upload' pk=image.blog_post.id %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Blog Post</label>
+                                            <input type="text" class="form-control" value="{{ image.blog_post.title }}" readonly>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Filename</label>
+                                            <input type="text" class="form-control" value="{{ image.filename }}" readonly>
+                                            <input type="hidden" name="filename" value="{{ image.filename }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Alt Text</label>
+                                            <input type="text" class="form-control" value="{{ image.alt_text }}" readonly>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="image_file{% if image.id %}{{ image.id }}{% else %}featured_{{ image.blog_post.id }}{% endif %}" class="form-label">Image File</label>
+                                            <input type="file" class="form-control" id="image_file{% if image.id %}{{ image.id }}{% else %}featured_{{ image.blog_post.id }}{% endif %}" name="image_file" accept="image/*" required>
+                                            <small class="text-muted">Select an image file to upload</small>
+                                        </div>
+                                        <input type="hidden" name="is_featured" value="{% if image.is_featured %}true{% else %}false{% endif %}">
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Upload</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Images pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if selected_post_id %}&post={{ selected_post_id }}{% endif %}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if selected_post_id %}&post={{ selected_post_id }}{% endif %}">Previous</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if selected_post_id %}&post={{ selected_post_id }}{% endif %}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if selected_post_id %}&post={{ selected_post_id }}{% endif %}">Last</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-images"></i>
+            <h3>No images found</h3>
+            <p class="text-muted">No images match your filters. Try adjusting your search criteria.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

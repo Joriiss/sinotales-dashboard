@@ -103,6 +103,20 @@ DATABASES = {
     }
 }
 
+# Cache configuration
+# Using database cache for simplicity (no additional dependencies)
+# For better performance, consider Redis or Memcached in production
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_table',
+        'TIMEOUT': 300,  # Default timeout: 5 minutes
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
