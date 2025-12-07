@@ -679,6 +679,11 @@ class BlogPost(models.Model):
         blank=True,
         help_text="Alt text for the featured image (concise description, 50-125 characters recommended)"
     )
+    faq = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="FAQ items as JSON array, each with 'question' and 'answer' fields"
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

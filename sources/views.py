@@ -3016,6 +3016,38 @@ def blog_post_generate_metadata(request, pk):
                         blog_post.featured_image_description = featured_image_desc
                         break
             
+            # Extract FAQ - try multiple patterns
+            faq_data = None
+            patterns = [
+                r'\*\*FAQ:\*\*\s*(\[.*?\])',
+                r'FAQ:\s*(\[.*?\])',
+                r'\*\*FAQ\*\*\s*(\[.*?\])',
+            ]
+            for pattern in patterns:
+                faq_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+                if faq_match:
+                    faq_text = faq_match.group(1).strip()
+                    try:
+                        # Try to parse as JSON
+                        import json
+                        faq_data = json.loads(faq_text)
+                        # Validate it's a list with proper structure
+                        if isinstance(faq_data, list) and len(faq_data) > 0:
+                            # Ensure each item has question and answer
+                            valid_faq = []
+                            for item in faq_data[:4]:  # Limit to 4 items
+                                if isinstance(item, dict) and 'question' in item and 'answer' in item:
+                                    valid_faq.append({
+                                        'question': str(item['question']).strip(),
+                                        'answer': str(item['answer']).strip()
+                                    })
+                            if len(valid_faq) == 4:  # Must have exactly 4 items
+                                blog_post.faq = valid_faq
+                                break
+                    except (json.JSONDecodeError, ValueError, KeyError):
+                        # If JSON parsing fails, try to extract from markdown format
+                        continue
+            
             # Save the blog post
             blog_post.save()
             
@@ -3170,6 +3202,16 @@ def blog_post_generate(request, pk):
             ]
             for pattern in intro_phrases:
                 blog_content = re.sub(pattern, '', blog_content, flags=re.IGNORECASE | re.MULTILINE)
+            
+            # Remove FAQ sections if they were generated (they should be in metadata, not content)
+            # Remove FAQ sections with various heading formats
+            faq_patterns = [
+                r'<h[2-6][^>]*>.*?FAQ.*?</h[2-6]>.*?(?=<h[2-6]|</body>|$)',
+                r'<h[2-6][^>]*>.*?Frequently Asked.*?</h[2-6]>.*?(?=<h[2-6]|</body>|$)',
+                r'<h[2-6][^>]*>.*?People Also Ask.*?</h[2-6]>.*?(?=<h[2-6]|</body>|$)',
+            ]
+            for pattern in faq_patterns:
+                blog_content = re.sub(pattern, '', blog_content, flags=re.IGNORECASE | re.DOTALL)
             
             blog_content = blog_content.strip()
             
@@ -5129,6 +5171,16 @@ def generate_blog_post_api(request):
         for pattern in intro_phrases:
             blog_content = re.sub(pattern, '', blog_content, flags=re.IGNORECASE | re.MULTILINE)
         
+        # Remove FAQ sections if they were generated (they should be in metadata, not content)
+        # Remove FAQ sections with various heading formats
+        faq_patterns = [
+            r'<h[2-6][^>]*>.*?FAQ.*?</h[2-6]>.*?(?=<h[2-6]|</body>|$)',
+            r'<h[2-6][^>]*>.*?Frequently Asked.*?</h[2-6]>.*?(?=<h[2-6]|</body>|$)',
+            r'<h[2-6][^>]*>.*?People Also Ask.*?</h[2-6]>.*?(?=<h[2-6]|</body>|$)',
+        ]
+        for pattern in faq_patterns:
+            blog_content = re.sub(pattern, '', blog_content, flags=re.IGNORECASE | re.DOTALL)
+        
         blog_content = blog_content.strip()
         
         # Create the blog post
@@ -5256,6 +5308,38 @@ def generate_blog_post_api(request):
                         featured_image_desc = featured_image_desc[:197] + '...'
                     blog_post.featured_image_description = featured_image_desc
                     break
+        
+        # Extract FAQ - try multiple patterns
+        faq_data = None
+        patterns = [
+            r'\*\*FAQ:\*\*\s*(\[.*?\])',
+            r'FAQ:\s*(\[.*?\])',
+            r'\*\*FAQ\*\*\s*(\[.*?\])',
+        ]
+        for pattern in patterns:
+            faq_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+            if faq_match:
+                faq_text = faq_match.group(1).strip()
+                try:
+                    # Try to parse as JSON
+                    import json
+                    faq_data = json.loads(faq_text)
+                    # Validate it's a list with proper structure
+                    if isinstance(faq_data, list) and len(faq_data) > 0:
+                        # Ensure each item has question and answer
+                        valid_faq = []
+                        for item in faq_data[:4]:  # Limit to 4 items
+                            if isinstance(item, dict) and 'question' in item and 'answer' in item:
+                                valid_faq.append({
+                                    'question': str(item['question']).strip(),
+                                    'answer': str(item['answer']).strip()
+                                })
+                        if len(valid_faq) == 4:  # Must have exactly 4 items
+                            blog_post.faq = valid_faq
+                            break
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    # If JSON parsing fails, try to extract from markdown format
+                    continue
         
         # Save blog post with metadata
         blog_post.save()

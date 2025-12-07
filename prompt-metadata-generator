@@ -32,6 +32,13 @@
     - Examples: "Leshan Giant Buddha carved into red sandstone cliff" or "Chengdu night market street food vendor serving Sichuan noodles".
     - Keep it brief and focused on the main subject and location.
 
+6.  **FAQ (Frequently Asked Questions):**
+    - Generate exactly 4 FAQ items related to the blog post content.
+    - Each FAQ item must have a question and an answer.
+    - Questions should be "People Also Ask" style questions that travelers might search for.
+    - Answers should be concise (2-4 sentences) and directly address the question.
+    - Format: JSON array with objects containing "question" and "answer" fields.
+
 **Format:**
 Please provide the output in the following format:
 
@@ -40,6 +47,25 @@ Please provide the output in the following format:
 **URL Slug:** [Insert Slug Here]
 **Tags:** [Tag 1, Tag 2, Tag 3...]
 **Featured Image Alt Text:** [Concise alt text description, 50-125 characters]
+**FAQ:** 
+[
+  {
+    "question": "Question 1 here",
+    "answer": "Answer 1 here"
+  },
+  {
+    "question": "Question 2 here",
+    "answer": "Answer 2 here"
+  },
+  {
+    "question": "Question 3 here",
+    "answer": "Answer 3 here"
+  },
+  {
+    "question": "Question 4 here",
+    "answer": "Answer 4 here"
+  }
+]
 
 ***
 
