@@ -44,82 +44,82 @@ def dashboard(request):
     
     if cached_stats is None:
         # Basic counts - combine where possible
-        total_sources = Source.objects.count()
-        total_contents = Content.objects.count()
-        active_sources = Source.objects.filter(is_active=True).count()
-        
-        # Content breakdown by type
+    total_sources = Source.objects.count()
+    total_contents = Content.objects.count()
+    active_sources = Source.objects.filter(is_active=True).count()
+    
+    # Content breakdown by type
         content_by_type = list(Content.objects.values('content_type').annotate(
-            count=Count('id')
+        count=Count('id')
         ).order_by('-count'))
-        
-        # Source breakdown by type
+    
+    # Source breakdown by type
         sources_by_type = list(Source.objects.values('source_type').annotate(
-            count=Count('id')
+        count=Count('id')
         ).order_by('-count'))
-        
-        # Content with text
-        contents_with_text = Content.objects.filter(has_content=True).count()
-        contents_processed = Content.objects.filter(processed=True).count()
-        
-        # Calculate total words and data size
-        # Use database aggregation for better performance
-        total_chars_result = Content.objects.filter(has_content=True).aggregate(
-            total_length=Sum(Length('content'))
-        )
-        total_chars = total_chars_result['total_length'] or 0
-        
-        # Estimate: ~5 chars per word on average
-        total_words = total_chars // 5 if total_chars else 0
-        # Estimate: UTF-8 encoding, average 2 bytes per character
-        total_mb = (total_chars * 2) / (1024 * 1024) if total_chars else 0
-        
-        # Language breakdown
+    
+    # Content with text
+    contents_with_text = Content.objects.filter(has_content=True).count()
+    contents_processed = Content.objects.filter(processed=True).count()
+    
+    # Calculate total words and data size
+    # Use database aggregation for better performance
+    total_chars_result = Content.objects.filter(has_content=True).aggregate(
+        total_length=Sum(Length('content'))
+    )
+    total_chars = total_chars_result['total_length'] or 0
+    
+    # Estimate: ~5 chars per word on average
+    total_words = total_chars // 5 if total_chars else 0
+    # Estimate: UTF-8 encoding, average 2 bytes per character
+    total_mb = (total_chars * 2) / (1024 * 1024) if total_chars else 0
+    
+    # Language breakdown
         sources_by_language = list(Source.objects.values('language').annotate(
-            count=Count('id')
+        count=Count('id')
         ).order_by('-count'))
-        
-        # Tags statistics
-        total_tags = Tag.objects.count()
-        contents_with_tags = Content.objects.filter(tags__isnull=False).distinct().count()
-        
-        # Chunks and embeddings statistics
-        total_chunks = ContentChunk.objects.count()
-        chunks_with_embeddings = ContentChunk.objects.filter(embedding__isnull=False).count()
-        contents_with_embeddings = Content.objects.filter(
-            chunks__embedding__isnull=False
-        ).distinct().count()
-        
-        # Calculate embedding percentage
-        embedding_percentage = (
-            (chunks_with_embeddings / total_chunks * 100) 
-            if total_chunks > 0 else 0
-        )
-        
-        # Top tags
+    
+    # Tags statistics
+    total_tags = Tag.objects.count()
+    contents_with_tags = Content.objects.filter(tags__isnull=False).distinct().count()
+    
+    # Chunks and embeddings statistics
+    total_chunks = ContentChunk.objects.count()
+    chunks_with_embeddings = ContentChunk.objects.filter(embedding__isnull=False).count()
+    contents_with_embeddings = Content.objects.filter(
+        chunks__embedding__isnull=False
+    ).distinct().count()
+    
+    # Calculate embedding percentage
+    embedding_percentage = (
+        (chunks_with_embeddings / total_chunks * 100) 
+        if total_chunks > 0 else 0
+    )
+    
+    # Top tags
         top_tags = list(Tag.objects.annotate(
-            content_count=Count('contents')
+        content_count=Count('contents')
         ).filter(content_count__gt=0).order_by('-content_count')[:10])
-        
+    
         # Cache the expensive aggregations
         cached_stats = {
-            'total_sources': total_sources,
-            'total_contents': total_contents,
-            'active_sources': active_sources,
-            'content_by_type': content_by_type,
-            'sources_by_type': sources_by_type,
+        'total_sources': total_sources,
+        'total_contents': total_contents,
+        'active_sources': active_sources,
+        'content_by_type': content_by_type,
+        'sources_by_type': sources_by_type,
             'contents_with_text': contents_with_text,
             'contents_processed': contents_processed,
-            'total_words': total_words,
-            'total_mb': total_mb,
+        'total_words': total_words,
+        'total_mb': total_mb,
             'sources_by_language': sources_by_language,
-            'total_tags': total_tags,
-            'contents_with_tags': contents_with_tags,
-            'total_chunks': total_chunks,
-            'chunks_with_embeddings': chunks_with_embeddings,
-            'contents_with_embeddings': contents_with_embeddings,
-            'embedding_percentage': embedding_percentage,
-            'top_tags': top_tags,
+        'total_tags': total_tags,
+        'contents_with_tags': contents_with_tags,
+        'total_chunks': total_chunks,
+        'chunks_with_embeddings': chunks_with_embeddings,
+        'contents_with_embeddings': contents_with_embeddings,
+        'embedding_percentage': embedding_percentage,
+        'top_tags': top_tags,
         }
         cache.set(cache_key, cached_stats, 600)  # Cache for 10 minutes
     
@@ -2474,8 +2474,8 @@ def post_idea_generate(request):
                         f'All {skipped_similar} generated idea(s) were too similar to existing ideas and were skipped. '
                         f'Try generating ideas with different tags/content, or lower the similarity threshold.'
                     )
-                else:
-                    messages.warning(request, 'No valid ideas were generated. Please try again.')
+            else:
+                messages.warning(request, 'No valid ideas were generated. Please try again.')
             return redirect('sources:post_idea_list')
         else:
             messages.error(request, error_message)
@@ -3305,8 +3305,8 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
 - Think about **niche topics**: photography spots, hiking trails, local markets, traditional crafts, specific dishes, regional dialects, local customs, etc.
 - Avoid repeating the same format (e.g., don't keep generating "X-Day Itinerary" or "Best Time to Visit X").
 """
-        
-        prompt = f"""
+    
+    prompt = f"""
         Generate {batch_size} high-quality blog post ideas for a China travel blog.
 
 Your ideas must be directly useful for people planning a trip to China.  
@@ -3357,148 +3357,148 @@ Respond in JSON only:
 Generate exactly {batch_size} ideas.
 Response:
 """
-        
-        # Call API to generate ideas
-        try:
-            import requests
-            import json
-        except ImportError:
-            return False, 0, [], 'requests library required. Install with: pip install requests', 0
-        
-        response_text = None
-        api_error = None
-        
-        try:
-            if provider == 'ollama':
-                # Call Ollama
-                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-                url = f"{ollama_url}/api/generate"
-                
-                # Increase temperature on retries for more creativity
-                base_temp = 0.8
-                retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
-                
-                payload = {
-                    "model": model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
+    
+    # Call API to generate ideas
+    try:
+        import requests
+        import json
+    except ImportError:
+        return False, 0, [], 'requests library required. Install with: pip install requests', 0
+    
+    response_text = None
+    api_error = None
+    
+    try:
+        if provider == 'ollama':
+            # Call Ollama
+            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+            url = f"{ollama_url}/api/generate"
+            
+            # Increase temperature on retries for more creativity
+            base_temp = 0.8
+            retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+            
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
                         "temperature": retry_temp,
-                        "top_p": 0.9,
-                    }
+                    "top_p": 0.9,
                 }
-                
-                response = requests.post(url, json=payload, timeout=120)
-                response.raise_for_status()
-                result = response.json()
-                response_text = result.get('response', '').strip()
-                
-            elif provider == 'openai':
-                # Call OpenAI
-                api_key = getattr(settings, 'OPENAI_API_KEY', None)
-                if not api_key:
-                    api_error = 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
-                    if total_attempts >= max_retries:
-                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+            }
+            
+            response = requests.post(url, json=payload, timeout=120)
+            response.raise_for_status()
+            result = response.json()
+            response_text = result.get('response', '').strip()
+            
+        elif provider == 'openai':
+            # Call OpenAI
+            api_key = getattr(settings, 'OPENAI_API_KEY', None)
+            if not api_key:
+                api_error = 'OPENAI_API_KEY is not set in settings. Please configure it to use OpenAI.'
+                if total_attempts >= max_retries:
+                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
                     continue
-                
-                try:
-                    from openai import OpenAI
-                except ImportError:
-                    api_error = 'openai library required. Install with: pip install openai'
-                    if total_attempts >= max_retries:
-                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+            
+            try:
+                from openai import OpenAI
+            except ImportError:
+                api_error = 'openai library required. Install with: pip install openai'
+                if total_attempts >= max_retries:
+                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
                     continue
-                
-                client = OpenAI(api_key=api_key)
-                
-                # Check model type for parameter compatibility
-                is_gpt5 = 'gpt-5' in model.lower()
-                is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
-                
-                # Build request parameters
-                request_params = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
-                        {"role": "user", "content": prompt}
-                    ],
-                }
-                
-                # GPT-5 only supports default temperature (1), so don't set it
-                if not is_gpt5:
+            
+            client = OpenAI(api_key=api_key)
+            
+            # Check model type for parameter compatibility
+            is_gpt5 = 'gpt-5' in model.lower()
+            is_newer_model = any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-5', 'o1', 'o3'])
+            
+            # Build request parameters
+            request_params = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant that generates blog post ideas for a China travel blog. Always respond with valid JSON only."},
+                    {"role": "user", "content": prompt}
+                ],
+            }
+            
+            # GPT-5 only supports default temperature (1), so don't set it
+            if not is_gpt5:
                     # Increase temperature on retries for more creativity
                     base_temp = 0.8
                     retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
                     request_params["temperature"] = retry_temp
-                
-                # Use appropriate parameter based on model
-                if is_newer_model:
-                    request_params["max_completion_tokens"] = 2000
-                else:
-                    request_params["max_tokens"] = 2000
-                
-                response = client.chat.completions.create(**request_params)
-                response_text = response.choices[0].message.content.strip()
-                
-            elif provider == 'gemini':
-                # Call Gemini
-                api_key = getattr(settings, 'GEMINI_API_KEY', None)
-                if not api_key:
-                    api_error = 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
-                    if total_attempts >= max_retries:
-                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
-                
-                try:
-                    import google.generativeai as genai
-                except ImportError:
-                    api_error = 'google-generativeai library required. Install with: pip install google-generativeai'
-                    if total_attempts >= max_retries:
-                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue
-                
-                genai.configure(api_key=api_key)
-                genai_model = genai.GenerativeModel(model)
-                # Increase temperature on retries for more creativity
-                base_temp = 0.8
-                retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
-                
-                response = genai_model.generate_content(
-                    prompt,
-                    generation_config={
-                        "temperature": retry_temp,
-                        "max_output_tokens": 2000,
-                    }
-                )
-                response_text = response.text.strip()
+            
+            # Use appropriate parameter based on model
+            if is_newer_model:
+                request_params["max_completion_tokens"] = 2000
             else:
-                api_error = f'Invalid provider: {provider}'
+                request_params["max_tokens"] = 2000
+            
+            response = client.chat.completions.create(**request_params)
+            response_text = response.choices[0].message.content.strip()
+            
+        elif provider == 'gemini':
+            # Call Gemini
+            api_key = getattr(settings, 'GEMINI_API_KEY', None)
+            if not api_key:
+                api_error = 'GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                continue
+                    continue
             
-            # Parse JSON response
-            if response_text:
-                # Try to extract JSON from response
-                start_idx = response_text.find('{')
-                end_idx = response_text.rfind('}')
-                
-                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                    json_str = response_text[start_idx:end_idx + 1]
-                    try:
-                        parsed = json.loads(json_str)
-                        ideas = parsed.get('ideas', [])
-                        
-                        # Process ideas: check similarity and create valid ones
-                        batch_created_count = 0
-                        batch_created_ideas = []
-                        batch_skipped_similar = 0
-                        batch_skipped_titles = []
-                        
-                        for idea_data in ideas:
-                            title = idea_data.get('title', '').strip()
-                            description = idea_data.get('description', '').strip()
+            try:
+                import google.generativeai as genai
+            except ImportError:
+                api_error = 'google-generativeai library required. Install with: pip install google-generativeai'
+                if total_attempts >= max_retries:
+                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue
+            
+            genai.configure(api_key=api_key)
+            genai_model = genai.GenerativeModel(model)
+            # Increase temperature on retries for more creativity
+            base_temp = 0.8
+            retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+            
+            response = genai_model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": retry_temp,
+                    "max_output_tokens": 2000,
+                }
+            )
+            response_text = response.text.strip()
+        else:
+            api_error = f'Invalid provider: {provider}'
+            if total_attempts >= max_retries:
+                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+            continue
+        
+        # Parse JSON response
+        if response_text:
+            # Try to extract JSON from response
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = response_text[start_idx:end_idx + 1]
+                try:
+                    parsed = json.loads(json_str)
+                    ideas = parsed.get('ideas', [])
+                    
+                    # Process ideas: check similarity and create valid ones
+                    batch_created_count = 0
+                    batch_created_ideas = []
+                    batch_skipped_similar = 0
+                    batch_skipped_titles = []
+                    
+                    for idea_data in ideas:
+                        title = idea_data.get('title', '').strip()
+                        description = idea_data.get('description', '').strip()
                             primary_keyword = idea_data.get('primary_keyword', '').strip() or None  # Use None instead of empty string
                             
                             if not title:
@@ -3565,44 +3565,44 @@ Response:
                         else:
                             # We have enough ideas, break out of retry loop
                             break
-                        
-                    except json.JSONDecodeError:
-                        api_error = f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}'
-                        if total_attempts >= max_retries:
-                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                        continue
-                else:
-                    api_error = f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}'
+                    
+                except json.JSONDecodeError:
+                    api_error = f'Failed to parse {provider.upper()} response as JSON. Response: {response_text[:200]}'
                     if total_attempts >= max_retries:
                         return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
                     continue
             else:
+                api_error = f'Invalid response format from {provider.upper()}. Response: {response_text[:200]}'
+                if total_attempts >= max_retries:
+                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue
+        else:
                 api_error = f'No response received from {provider.upper()}.'
                 if total_attempts >= max_retries:
                     return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
                 continue
-                        
-        except requests.exceptions.ConnectionError as e:
-            if provider == 'ollama':
-                ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+            
+    except requests.exceptions.ConnectionError as e:
+        if provider == 'ollama':
+            ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
                 api_error = f'Could not connect to Ollama at {ollama_url}. Make sure Ollama is running.'
-            else:
+        else:
                 api_error = f'Connection error: {str(e)}'
             if total_attempts >= max_retries:
                 return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
             continue
-        except Exception as e:
-            error_str = str(e)
-            # Check for API key errors
-            if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
-                if provider == 'openai':
-                    api_error = f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.'
-                elif provider == 'gemini':
-                    api_error = f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.'
-                else:
-                    api_error = f'Authentication error: {error_str}'
+    except Exception as e:
+        error_str = str(e)
+        # Check for API key errors
+        if 'api_key' in error_str.lower() or 'authentication' in error_str.lower() or 'unauthorized' in error_str.lower():
+            if provider == 'openai':
+                api_error = f'OpenAI API key error: {error_str}. Please check your OPENAI_API_KEY setting.'
+            elif provider == 'gemini':
+                api_error = f'Gemini API key error: {error_str}. Please check your GEMINI_API_KEY setting.'
             else:
-                api_error = f'Error generating ideas with {provider.upper()}: {error_str}'
+                api_error = f'Authentication error: {error_str}'
+        else:
+            api_error = f'Error generating ideas with {provider.upper()}: {error_str}'
             if total_attempts >= max_retries:
                 return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
             continue
@@ -4940,6 +4940,374 @@ def blog_posts_api(request):
             }
         })
     except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def generate_blog_post_api(request):
+    """API endpoint to generate a blog post from a post idea and automatically generate metadata
+    
+    This endpoint:
+    1. Generates the blog post content from a post idea
+    2. Automatically generates metadata (slug, meta title, meta description, tags, featured image alt text)
+    
+    Request body (JSON):
+    - post_idea_id (required): ID of the post idea to generate from
+    - provider (optional): AI provider for content generation ('ollama', 'openai', 'gemini'). Default: 'gemini'
+    - model (optional): Model name for content generation. Default: 'gemini-3-pro-preview'
+    - use_rag (optional): Whether to use RAG context. Default: false
+    - num_chunks (optional): Number of RAG chunks to use. Default: 5
+    - metadata_provider (optional): AI provider for metadata generation. Default: same as provider
+    - metadata_model (optional): Model name for metadata generation. Default: same as model
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        data = json.loads(request.body)
+        
+        # Required fields
+        post_idea_id = data.get('post_idea_id')
+        if not post_idea_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'post_idea_id is required'
+            }, status=400)
+        
+        # Get post idea
+        try:
+            post_idea = PostIdea.objects.get(pk=post_idea_id)
+        except PostIdea.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': f'Post idea with id {post_idea_id} not found'
+            }, status=404)
+        
+        # Optional parameters for content generation
+        provider = data.get('provider', 'gemini').strip().lower()
+        model = data.get('model', 'gemini-3-pro-preview').strip()
+        use_rag = data.get('use_rag', False)
+        num_chunks = int(data.get('num_chunks', 5))
+        
+        # Optional parameters for metadata generation (default to same as content generation)
+        metadata_provider = data.get('metadata_provider', provider).strip().lower()
+        metadata_model = data.get('metadata_model', model).strip()
+        
+        # Validate providers
+        if provider not in ['ollama', 'openai', 'gemini']:
+            return JsonResponse({
+                'success': False,
+                'error': f'Invalid provider: {provider}. Must be one of: ollama, openai, gemini'
+            }, status=400)
+        
+        if metadata_provider not in ['ollama', 'openai', 'gemini']:
+            return JsonResponse({
+                'success': False,
+                'error': f'Invalid metadata_provider: {metadata_provider}. Must be one of: ollama, openai, gemini'
+            }, status=400)
+        
+        # Get default models if not provided
+        if not model:
+            if provider == 'ollama':
+                try:
+                    app_settings = Settings.get_settings()
+                    model = app_settings.default_tagging_model
+                except Exception:
+                    model = 'gpt-oss:20b-cloud'
+            elif provider == 'openai':
+                model = 'gpt-4o-mini'
+            elif provider == 'gemini':
+                model = 'gemini-3-pro-preview'
+        
+        if not metadata_model:
+            metadata_model = model
+        
+        # Load prompt templates
+        import os
+        from django.conf import settings as django_settings
+        
+        prompt_file_path = os.path.join(django_settings.BASE_DIR, 'prompt-post-generation.md')
+        metadata_prompt_path = os.path.join(django_settings.BASE_DIR, 'prompt-metadata-generator')
+        
+        try:
+            with open(prompt_file_path, 'r', encoding='utf-8') as f:
+                prompt_template = f.read()
+        except FileNotFoundError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Prompt template file not found: prompt-post-generation.md'
+            }, status=500)
+        
+        try:
+            with open(metadata_prompt_path, 'r', encoding='utf-8') as f:
+                metadata_prompt_template = f.read()
+        except FileNotFoundError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Metadata prompt template file not found: prompt-metadata-generator'
+            }, status=500)
+        
+        # Step 1: Generate blog post content
+        rag_service = RAGService()
+        
+        # Get RAG context if enabled
+        rag_context = ""
+        if use_rag:
+            try:
+                chunks = rag_service.search_similar_chunks(
+                    query_text=post_idea.title,
+                    num_chunks=num_chunks
+                )
+                if chunks:
+                    rag_context = rag_service._format_context(chunks)
+            except Exception as e:
+                # Continue without RAG context if it fails
+                pass
+        
+        # Build the prompt
+        primary_keyword = post_idea.primary_keyword or post_idea.title
+        prompt = prompt_template.format(
+            title=post_idea.title,
+            description=post_idea.description or "No description provided.",
+            primary_keyword=primary_keyword
+        )
+        
+        # Add RAG context if available
+        if rag_context:
+            prompt = f"{prompt}\n\n### Additional Context from Content Library:\n{rag_context}"
+        
+        # Generate content
+        if provider == 'ollama':
+            generated_content = rag_service._call_ollama(prompt, model, max_tokens=8000)
+        elif provider == 'openai':
+            max_tokens = 16000 if any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-4-turbo', 'gpt-4']) else 8000
+            generated_content = rag_service._call_openai(prompt, model, max_tokens=max_tokens)
+        elif provider == 'gemini':
+            max_tokens = 16000 if 'gemini-3-pro' in model.lower() else 8000
+            generated_content = rag_service._call_gemini(prompt, model, max_tokens=max_tokens)
+        
+        # Post-process content
+        import re
+        blog_content = generated_content.strip()
+        
+        # Remove any text before the first <h1> tag
+        h1_match = re.search(r'<h1>', blog_content, re.IGNORECASE)
+        if h1_match:
+            blog_content = blog_content[h1_match.start():]
+        
+        # Remove JSON-LD schema blocks
+        json_pattern = r'```(?:json)?\s*\{.*?\}\s*```'
+        blog_content = re.sub(json_pattern, '', blog_content, flags=re.DOTALL | re.IGNORECASE)
+        
+        json_block_pattern = r'\s*\{[^{}]*"@context"[^{}]*"@type"[^{}]*\}'
+        blog_content = re.sub(json_block_pattern, '', blog_content, flags=re.DOTALL | re.IGNORECASE)
+        
+        # Remove common intro phrases
+        intro_phrases = [
+            r'^Here is a comprehensive.*?optimized for.*?\n+',
+            r'^This is a comprehensive.*?guide.*?\n+',
+            r'^Below is.*?\n+',
+        ]
+        for pattern in intro_phrases:
+            blog_content = re.sub(pattern, '', blog_content, flags=re.IGNORECASE | re.MULTILINE)
+        
+        blog_content = blog_content.strip()
+        
+        # Create the blog post
+        blog_post = BlogPost.objects.create(
+            title=post_idea.title,
+            content=blog_content,
+            post_idea=post_idea
+        )
+        
+        # Parse and create image records from content
+        _parse_and_create_blog_post_images(blog_post)
+        
+        # Step 2: Generate metadata
+        # Strip HTML tags from content for metadata generation
+        text_content = re.sub(r'<[^>]+>', ' ', blog_post.content)
+        text_content = ' '.join(text_content.split())
+        
+        # Build metadata prompt
+        metadata_prompt = metadata_prompt_template.replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
+        
+        # Generate metadata
+        if metadata_provider == 'ollama':
+            generated_metadata = rag_service._call_ollama(metadata_prompt, metadata_model, max_tokens=2000)
+        elif metadata_provider == 'openai':
+            generated_metadata = rag_service._call_openai(metadata_prompt, metadata_model, max_tokens=2000)
+        elif metadata_provider == 'gemini':
+            generated_metadata = rag_service._call_gemini(metadata_prompt, metadata_model, max_tokens=4000)
+        
+        # Parse metadata
+        # Extract meta title
+        meta_title = None
+        patterns = [
+            r'\*\*Meta Title:\*\*\s*(.+?)(?:\n|$)',
+            r'Meta Title:\s*(.+?)(?:\n|$)',
+            r'Title:\s*(.+?)(?:\n|$)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, generated_metadata, re.IGNORECASE)
+            if match:
+                meta_title = re.sub(r'\*\*|\*|\[|\]|`', '', match.group(1).strip())
+                if meta_title and len(meta_title) <= 60:
+                    blog_post.meta_title = meta_title
+                    break
+        
+        # Extract meta description
+        meta_description = None
+        patterns = [
+            r'\*\*Meta Description:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'Meta Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+            if match:
+                meta_description = re.sub(r'\*\*|\*|\[|\]|`', '', match.group(1).strip())
+                meta_description = ' '.join(meta_description.split())
+                if meta_description and len(meta_description) <= 160:
+                    blog_post.meta_description = meta_description
+                    break
+        
+        # Extract slug
+        slug = None
+        patterns = [
+            r'\*\*URL Slug:\*\*\s*(.+?)(?:\n|$)',
+            r'URL Slug:\s*(.+?)(?:\n|$)',
+            r'Slug:\s*(.+?)(?:\n|$)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, generated_metadata, re.IGNORECASE)
+            if match:
+                slug = re.sub(r'\*\*|\*|\[|\]|`', '', match.group(1).strip())
+                slug = slugify(slug)
+                if slug and len(slug) <= 255:
+                    if not BlogPost.objects.filter(slug=slug).exclude(pk=blog_post.pk).exists():
+                        blog_post.slug = slug
+                    break
+        
+        # Extract tags
+        tags_text = None
+        patterns = [
+            r'\*\*Tags:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'Tags:\s*(.+?)(?=\n\*\*|\n\n|$)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+            if match:
+                tags_text = match.group(1).strip()
+                break
+        
+        if tags_text:
+            tags_text = re.sub(r'\*\*|\*|\[|\]|`', '', tags_text)
+            tag_names = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
+            
+            tags_to_add = []
+            for tag_name in tag_names[:10]:
+                if tag_name:
+                    tag_slug = slugify(tag_name)
+                    try:
+                        tag = Tag.objects.get(slug=tag_slug)
+                    except Tag.DoesNotExist:
+                        try:
+                            tag = Tag.objects.get(name__iexact=tag_name)
+                        except Tag.DoesNotExist:
+                            tag = Tag.objects.create(name=tag_name, slug=tag_slug)
+                    tags_to_add.append(tag)
+            
+            if tags_to_add:
+                blog_post.tags.set(tags_to_add)
+        
+        # Extract featured image alt text
+        featured_image_desc = None
+        patterns = [
+            r'\*\*Featured Image Alt Text:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'Featured Image Alt Text:\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'\*\*Featured Image Description:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'Featured Image Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+            if match:
+                featured_image_desc = re.sub(r'\*\*|\*|\[|\]|`', '', match.group(1).strip())
+                featured_image_desc = ' '.join(featured_image_desc.split())
+                if featured_image_desc:
+                    if len(featured_image_desc) > 200:
+                        featured_image_desc = featured_image_desc[:197] + '...'
+                    blog_post.featured_image_description = featured_image_desc
+                    break
+        
+        # Save blog post with metadata
+        blog_post.save()
+        
+        # Log activities
+        log_activity(
+            'blog_post_created',
+            f'Blog post "{blog_post.title}" was generated from post idea "{post_idea.title}"',
+            user=None,  # API call, no user
+            metadata={
+                'blog_post_id': blog_post.id,
+                'post_idea_id': post_idea.id,
+                'provider': provider,
+                'model': model
+            }
+        )
+        
+        log_activity(
+            'blog_post_updated',
+            f'Metadata generated for blog post "{blog_post.title}"',
+            user=None,  # API call, no user
+            metadata={
+                'blog_post_id': blog_post.id,
+                'provider': metadata_provider,
+                'model': metadata_model
+            }
+        )
+        
+        # Get tag names for response
+        tag_names = [tag.name for tag in blog_post.tags.all()]
+        
+        return JsonResponse({
+            'success': True,
+            'blog_post': {
+                'id': blog_post.id,
+                'title': blog_post.title,
+                'slug': blog_post.slug,
+                'meta_title': blog_post.meta_title,
+                'meta_description': blog_post.meta_description,
+                'published': blog_post.published,
+                'created_at': blog_post.created_at.isoformat() if blog_post.created_at else None,
+                'post_idea_id': post_idea.id,
+                'tags': tag_names,
+                'featured_image_description': blog_post.featured_image_description,
+            },
+            'generation_info': {
+                'content_provider': provider,
+                'content_model': model,
+                'metadata_provider': metadata_provider,
+                'metadata_model': metadata_model,
+                'used_rag': use_rag,
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON in request body'
+        }, status=400)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'error': str(e)

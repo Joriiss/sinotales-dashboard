@@ -64,6 +64,10 @@ urlpatterns = [
     # Blog Post Images
     path('blog-posts/images/', views.blog_post_images_list, name='blog_post_images_list'),
     path('blog-posts/<int:pk>/upload-image/', views.blog_post_image_upload, name='blog_post_image_upload'),
+    
+    # Blog Post Generation API
+    path('api/generate-blog-post/', views.generate_blog_post_api, name='generate_blog_post_api'),
+    path('api/generate-blog-post', views.generate_blog_post_api, name='generate_blog_post_api_no_slash'),  # Support both with and without trailing slash
 ]
 
 
