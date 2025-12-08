@@ -5013,6 +5013,7 @@ def blog_posts_api(request):
     
     Query parameters:
     - published: Filter by published status (true/false). If not provided, returns all posts.
+    - limit: Maximum number of posts to return (integer). If not provided, returns all posts.
     """
     if request.method != 'GET':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -5034,6 +5035,18 @@ def blog_posts_api(request):
             blog_posts = blog_posts.filter(published=False)
         # If not provided or empty, return all posts
         
+        # Apply limit if provided
+        limit_param = request.GET.get('limit', '').strip()
+        limit = None
+        if limit_param:
+            try:
+                limit = int(limit_param)
+                if limit > 0:
+                    blog_posts = blog_posts[:limit]
+            except ValueError:
+                # Invalid limit value, ignore it
+                pass
+        
         # Build response data - only title and created_at
         posts = []
         for post in blog_posts:
@@ -5047,7 +5060,8 @@ def blog_posts_api(request):
             'blog_posts': posts,
             'count': len(posts),
             'filter_applied': {
-                'published': published_param if published_param else None
+                'published': published_param if published_param else None,
+                'limit': limit if limit else None
             }
         })
     except Exception as e:
