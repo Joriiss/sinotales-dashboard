@@ -5024,7 +5024,7 @@ def blog_posts_api(request):
     
     try:
         # Get all blog posts, ordered by creation date (newest first)
-        blog_posts = BlogPost.objects.select_related('post_idea').prefetch_related('tags').order_by('-created_at')
+        blog_posts = BlogPost.objects.all().order_by('-created_at')
         
         # Filter by published status if provided
         published_param = request.GET.get('published', '').strip().lower()
@@ -5034,26 +5034,12 @@ def blog_posts_api(request):
             blog_posts = blog_posts.filter(published=False)
         # If not provided or empty, return all posts
         
-        # Build response data
+        # Build response data - only title and created_at
         posts = []
         for post in blog_posts:
-            # Get tag names
-            tag_names = [tag.name for tag in post.tags.all()]
-            
             posts.append({
-                'id': post.id,
                 'title': post.title,
-                'slug': post.slug,
-                'meta_title': post.meta_title,
-                'meta_description': post.meta_description,
-                'published': post.published,
                 'created_at': post.created_at.isoformat() if post.created_at else None,
-                'updated_at': post.updated_at.isoformat() if post.updated_at else None,
-                'post_idea_id': post.post_idea.id if post.post_idea else None,
-                'post_idea_title': post.post_idea.title if post.post_idea else None,
-                'tags': tag_names,
-                'featured_image_url': post.featured_image.url if post.featured_image else None,
-                'featured_image_description': post.featured_image_description,
             })
         
         return JsonResponse({
