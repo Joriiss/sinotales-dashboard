@@ -3395,13 +3395,15 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
     if existing_titles_sample:
         existing_titles_text = f"\n\n### AVOID THESE TOPICS (already covered):\n" + "\n".join([f"- {title}" for title in existing_titles_sample[:15]])
     
-    # Get random tags for diversity (if available)
+    # Get random tags for diversity (if available) - prepare list once
     all_tags = list(Tag.objects.all())
-    random_tags = random.sample(all_tags, min(3, len(all_tags))) if len(all_tags) >= 3 else all_tags
-    random_tags_text = ""
-    if random_tags and total_attempts > 1:  # Only add random tags on retries
-        random_tag_names = [tag.name for tag in random_tags]
-        random_tags_text = f"\n\n### EXPLORE THESE TOPICS (for diversity):\n" + ", ".join(random_tag_names)
+    
+    # Call API to generate ideas
+    try:
+        import requests
+        import json
+    except ImportError:
+        return False, 0, [], 'requests library required. Install with: pip install requests', 0
     
     # Retry loop: continue generating until we have enough valid ideas
     while ideas_still_needed > 0 and total_attempts < max_retries:
@@ -3410,8 +3412,6 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
         batch_size = max(ideas_still_needed, 5 + (total_attempts - 1) * 2)  # 5, 7, 9, 11, 13...
         
         # Increase creativity on retries
-        response_text = None
-        api_error = None
         creativity_boost = ""
         if total_attempts > 1:
             creativity_boost = f"""
@@ -3422,8 +3422,16 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
 - Think about **niche topics**: photography spots, hiking trails, local markets, traditional crafts, specific dishes, regional dialects, local customs, etc.
 - Avoid repeating the same format (e.g., don't keep generating "X-Day Itinerary" or "Best Time to Visit X").
 """
-    
-    prompt = f"""
+        
+        # Get random tags for diversity on retries
+        random_tags_text = ""
+        if total_attempts > 1 and len(all_tags) >= 3:
+            random_tags = random.sample(all_tags, min(3, len(all_tags)))
+            random_tag_names = [tag.name for tag in random_tags]
+            random_tags_text = f"\n\n### EXPLORE THESE TOPICS (for diversity):\n" + ", ".join(random_tag_names)
+        
+        # Build prompt with current iteration values
+        prompt = f"""
         Generate {batch_size} high-quality blog post ideas for a China travel blog.
 
 Your ideas must be directly useful for people planning a trip to China.  
@@ -3474,19 +3482,6 @@ Respond in JSON only:
 Generate exactly {batch_size} ideas.
 Response:
 """
-    
-    # Call API to generate ideas
-    try:
-        import requests
-        import json
-    except ImportError:
-        return False, 0, [], 'requests library required. Install with: pip install requests', 0
-    
-    # Retry loop: continue generating until we have enough valid ideas
-    while ideas_still_needed > 0 and total_attempts < max_retries:
-        total_attempts += 1
-        # Increase batch size on retries to get more variety
-        batch_size = max(ideas_still_needed, 5 + (total_attempts - 1) * 2)  # 5, 7, 9, 11, 13...
         
         response_text = None
         api_error = None
@@ -3594,6 +3589,11 @@ Response:
                         "max_output_tokens": 2000,
                     }
                 )
+                if not response or not hasattr(response, 'text') or not response.text:
+                    api_error = f'Gemini API returned empty or invalid response'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue  # Continue while loop
                 response_text = response.text.strip()
             else:
                 api_error = f'Invalid provider: {provider}'
