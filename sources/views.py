@@ -3379,7 +3379,7 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
             content_summaries.append(summary)
         context_parts.append(f"Related Content:\n" + "\n".join(content_summaries))
     
-    context_text = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
+    context_text_base = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
     
     # Track totals across all retries
     total_created_count = 0
@@ -3388,6 +3388,7 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
     total_skipped_titles = []
     total_attempts = 0
     ideas_still_needed = num_ideas
+    safety_filter_encountered = False  # Track if we've hit safety filters
     
     # Get sample of existing idea titles to avoid (for diversity)
     existing_titles_sample = list(PostIdea.objects.values_list('title', flat=True)[:20])
@@ -3423,22 +3424,40 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
 - Avoid repeating the same format (e.g., don't keep generating "X-Day Itinerary" or "Best Time to Visit X").
 """
         
-        # Get random tags for diversity on retries
-        random_tags_text = ""
-        if total_attempts > 1 and len(all_tags) >= 3:
-            random_tags = random.sample(all_tags, min(3, len(all_tags)))
-            random_tag_names = [tag.name for tag in random_tags]
-            random_tags_text = f"\n\n### EXPLORE THESE TOPICS (for diversity):\n" + ", ".join(random_tag_names)
+        # Simplify prompt if we've encountered safety filters
+        safety_note = ""
+        if safety_filter_encountered:
+            safety_note = """
+### IMPORTANT: Keep all content focused on positive, helpful travel information. Focus on practical travel tips, destinations, food, culture, and experiences that help travelers plan their trips.
+"""
+        
+        # Simplify context if we've hit safety filters (use minimal context)
+        context_text = context_text_base
+        current_existing_titles_text = existing_titles_text
+        current_random_tags_text = ""
+        
+        if safety_filter_encountered:
+            # Use a simplified, neutral context to avoid triggering filters
+            context_text = "General blog post ideas about China travel, destinations, food, culture, and travel tips."
+            # Also simplify existing titles and random tags
+            current_existing_titles_text = ""
+            current_random_tags_text = ""
+        else:
+            # Get random tags for diversity on retries (only if no safety filter issues)
+            if total_attempts > 1 and len(all_tags) >= 3:
+                random_tags = random.sample(all_tags, min(3, len(all_tags)))
+                random_tag_names = [tag.name for tag in random_tags]
+                current_random_tags_text = f"\n\n### EXPLORE THESE TOPICS (for diversity):\n" + ", ".join(random_tag_names)
         
         # Build prompt with current iteration values
         prompt = f"""
         Generate {batch_size} high-quality blog post ideas for a China travel blog.
 
 Your ideas must be directly useful for people planning a trip to China.  
-Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.
+Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.{safety_note}
 
 Use the following context (optional reference material):
-{context_text}{existing_titles_text}{random_tags_text}{creativity_boost}
+{context_text}{current_existing_titles_text}{current_random_tags_text}{creativity_boost}
 
 ### Requirements
 - Each idea must clearly answer a real search intent a traveler might have.
@@ -3620,6 +3639,7 @@ Response:
                     
                     # Check for SAFETY blocks (finish_reason 2 or "SAFETY")
                     if finish_reason_int == 2 or "SAFETY" in finish_reason_str:
+                        safety_filter_encountered = True  # Mark that we've hit safety filters
                         safety_info = ""
                         if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
                             ratings = [f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings if r.probability.name != 'NEGLIGIBLE']
@@ -3628,7 +3648,7 @@ Response:
                         api_error = f'Gemini API response was blocked by safety filters.{safety_info} Try adjusting the prompt or using a different provider.'
                         if total_attempts >= max_retries:
                             return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                        continue  # Continue while loop
+                        continue  # Continue while loop with modified prompt
                     
                     # Check for MAX_TOKENS (finish_reason 3 or "MAX_TOKENS")
                     if finish_reason_int == 3 or "MAX_TOKENS" in finish_reason_str:
