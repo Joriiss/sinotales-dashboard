@@ -3379,7 +3379,7 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
             content_summaries.append(summary)
         context_parts.append(f"Related Content:\n" + "\n".join(content_summaries))
     
-    context_text_base = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
+    context_text = "\n\n".join(context_parts) if context_parts else "General blog post ideas about China, Chinese culture, travel, history, and related topics."
     
     # Track totals across all retries
     total_created_count = 0
@@ -3388,7 +3388,6 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
     total_skipped_titles = []
     total_attempts = 0
     ideas_still_needed = num_ideas
-    safety_filter_encountered = False  # Track if we've hit safety filters
     
     # Get sample of existing idea titles to avoid (for diversity)
     existing_titles_sample = list(PostIdea.objects.values_list('title', flat=True)[:20])
@@ -3424,40 +3423,22 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
 - Avoid repeating the same format (e.g., don't keep generating "X-Day Itinerary" or "Best Time to Visit X").
 """
         
-        # Simplify prompt if we've encountered safety filters
-        safety_note = ""
-        if safety_filter_encountered:
-            safety_note = """
-### IMPORTANT: Keep all content focused on positive, helpful travel information. Focus on practical travel tips, destinations, food, culture, and experiences that help travelers plan their trips.
-"""
-        
-        # Simplify context if we've hit safety filters (use minimal context)
-        context_text = context_text_base
-        current_existing_titles_text = existing_titles_text
-        current_random_tags_text = ""
-        
-        if safety_filter_encountered:
-            # Use a simplified, neutral context to avoid triggering filters
-            context_text = "General blog post ideas about China travel, destinations, food, culture, and travel tips."
-            # Also simplify existing titles and random tags
-            current_existing_titles_text = ""
-            current_random_tags_text = ""
-        else:
-            # Get random tags for diversity on retries (only if no safety filter issues)
-            if total_attempts > 1 and len(all_tags) >= 3:
-                random_tags = random.sample(all_tags, min(3, len(all_tags)))
-                random_tag_names = [tag.name for tag in random_tags]
-                current_random_tags_text = f"\n\n### EXPLORE THESE TOPICS (for diversity):\n" + ", ".join(random_tag_names)
+        # Get random tags for diversity on retries
+        random_tags_text = ""
+        if total_attempts > 1 and len(all_tags) >= 3:
+            random_tags = random.sample(all_tags, min(3, len(all_tags)))
+            random_tag_names = [tag.name for tag in random_tags]
+            random_tags_text = f"\n\n### EXPLORE THESE TOPICS (for diversity):\n" + ", ".join(random_tag_names)
         
         # Build prompt with current iteration values
         prompt = f"""
         Generate {batch_size} high-quality blog post ideas for a China travel blog.
 
 Your ideas must be directly useful for people planning a trip to China.  
-Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.{safety_note}
+Avoid abstract cultural topics unless they clearly help a traveler understand a place, activity, or tradition they can experience on a trip.
 
 Use the following context (optional reference material):
-{context_text}{current_existing_titles_text}{current_random_tags_text}{creativity_boost}
+{context_text}{existing_titles_text}{random_tags_text}{creativity_boost}
 
 ### Requirements
 - Each idea must clearly answer a real search intent a traveler might have.
@@ -3596,27 +3577,7 @@ Response:
                     continue  # Continue while loop
                 
                 genai.configure(api_key=api_key)
-                
-                # Configure safety settings to be more permissive for content analysis
-                # This helps avoid false positives when analyzing travel blog content
-                try:
-                    from google.generativeai.types import HarmCategory, HarmBlockThreshold
-                    safety_settings = {
-                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-                    }
-                except (ImportError, AttributeError):
-                    # Fallback to string-based settings if enum import fails
-                    safety_settings = {
-                        "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
-                        "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
-                        "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
-                        "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_ONLY_HIGH",
-                    }
-                
-                genai_model = genai.GenerativeModel(model, safety_settings=safety_settings)
+                genai_model = genai.GenerativeModel(model)
                 # Increase temperature on retries for more creativity
                 base_temp = 0.8
                 retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
@@ -3628,51 +3589,7 @@ Response:
                         "max_output_tokens": 2000,
                     }
                 )
-                
-                # Check for blocked responses BEFORE accessing response.text
-                # This is critical because accessing response.text when finish_reason is 2 (SAFETY) throws an error
-                if response.candidates and len(response.candidates) > 0:
-                    candidate = response.candidates[0]
-                    finish_reason = candidate.finish_reason
-                    finish_reason_str = str(finish_reason).upper() if finish_reason else ""
-                    finish_reason_int = int(finish_reason) if isinstance(finish_reason, (int, str)) and str(finish_reason).isdigit() else None
-                    
-                    # Check for SAFETY blocks (finish_reason 2 or "SAFETY")
-                    if finish_reason_int == 2 or "SAFETY" in finish_reason_str:
-                        safety_filter_encountered = True  # Mark that we've hit safety filters
-                        safety_info = ""
-                        if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
-                            ratings = [f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings if r.probability.name != 'NEGLIGIBLE']
-                            if ratings:
-                                safety_info = f" Safety ratings: {', '.join(ratings)}."
-                        api_error = f'Gemini API response was blocked by safety filters.{safety_info} Try adjusting the prompt or using a different provider.'
-                        if total_attempts >= max_retries:
-                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                        continue  # Continue while loop with modified prompt
-                    
-                    # Check for MAX_TOKENS (finish_reason 3 or "MAX_TOKENS")
-                    if finish_reason_int == 3 or "MAX_TOKENS" in finish_reason_str:
-                        api_error = f'Gemini API response hit the token limit (MAX_TOKENS). The max_output_tokens (2000) is too low. Try increasing the token limit or using a different provider.'
-                        if total_attempts >= max_retries:
-                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                        continue  # Continue while loop
-                    
-                    # Check for RECITATION (finish_reason 4 or "RECITATION")
-                    if finish_reason_int == 4 or "RECITATION" in finish_reason_str:
-                        api_error = 'Gemini API response was blocked (RECITATION - blocked due to potential recitation). Try adjusting the prompt or using a different provider.'
-                        if total_attempts >= max_retries:
-                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                        continue  # Continue while loop
-                
-                # Now safe to check if response has text (after checking finish_reason)
-                if not response or not hasattr(response, 'parts') or not response.parts:
-                    api_error = f'Gemini API returned empty or invalid response (no parts)'
-                    if total_attempts >= max_retries:
-                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
-                    continue  # Continue while loop
-                
-                # Safe to access response.text now
-                if not hasattr(response, 'text') or not response.text:
+                if not response or not hasattr(response, 'text') or not response.text:
                     api_error = f'Gemini API returned empty or invalid response'
                     if total_attempts >= max_retries:
                         return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
@@ -3937,23 +3854,10 @@ def post_idea_generate_api(request):
             response_data['message'] = f'Generated {created_count} idea(s), {skipped_similar} similar idea(s) were skipped'
         return JsonResponse(response_data)
     else:
-        # Determine appropriate HTTP status code based on error type
-        # Safety filter blocks and other client-side issues should be 400
-        # Server errors should be 500
-        status_code = 500
-        if error_message:
-            error_lower = error_message.lower()
-            if 'safety' in error_lower or 'blocked' in error_lower or 'filter' in error_lower:
-                status_code = 400  # Bad Request - prompt triggered safety filters
-            elif 'api key' in error_lower or 'authentication' in error_lower or 'unauthorized' in error_lower:
-                status_code = 401  # Unauthorized
-            elif 'not found' in error_lower or 'invalid' in error_lower:
-                status_code = 400  # Bad Request
-        
         return JsonResponse({
             'success': False,
             'error': error_message
-        }, status=status_code)
+        }, status=500)
 
 
 def agent_models_api(request):
