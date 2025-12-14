@@ -3589,7 +3589,50 @@ Response:
                         "max_output_tokens": 2000,
                     }
                 )
-                if not response or not hasattr(response, 'text') or not response.text:
+                
+                # Check for blocked responses BEFORE accessing response.text
+                # This is critical because accessing response.text when finish_reason is 2 (SAFETY) throws an error
+                if response.candidates and len(response.candidates) > 0:
+                    candidate = response.candidates[0]
+                    finish_reason = candidate.finish_reason
+                    finish_reason_str = str(finish_reason).upper() if finish_reason else ""
+                    finish_reason_int = int(finish_reason) if isinstance(finish_reason, (int, str)) and str(finish_reason).isdigit() else None
+                    
+                    # Check for SAFETY blocks (finish_reason 2 or "SAFETY")
+                    if finish_reason_int == 2 or "SAFETY" in finish_reason_str:
+                        safety_info = ""
+                        if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
+                            ratings = [f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings if r.probability.name != 'NEGLIGIBLE']
+                            if ratings:
+                                safety_info = f" Safety ratings: {', '.join(ratings)}."
+                        api_error = f'Gemini API response was blocked by safety filters.{safety_info} Try adjusting the prompt or using a different provider.'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue  # Continue while loop
+                    
+                    # Check for MAX_TOKENS (finish_reason 3 or "MAX_TOKENS")
+                    if finish_reason_int == 3 or "MAX_TOKENS" in finish_reason_str:
+                        api_error = f'Gemini API response hit the token limit (MAX_TOKENS). The max_output_tokens (2000) is too low. Try increasing the token limit or using a different provider.'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue  # Continue while loop
+                    
+                    # Check for RECITATION (finish_reason 4 or "RECITATION")
+                    if finish_reason_int == 4 or "RECITATION" in finish_reason_str:
+                        api_error = 'Gemini API response was blocked (RECITATION - blocked due to potential recitation). Try adjusting the prompt or using a different provider.'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue  # Continue while loop
+                
+                # Now safe to check if response has text (after checking finish_reason)
+                if not response or not hasattr(response, 'parts') or not response.parts:
+                    api_error = f'Gemini API returned empty or invalid response (no parts)'
+                    if total_attempts >= max_retries:
+                        return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                    continue  # Continue while loop
+                
+                # Safe to access response.text now
+                if not hasattr(response, 'text') or not response.text:
                     api_error = f'Gemini API returned empty or invalid response'
                     if total_attempts >= max_retries:
                         return False, total_created_count, total_created_ideas, api_error, total_skipped_similar

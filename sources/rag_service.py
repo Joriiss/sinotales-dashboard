@@ -625,22 +625,20 @@ class RAGService:
                 }
             )
             
-            # Check for blocked responses or empty content
+            # Check for blocked responses BEFORE accessing response.text
+            # This is critical because accessing response.text when finish_reason is 2 (SAFETY) throws an error
             if response.candidates and len(response.candidates) > 0:
                 candidate = response.candidates[0]
                 finish_reason = candidate.finish_reason
                 
                 # Handle different finish reasons
-                # finish_reason can be an integer (1=STOP, 2=MAX_TOKENS, 3=SAFETY, etc.) or string
+                # finish_reason can be an integer (1=STOP, 2=SAFETY, 3=MAX_TOKENS, etc.) or string
+                # According to Gemini API: 1=STOP, 2=SAFETY, 3=MAX_TOKENS, 4=RECITATION, 5=OTHER
                 finish_reason_str = str(finish_reason).upper() if finish_reason else ""
                 finish_reason_int = int(finish_reason) if isinstance(finish_reason, (int, str)) and str(finish_reason).isdigit() else None
                 
-                # Check for MAX_TOKENS (finish_reason 2 or "MAX_TOKENS")
-                if finish_reason_int == 2 or "MAX_TOKENS" in finish_reason_str:
-                    raise Exception(f"Gemini API response hit the token limit (MAX_TOKENS). The max_output_tokens ({max_tokens}) is too low. Try increasing the token limit or using a different provider.")
-                
-                # Check for SAFETY blocks (finish_reason 3 or "SAFETY")
-                if finish_reason_int == 3 or "SAFETY" in finish_reason_str:
+                # Check for SAFETY blocks (finish_reason 2 or "SAFETY") - MUST check before accessing response.text
+                if finish_reason_int == 2 or "SAFETY" in finish_reason_str:
                     reason_text = "SAFETY (blocked by content safety filters)"
                     # Try to get safety ratings if available
                     safety_info = ""
@@ -650,6 +648,10 @@ class RAGService:
                             safety_info = f" Safety ratings: {', '.join(ratings)}."
                     raise Exception(f"Gemini API response was blocked ({reason_text}).{safety_info} Try adjusting the prompt or using a different provider.")
                 
+                # Check for MAX_TOKENS (finish_reason 3 or "MAX_TOKENS")
+                if finish_reason_int == 3 or "MAX_TOKENS" in finish_reason_str:
+                    raise Exception(f"Gemini API response hit the token limit (MAX_TOKENS). The max_output_tokens ({max_tokens}) is too low. Try increasing the token limit or using a different provider.")
+                
                 # Check for RECITATION (finish_reason 4 or "RECITATION")
                 if finish_reason_int == 4 or "RECITATION" in finish_reason_str:
                     raise Exception("Gemini API response was blocked (RECITATION - blocked due to potential recitation). Try adjusting the prompt or using a different provider.")
@@ -658,14 +660,22 @@ class RAGService:
                 if finish_reason_int and finish_reason_int > 4:
                     raise Exception(f"Gemini API response was blocked (finish_reason: {finish_reason}). Try adjusting the prompt or using a different provider.")
             
-            # Check if response has text
-            if not response.text:
-                # Check if it's because of MAX_TOKENS
+            # Now safe to check if response has text (after checking finish_reason)
+            # Check if response has parts before accessing text
+            if not hasattr(response, 'parts') or not response.parts:
+                # Check if it's because of a blocked response
                 if response.candidates and len(response.candidates) > 0:
                     candidate = response.candidates[0]
-                    finish_reason = str(candidate.finish_reason).upper() if candidate.finish_reason else ""
-                    if "MAX_TOKENS" in finish_reason or (isinstance(candidate.finish_reason, int) and candidate.finish_reason == 2):
+                    finish_reason = candidate.finish_reason
+                    finish_reason_str = str(finish_reason).upper() if finish_reason else ""
+                    finish_reason_int = int(finish_reason) if isinstance(finish_reason, (int, str)) and str(finish_reason).isdigit() else None
+                    
+                    if finish_reason_int == 3 or "MAX_TOKENS" in finish_reason_str:
                         raise Exception(f"Gemini API returned an empty response because it hit the token limit (max_output_tokens: {max_tokens}). The limit is too low. Try increasing it or using a different provider.")
+                raise Exception("Gemini API returned an empty response. The content may have been filtered or the model couldn't generate a response.")
+            
+            # Safe to access response.text now
+            if not response.text:
                 raise Exception("Gemini API returned an empty response. The content may have been filtered or the model couldn't generate a response.")
             
             return response.text.strip()
