@@ -3577,7 +3577,27 @@ Response:
                     continue  # Continue while loop
                 
                 genai.configure(api_key=api_key)
-                genai_model = genai.GenerativeModel(model)
+                
+                # Configure safety settings to be more permissive for content analysis
+                # This helps avoid false positives when analyzing travel blog content
+                try:
+                    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+                    safety_settings = {
+                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                    }
+                except (ImportError, AttributeError):
+                    # Fallback to string-based settings if enum import fails
+                    safety_settings = {
+                        "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+                        "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
+                        "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
+                        "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_ONLY_HIGH",
+                    }
+                
+                genai_model = genai.GenerativeModel(model, safety_settings=safety_settings)
                 # Increase temperature on retries for more creativity
                 base_temp = 0.8
                 retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
@@ -3897,10 +3917,23 @@ def post_idea_generate_api(request):
             response_data['message'] = f'Generated {created_count} idea(s), {skipped_similar} similar idea(s) were skipped'
         return JsonResponse(response_data)
     else:
+        # Determine appropriate HTTP status code based on error type
+        # Safety filter blocks and other client-side issues should be 400
+        # Server errors should be 500
+        status_code = 500
+        if error_message:
+            error_lower = error_message.lower()
+            if 'safety' in error_lower or 'blocked' in error_lower or 'filter' in error_lower:
+                status_code = 400  # Bad Request - prompt triggered safety filters
+            elif 'api key' in error_lower or 'authentication' in error_lower or 'unauthorized' in error_lower:
+                status_code = 401  # Unauthorized
+            elif 'not found' in error_lower or 'invalid' in error_lower:
+                status_code = 400  # Bad Request
+        
         return JsonResponse({
             'success': False,
             'error': error_message
-        }, status=500)
+        }, status=status_code)
 
 
 def agent_models_api(request):

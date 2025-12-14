@@ -180,7 +180,27 @@ Response:
                     return
                 
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(scheduled_settings.model)
+                
+                # Configure safety settings to be more permissive for content analysis
+                # This helps avoid false positives when analyzing travel blog content
+                try:
+                    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+                    safety_settings = {
+                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                    }
+                except (ImportError, AttributeError):
+                    # Fallback to string-based settings if enum import fails
+                    safety_settings = {
+                        "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+                        "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
+                        "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
+                        "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_ONLY_HIGH",
+                    }
+                
+                model = genai.GenerativeModel(scheduled_settings.model, safety_settings=safety_settings)
                 response = model.generate_content(
                     prompt,
                     generation_config={
