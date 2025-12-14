@@ -3577,24 +3577,195 @@ Response:
                     continue  # Continue while loop
                 
                 genai.configure(api_key=api_key)
-                genai_model = genai.GenerativeModel(model)
+                
+                # Configure safety settings to be more permissive for content generation
+                # This helps avoid false positives when generating blog post ideas
+                # Note: gemini-3-pro-preview may have stricter filters, so we use BLOCK_ONLY_HIGH for all
+                try:
+                    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+                    safety_settings = {
+                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                    }
+                except (ImportError, AttributeError):
+                    # Fallback to string-based settings if enum import fails
+                    safety_settings = {
+                        "HARM_CATEGORY_HARASSMENT": "BLOCK_ONLY_HIGH",
+                        "HARM_CATEGORY_HATE_SPEECH": "BLOCK_ONLY_HIGH",
+                        "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_ONLY_HIGH",
+                        "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_ONLY_HIGH",
+                    }
+                
+                genai_model = genai.GenerativeModel(model, safety_settings=safety_settings)
                 # Increase temperature on retries for more creativity
                 base_temp = 0.8
                 retry_temp = min(1.2, base_temp + (total_attempts - 1) * 0.1)  # 0.8, 0.9, 1.0, 1.1, 1.2
+                
+                # Calculate appropriate token limit based on batch size
+                # Each idea needs ~200-300 tokens (title + description + keyword), so we need headroom
+                # Use at least 4000 tokens, or scale with batch size
+                max_tokens = max(4000, batch_size * 500)
+                # Cap at 8192 (common limit for many Gemini models)
+                max_tokens = min(max_tokens, 8192)
                 
                 response = genai_model.generate_content(
                     prompt,
                     generation_config={
                         "temperature": retry_temp,
-                        "max_output_tokens": 2000,
+                        "max_output_tokens": max_tokens,
                     }
                 )
-                if not response or not hasattr(response, 'text') or not response.text:
-                    api_error = f'Gemini API returned empty or invalid response'
+                
+                # Check for blocked responses or empty content BEFORE accessing response.text
+                # Accessing response.text when finish_reason indicates a block will throw an exception
+                if response.candidates and len(response.candidates) > 0:
+                    candidate = response.candidates[0]
+                    finish_reason = candidate.finish_reason
+                    
+                    # Handle different finish reasons
+                    # finish_reason can be an integer (1=STOP, 2=MAX_TOKENS, 3=SAFETY, etc.) or string
+                    finish_reason_str = str(finish_reason).upper() if finish_reason else ""
+                    finish_reason_int = int(finish_reason) if isinstance(finish_reason, (int, str)) and str(finish_reason).isdigit() else None
+                    
+                    # Check for SAFETY blocks (finish_reason 3 or "SAFETY")
+                    # Note: Sometimes SAFETY may be reported as finish_reason 2 when there are no parts
+                    if finish_reason_int == 3 or "SAFETY" in finish_reason_str:
+                        reason_text = "SAFETY (blocked by content safety filters)"
+                        # Try to get detailed safety ratings if available
+                        safety_info = ""
+                        blocked_categories = []
+                        if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
+                            for rating in candidate.safety_ratings:
+                                # Check if this rating caused the block
+                                # HIGH or MEDIUM probability ratings are likely the cause
+                                prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
+                                cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
+                                if prob_name not in ['NEGLIGIBLE', 'LOW']:
+                                    blocked_categories.append(f"{cat_name}: {prob_name}")
+                            if blocked_categories:
+                                safety_info = f" Blocked categories: {', '.join(blocked_categories)}."
+                        
+                        # Also check prompt_feedback for additional info
+                        if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                            if hasattr(response.prompt_feedback, 'safety_ratings') and response.prompt_feedback.safety_ratings:
+                                prompt_blocked = []
+                                for rating in response.prompt_feedback.safety_ratings:
+                                    prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
+                                    cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
+                                    if prob_name not in ['NEGLIGIBLE', 'LOW']:
+                                        prompt_blocked.append(f"{cat_name}: {prob_name}")
+                                if prompt_blocked:
+                                    safety_info += f" Prompt blocked categories: {', '.join(prompt_blocked)}."
+                        
+                        api_error = f'Gemini API response was blocked ({reason_text}).{safety_info} This may be a false positive. Try: 1) Using a different model (e.g., gemini-1.5-pro), 2) Simplifying the prompt, or 3) Using a different provider.'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue  # Continue while loop
+                    
+                    # Check for MAX_TOKENS (finish_reason 2 or "MAX_TOKENS")
+                    # Note: finish_reason 2 can also indicate SAFETY when there are no parts
+                    # We'll try to access response.text below and handle the exception if it fails
+                    if finish_reason_int == 2 or "MAX_TOKENS" in finish_reason_str:
+                        # Try to access response.text - if it fails, it's likely a safety block
+                        try:
+                            if hasattr(response, 'text') and response.text:
+                                # It's actually MAX_TOKENS with partial content
+                                api_error = f'Gemini API response hit the token limit (MAX_TOKENS). The max_output_tokens ({max_tokens}) may be too low for the requested batch size. Try requesting fewer ideas at once or using a different provider.'
+                                if total_attempts >= max_retries:
+                                    return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                                continue  # Continue while loop
+                        except (ValueError, AttributeError) as e:
+                            # finish_reason 2 but can't access text - likely a safety block
+                            reason_text = "SAFETY (blocked by content safety filters)"
+                            safety_info = ""
+                            blocked_categories = []
+                            if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
+                                for rating in candidate.safety_ratings:
+                                    prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
+                                    cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
+                                    if prob_name not in ['NEGLIGIBLE', 'LOW']:
+                                        blocked_categories.append(f"{cat_name}: {prob_name}")
+                                if blocked_categories:
+                                    safety_info = f" Blocked categories: {', '.join(blocked_categories)}."
+                            
+                            # Check prompt_feedback
+                            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                                if hasattr(response.prompt_feedback, 'safety_ratings') and response.prompt_feedback.safety_ratings:
+                                    prompt_blocked = []
+                                    for rating in response.prompt_feedback.safety_ratings:
+                                        prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
+                                        cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
+                                        if prob_name not in ['NEGLIGIBLE', 'LOW']:
+                                            prompt_blocked.append(f"{cat_name}: {prob_name}")
+                                    if prompt_blocked:
+                                        safety_info += f" Prompt blocked categories: {', '.join(prompt_blocked)}."
+                            
+                            api_error = f'Gemini API response was blocked ({reason_text}).{safety_info} This may be a false positive. Try: 1) Using a different model (e.g., gemini-1.5-pro), 2) Simplifying the prompt, or 3) Using a different provider.'
+                            if total_attempts >= max_retries:
+                                return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                            continue  # Continue while loop
+                    
+                    # Check for RECITATION (finish_reason 4 or "RECITATION")
+                    if finish_reason_int == 4 or "RECITATION" in finish_reason_str:
+                        api_error = 'Gemini API response was blocked (RECITATION - blocked due to potential recitation). Try adjusting the prompt or using a different provider.'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue  # Continue while loop
+                    
+                    # Check for OTHER reasons
+                    if finish_reason_int and finish_reason_int > 4:
+                        api_error = f'Gemini API response was blocked (finish_reason: {finish_reason}). Try adjusting the prompt or using a different provider.'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue  # Continue while loop
+                
+                # Now safely try to access response.text
+                try:
+                    if not response or not hasattr(response, 'text') or not response.text:
+                        api_error = f'Gemini API returned empty or invalid response'
+                        if total_attempts >= max_retries:
+                            return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
+                        continue  # Continue while loop
+                    response_text = response.text.strip()
+                except ValueError as e:
+                    # This exception occurs when response.text is accessed but there's no valid Part
+                    # Usually happens when finish_reason indicates a block
+                    error_str = str(e)
+                    if "valid `Part`" in error_str or "finish_reason" in error_str:
+                        # Try to get safety information from the response
+                        safety_info = ""
+                        if hasattr(response, 'candidates') and response.candidates and len(response.candidates) > 0:
+                            candidate = response.candidates[0]
+                            blocked_categories = []
+                            if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
+                                for rating in candidate.safety_ratings:
+                                    prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
+                                    cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
+                                    if prob_name not in ['NEGLIGIBLE', 'LOW']:
+                                        blocked_categories.append(f"{cat_name}: {prob_name}")
+                                if blocked_categories:
+                                    safety_info = f" Blocked categories: {', '.join(blocked_categories)}."
+                            
+                            # Check prompt_feedback
+                            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                                if hasattr(response.prompt_feedback, 'safety_ratings') and response.prompt_feedback.safety_ratings:
+                                    prompt_blocked = []
+                                    for rating in response.prompt_feedback.safety_ratings:
+                                        prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
+                                        cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
+                                        if prob_name not in ['NEGLIGIBLE', 'LOW']:
+                                            prompt_blocked.append(f"{cat_name}: {prob_name}")
+                                    if prompt_blocked:
+                                        safety_info += f" Prompt blocked categories: {', '.join(prompt_blocked)}."
+                        
+                        api_error = f'Gemini API response was blocked or filtered.{safety_info} This may be a false positive. Try: 1) Using a different model (e.g., gemini-1.5-pro), 2) Simplifying the prompt, or 3) Using a different provider. Error: {error_str}'
+                    else:
+                        api_error = f'Gemini API error: {error_str}'
                     if total_attempts >= max_retries:
                         return False, total_created_count, total_created_ideas, api_error, total_skipped_similar
                     continue  # Continue while loop
-                response_text = response.text.strip()
             else:
                 api_error = f'Invalid provider: {provider}'
                 if total_attempts >= max_retries:
