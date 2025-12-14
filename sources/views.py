@@ -3348,8 +3348,8 @@ def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selecte
     # Initialize embedding service for similarity checking
     embedding_service = None
     # Higher threshold = more strict (only flag near-duplicates)
-    # 0.92 = very strict (only near-duplicates), 0.9 = strict, 0.85 = moderate
-    similarity_threshold = 0.92  # 92% similarity threshold - only flag near-duplicates
+    # 0.92 = very strict (only near-duplicates), 0.9 = strict, 0.85 = moderate, 0.7 = lenient
+    similarity_threshold = 0.70  # 70% similarity threshold - flag similar ideas
     try:
         embedding_service = EmbeddingService()
     except (ValueError, ImportError):
