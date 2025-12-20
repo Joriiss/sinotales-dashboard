@@ -5419,6 +5419,9 @@ def create_post_idea_api(request):
     - title: Title of the idea (required)
     - description: Description of the idea (optional)
     - primary_keyword: Primary keyword for the idea (optional)
+    - similarity_threshold: Similarity threshold (0.0-1.0, default: 0.7)
+    
+    Returns error if idea is too similar to existing ideas.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -5438,6 +5441,7 @@ def create_post_idea_api(request):
         title = data.get('title', '').strip()
         description = data.get('description', '').strip() or ''
         primary_keyword = data.get('primary_keyword', '').strip() or None
+        similarity_threshold = data.get('similarity_threshold', 0.7)
         
         # Validate required fields
         if not title:
@@ -5446,18 +5450,70 @@ def create_post_idea_api(request):
                 'error': 'title is required'
             }, status=400)
         
+        # Validate and convert similarity_threshold
+        try:
+            similarity_threshold = float(similarity_threshold)
+            if not 0.0 <= similarity_threshold <= 1.0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'similarity_threshold must be between 0.0 and 1.0'
+                }, status=400)
+        except (ValueError, TypeError):
+            similarity_threshold = 0.7  # Default value
+        
         # Initialize embedding service
         embedding_service = None
-        new_embedding = None
         try:
             embedding_service = EmbeddingService()
+        except (ValueError, ImportError) as e:
+            # If embedding service not available, skip similarity check but log warning
+            print(f"Warning: Embedding service not available: {str(e)}. Skipping similarity check.")
+        
+        # Check similarity if embedding service is available
+        new_embedding = None
+        if embedding_service:
+            # Generate embedding for the new title (needed for both similarity check and storage)
             new_embedding = embedding_service.generate_embedding(title)
             if not new_embedding:
-                # Log warning but don't fail - allow idea creation without embedding
+                # Failed to generate embedding, but continue (will create without embedding)
                 print(f"Warning: Could not generate embedding for '{title}'")
-        except (ValueError, ImportError) as e:
-            # Log warning but don't fail - allow idea creation without embedding
-            print(f"Warning: Embedding service not available: {str(e)}")
+            else:
+                # Get existing ideas with embeddings
+                existing_ideas = list(
+                    PostIdea.objects.filter(title_embedding__isnull=False)
+                )
+                
+                if existing_ideas:
+                    # Calculate max_distance from similarity threshold
+                    max_distance = 1.0 - similarity_threshold
+                    
+                    # Find most similar ideas using vector search
+                    similar_ideas = PostIdea.objects.filter(
+                        title_embedding__isnull=False,
+                        id__in=[idea.id for idea in existing_ideas]
+                    ).annotate(
+                        distance=CosineDistance('title_embedding', new_embedding)
+                    ).order_by('distance')[:1]  # Get the most similar one
+                    
+                    if similar_ideas.exists():
+                        most_similar = similar_ideas[0]
+                        distance = float(most_similar.distance)
+                        similarity_score = max(0.0, min(1.0, 1.0 - distance))
+                        
+                        if similarity_score >= similarity_threshold:
+                            # Idea is too similar, return error
+                            return JsonResponse({
+                                'success': False,
+                                'error': 'idea_too_similar',
+                                'message': f'Idea is too similar to existing idea (similarity: {similarity_score:.4f}, threshold: {similarity_threshold})',
+                                'similarity_score': round(similarity_score, 4),
+                                'most_similar_idea': {
+                                    'id': most_similar.id,
+                                    'title': most_similar.title,
+                                    'similarity': round(similarity_score, 4)
+                                },
+                                'threshold': similarity_threshold
+                            }, status=409)  # 409 Conflict
         
         # Create the post idea
         post_idea = PostIdea.objects.create(
