@@ -25,9 +25,11 @@ Generate exactly `num_ideas` unique blog post ideas by:
 
 3. **`create_post_idea`** - Create a post idea in the database
    - Parameters: `title` (required), `description` (required), `primary_keyword` (required), `similarity_threshold` (optional, default: 0.7)
-   - Returns: Success with idea details, or error if idea is too similar
+   - Returns: 
+     - If successful: `{"success": true, "idea": {...}}`
+     - If too similar: `{"success": false, "rejected": true, "reason": "idea_too_similar", ...}` (returns 200 status, not an error)
    - Use: Attempt to create an idea. The endpoint automatically checks similarity before creating.
-   - If the idea is too similar, it returns an error with `error: "idea_too_similar"` and details about the similar idea
+   - If the idea is too similar, it returns `success: false` with `rejected: true` and `reason: "idea_too_similar"` plus details about the similar idea
 
 **Workflow:**
 
@@ -45,17 +47,20 @@ Generate exactly `num_ideas` unique blog post ideas by:
 ### Step 3: Attempt to Create the Idea
 - Call `create_post_idea` with the generated idea (title, description, primary_keyword - ALL REQUIRED)
 - The endpoint automatically checks similarity before creating
-- Review the response:
-  - If `success: true` → Idea created successfully! Go to Step 4
-  - If `error: "idea_too_similar"` → Idea is too similar, go to Step 4
+- **CRITICAL: Check the response carefully:**
+  - If `success: true` → Idea created successfully! Go to Step 5
+  - If `success: false` AND `rejected: true` AND `reason: "idea_too_similar"` → This means the idea is too similar, DO NOT retry the same idea. Go to Step 4 immediately.
 
-### Step 4: Handle Similarity (if creation failed)
-- If creation failed due to similarity:
-  - Review the error response which includes `most_similar_idea` details
-  - Call `get_idea_context` to get random tags and content sources for inspiration
-  - Use the returned tags and content summaries to inspire a different angle
-  - Generate a NEW idea with a different focus or approach
-  - Return to Step 3 to try creating again
+### Step 4: Handle Similarity Error (REQUIRED when creation fails)
+- **When you receive an `idea_too_similar` error, you MUST:**
+  1. **STOP trying the same idea** - Do not retry with the same title/description
+  2. **Read the error details** - The response includes `most_similar_idea` with the title of the similar idea
+  3. **Get fresh context** - Call `get_idea_context(random_tags=5, random_contents=5)` to get new inspiration
+  4. **Generate a COMPLETELY DIFFERENT idea** - Use the context to create a new idea with:
+     - Different destination/region (if the similar idea was about a place)
+     - Different topic/angle (if the similar idea was about a theme)
+     - Different focus (e.g., if similar was about food, try transportation, logistics, or activities)
+  5. **Return to Step 3** with the NEW idea (not the old one)
 
 ### Step 5: Repeat
 - Continue Steps 2-4 until you have created exactly `num_ideas` unique ideas
@@ -90,17 +95,25 @@ Generate exactly `num_ideas` unique blog post ideas by:
    - Examples: "Chengdu", "metro", "food", "Tibet", "train" - NOT full titles
    - The search uses partial matching, so broader terms find more results
 
-6. **Error Handling:**
-   - If similarity check fails, try generating a different idea
-   - If context endpoint fails, try a completely different topic
-   - If creation fails, log the error and try the next idea
-   - Never create an idea without checking similarity first
+6. **Error Handling - CRITICAL:**
+   - **When you get `success: false` with `rejected: true` and `reason: "idea_too_similar"`:**
+     - This is NOT a failure - it's a signal that you need a different idea
+     - The endpoint returns 200 status, so this is a normal response, not an error
+     - **DO NOT retry the same idea** - it will be rejected again
+     - **DO NOT skip to the next idea** - you still need to create one
+     - **DO get context and generate a NEW, DIFFERENT idea**
+     - Read the `most_similar_idea` details to understand what to avoid
+   - If context endpoint fails, try a completely different topic without context
+   - If creation fails for other reasons (not similarity), log the error and try a different idea
+   - The similarity check happens automatically - you don't need to check separately
 
 7. **Avoid Common Pitfalls:**
    - Don't generate ideas that are just variations of existing ones
    - Don't create ideas without proper title, description, and keyword (all required)
-   - Don't give up if creation fails due to similarity - use context to diversify and try again
+   - **NEVER retry the same idea after getting a similarity error** - it will fail again
+   - **ALWAYS generate a NEW idea when you get `idea_too_similar` error**
    - When you get a similarity error, read the `most_similar_idea` details to understand what to avoid
+   - Don't give up - use context to diversify and create something completely different
 
 **Output Format:**
 
@@ -130,10 +143,22 @@ Summary:
 3. Create idea: `create_post_idea(title="...", description="...", primary_keyword="...")` → `success: true` ✓
 4. Repeat for remaining ideas
 
-**If idea is too similar:**
-1. Create idea: `create_post_idea(...)` → Returns `error: "idea_too_similar"` with details about similar idea
-2. Get context: `get_idea_context(random_tags=5, random_contents=5)` → Get tags like "Tibet", "Photography", "Budget Travel"
-3. Generate new idea: "Budget Travel Guide to Tibet" (different angle) with proper description and keyword
-4. Create idea again → Should succeed now
+**If idea is too similar (EXAMPLE):**
+1. Generate idea: "Hidden Gems in Shanghai: Beyond the Bund"
+2. Create idea: `create_post_idea(...)` → Returns `{"success": false, "rejected": true, "reason": "idea_too_similar", "most_similar_idea": {"title": "Hidden Gems in Shanghai: Beyond the Bund"}}`
+3. **STOP - Do not retry this idea!**
+4. Get context: `get_idea_context(random_tags=5, random_contents=5)` → Get tags like "Tibet", "Photography", "Budget Travel", "Sichuan"
+5. Generate COMPLETELY DIFFERENT idea: "Budget Travel Guide to Tibet" (different destination, different theme) with proper description and keyword
+6. Create the NEW idea → Should return `{"success": true, ...}` now
+
+**Key Point:** When you get a similarity error, you MUST generate a NEW idea. The error tells you what's too similar - use that information plus context to create something different.
+
+**CRITICAL REMINDER:**
+- When `create_post_idea` returns `{"success": false, "rejected": true, "reason": "idea_too_similar"}`:
+  - This is a normal response (200 status), not an error
+  - This means STOP and generate a DIFFERENT idea
+  - Do NOT retry the same idea
+  - Get context and create something new
+  - The response includes `most_similar_idea` details - use that to avoid similar topics
 
 **Now begin generating ideas. You have been given `num_ideas` as a parameter - generate exactly that many unique ideas.**

@@ -5501,9 +5501,11 @@ def create_post_idea_api(request):
                         similarity_score = max(0.0, min(1.0, 1.0 - distance))
                         
                         if similarity_score >= similarity_threshold:
-                            # Idea is too similar, return error
+                            # Idea is too similar, return rejection (200 status so n8n doesn't treat it as fatal error)
                             return JsonResponse({
                                 'success': False,
+                                'rejected': True,
+                                'reason': 'idea_too_similar',
                                 'error': 'idea_too_similar',
                                 'message': f'Idea is too similar to existing idea (similarity: {similarity_score:.4f}, threshold: {similarity_threshold})',
                                 'similarity_score': round(similarity_score, 4),
@@ -5513,7 +5515,7 @@ def create_post_idea_api(request):
                                     'similarity': round(similarity_score, 4)
                                 },
                                 'threshold': similarity_threshold
-                            }, status=409)  # 409 Conflict
+                            }, status=200)  # 200 so n8n doesn't stop execution
         
         # Create the post idea
         post_idea = PostIdea.objects.create(
