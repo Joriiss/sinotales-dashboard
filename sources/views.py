@@ -3336,20 +3336,29 @@ def blog_post_generate(request, pk):
     return render(request, 'sources/blog_post_generate.html', context)
 
 
-def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selected_contents=None, user=None, max_retries=5):
+def _generate_post_ideas(num_ideas, provider, model, selected_tags=None, selected_contents=None, user=None, max_retries=5, similarity_threshold=0.70):
     """
     Helper function to generate post ideas using the specified provider and model.
     Automatically retries generation until the requested number of valid (non-duplicate) ideas are found.
     Returns tuple: (success: bool, created_count: int, created_ideas: list, error_message: str, skipped_similar: int)
+    
+    Args:
+        num_ideas: Number of ideas to generate
+        provider: AI provider ('ollama', 'openai', or 'gemini')
+        model: Model name to use
+        selected_tags: Optional list of tags to use as context
+        selected_contents: Optional list of content items to use as context
+        user: Optional user object for logging
+        max_retries: Maximum number of retry attempts (default: 5)
+        similarity_threshold: Similarity threshold for duplicate detection (0.0-1.0, default: 0.70)
+            Higher threshold = more strict (only flag near-duplicates)
+            0.92 = very strict (only near-duplicates), 0.9 = strict, 0.85 = moderate, 0.7 = lenient
     """
     selected_tags = selected_tags or []
     selected_contents = selected_contents or []
     
     # Initialize embedding service for similarity checking
     embedding_service = None
-    # Higher threshold = more strict (only flag near-duplicates)
-    # 0.92 = very strict (only near-duplicates), 0.9 = strict, 0.85 = moderate, 0.7 = lenient
-    similarity_threshold = 0.70  # 70% similarity threshold - flag similar ideas
     try:
         embedding_service = EmbeddingService()
     except (ValueError, ImportError):
@@ -3966,18 +3975,22 @@ def post_idea_generate_api(request):
                 num_ideas = data.get('num_ideas')
                 provider = data.get('provider')
                 model = data.get('model')
+                similarity_threshold = data.get('similarity_threshold')
             else:
                 num_ideas = request.POST.get('num_ideas')
                 provider = request.POST.get('provider')
                 model = request.POST.get('model')
+                similarity_threshold = request.POST.get('similarity_threshold')
         except:
             num_ideas = request.POST.get('num_ideas')
             provider = request.POST.get('provider')
             model = request.POST.get('model')
+            similarity_threshold = request.POST.get('similarity_threshold')
     else:
         num_ideas = request.GET.get('num_ideas')
         provider = request.GET.get('provider')
         model = request.GET.get('model')
+        similarity_threshold = request.GET.get('similarity_threshold')
     
     # Validate required parameters
     if not num_ideas:
@@ -4001,6 +4014,17 @@ def post_idea_generate_api(request):
     if provider not in ['ollama', 'openai', 'gemini']:
         return JsonResponse({'error': 'provider must be one of: ollama, openai, gemini'}, status=400)
     
+    # Validate and convert similarity_threshold (optional, default 0.70)
+    if similarity_threshold is not None:
+        try:
+            similarity_threshold = float(similarity_threshold)
+            if not 0.0 <= similarity_threshold <= 1.0:
+                return JsonResponse({'error': 'similarity_threshold must be between 0.0 and 1.0'}, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'similarity_threshold must be a valid number between 0.0 and 1.0'}, status=400)
+    else:
+        similarity_threshold = 0.70  # Default value
+    
     # Generate ideas
     success, created_count, created_ideas, error_message, skipped_similar = _generate_post_ideas(
         num_ideas=num_ideas,
@@ -4008,7 +4032,8 @@ def post_idea_generate_api(request):
         model=model,
         selected_tags=None,
         selected_contents=None,
-        user=None  # API calls are system-generated
+        user=None,  # API calls are system-generated
+        similarity_threshold=similarity_threshold
     )
     
     if success:
@@ -4018,6 +4043,7 @@ def post_idea_generate_api(request):
             'num_requested': num_ideas,
             'provider': provider,
             'model': model,
+            'similarity_threshold': similarity_threshold,
             'ideas': created_ideas
         }
         if skipped_similar > 0:
@@ -5185,6 +5211,7 @@ def blog_posts_api(request):
     Query parameters:
     - published: Filter by published status (true/false). If not provided, returns all posts.
     - limit: Maximum number of posts to return (integer). If not provided, returns all posts.
+    - search: Search query to filter posts by title, meta_title, meta_description, or tag names (case-insensitive partial match).
     """
     if request.method != 'GET':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -5205,6 +5232,16 @@ def blog_posts_api(request):
         elif published_param == 'false':
             blog_posts = blog_posts.filter(published=False)
         # If not provided or empty, return all posts
+        
+        # Search filter - search in title, meta_title, meta_description, and tag names
+        search_query = request.GET.get('search', '').strip()
+        if search_query:
+            blog_posts = blog_posts.filter(
+                Q(title__icontains=search_query) |
+                Q(meta_title__icontains=search_query) |
+                Q(meta_description__icontains=search_query) |
+                Q(tags__name__icontains=search_query)
+            ).distinct()  # Use distinct() to avoid duplicates when matching multiple tags
         
         # Apply limit if provided
         limit_param = request.GET.get('limit', '').strip()
@@ -5232,7 +5269,8 @@ def blog_posts_api(request):
             'count': len(posts),
             'filter_applied': {
                 'published': published_param if published_param else None,
-                'limit': limit if limit else None
+                'limit': limit if limit else None,
+                'search': search_query if search_query else None
             }
         })
     except Exception as e:
