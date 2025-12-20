@@ -5281,6 +5281,330 @@ def blog_posts_api(request):
 
 
 @csrf_exempt
+def check_idea_similarity_api(request):
+    """API endpoint to check if a post idea is too similar to existing ideas (token-based authentication)
+    
+    Request Body:
+    - title: Title of the idea to check (required)
+    - similarity_threshold: Similarity threshold (0.0-1.0, default: 0.7)
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Parse request body
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+        
+        title = data.get('title', '').strip()
+        similarity_threshold = data.get('similarity_threshold', 0.7)
+        
+        # Validate required fields
+        if not title:
+            return JsonResponse({
+                'success': False,
+                'error': 'title is required'
+            }, status=400)
+        
+        # Validate and convert similarity_threshold
+        try:
+            similarity_threshold = float(similarity_threshold)
+            if not 0.0 <= similarity_threshold <= 1.0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'similarity_threshold must be between 0.0 and 1.0'
+                }, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'error': 'similarity_threshold must be a valid number between 0.0 and 1.0'
+            }, status=400)
+        
+        # Initialize embedding service
+        embedding_service = None
+        try:
+            embedding_service = EmbeddingService()
+        except (ValueError, ImportError) as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Embedding service not available: {str(e)}'
+            }, status=500)
+        
+        # Get existing ideas with embeddings
+        existing_ideas = list(
+            PostIdea.objects.filter(title_embedding__isnull=False)
+        )
+        
+        if not existing_ideas:
+            # No existing ideas, so it's not similar
+            return JsonResponse({
+                'success': True,
+                'is_similar': False,
+                'similarity_score': 0.0,
+                'most_similar_idea': None,
+                'threshold': similarity_threshold,
+                'message': 'No existing ideas to compare against'
+            })
+        
+        # Generate embedding for the new title
+        new_embedding = embedding_service.generate_embedding(title)
+        if not new_embedding:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to generate embedding for the title'
+            }, status=500)
+        
+        # Calculate max_distance from similarity threshold
+        max_distance = 1.0 - similarity_threshold
+        
+        # Find most similar ideas using vector search
+        similar_ideas = PostIdea.objects.filter(
+            title_embedding__isnull=False,
+            id__in=[idea.id for idea in existing_ideas]
+        ).annotate(
+            distance=CosineDistance('title_embedding', new_embedding)
+        ).order_by('distance')[:1]  # Get the most similar one
+        
+        if similar_ideas.exists():
+            most_similar = similar_ideas[0]
+            distance = float(most_similar.distance)
+            similarity_score = max(0.0, min(1.0, 1.0 - distance))
+            is_similar = similarity_score >= similarity_threshold
+            
+            return JsonResponse({
+                'success': True,
+                'is_similar': is_similar,
+                'similarity_score': round(similarity_score, 4),
+                'most_similar_idea': {
+                    'id': most_similar.id,
+                    'title': most_similar.title,
+                    'similarity': round(similarity_score, 4)
+                },
+                'threshold': similarity_threshold
+            })
+        else:
+            # No similar ideas found
+            return JsonResponse({
+                'success': True,
+                'is_similar': False,
+                'similarity_score': 0.0,
+                'most_similar_idea': None,
+                'threshold': similarity_threshold
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON in request body'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def create_post_idea_api(request):
+    """API endpoint to create a post idea (token-based authentication)
+    
+    Request Body:
+    - title: Title of the idea (required)
+    - description: Description of the idea (optional)
+    - primary_keyword: Primary keyword for the idea (optional)
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Parse request body
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+        
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip() or ''
+        primary_keyword = data.get('primary_keyword', '').strip() or None
+        
+        # Validate required fields
+        if not title:
+            return JsonResponse({
+                'success': False,
+                'error': 'title is required'
+            }, status=400)
+        
+        # Initialize embedding service
+        embedding_service = None
+        new_embedding = None
+        try:
+            embedding_service = EmbeddingService()
+            new_embedding = embedding_service.generate_embedding(title)
+            if not new_embedding:
+                # Log warning but don't fail - allow idea creation without embedding
+                print(f"Warning: Could not generate embedding for '{title}'")
+        except (ValueError, ImportError) as e:
+            # Log warning but don't fail - allow idea creation without embedding
+            print(f"Warning: Embedding service not available: {str(e)}")
+        
+        # Create the post idea
+        post_idea = PostIdea.objects.create(
+            title=title,
+            description=description,
+            primary_keyword=primary_keyword,
+            title_embedding=new_embedding
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'idea': {
+                'id': post_idea.id,
+                'title': post_idea.title,
+                'description': post_idea.description,
+                'primary_keyword': post_idea.primary_keyword,
+                'created_at': post_idea.created_at.isoformat() if post_idea.created_at else None
+            }
+        })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON in request body'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def get_idea_context_api(request):
+    """API endpoint to get context for idea generation (token-based authentication)
+    
+    Query parameters:
+    - random_tags: Number of random tags to return (default: 5)
+    - random_contents: Number of random content items to return (default: 5)
+    - tag_ids: Optional comma-separated list of specific tag IDs to include
+    - content_ids: Optional comma-separated list of specific content IDs to include
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Get query parameters
+        random_tags_param = request.GET.get('random_tags', '5').strip()
+        random_contents_param = request.GET.get('random_contents', '5').strip()
+        tag_ids_param = request.GET.get('tag_ids', '').strip()
+        content_ids_param = request.GET.get('content_ids', '').strip()
+        
+        # Parse and validate random_tags
+        try:
+            random_tags_count = int(random_tags_param)
+            if random_tags_count < 0:
+                random_tags_count = 5
+        except ValueError:
+            random_tags_count = 5
+        
+        # Parse and validate random_contents
+        try:
+            random_contents_count = int(random_contents_param)
+            if random_contents_count < 0:
+                random_contents_count = 5
+        except ValueError:
+            random_contents_count = 5
+        
+        # Parse tag_ids
+        tag_ids = []
+        if tag_ids_param:
+            try:
+                tag_ids = [int(tid.strip()) for tid in tag_ids_param.split(',') if tid.strip()]
+            except ValueError:
+                pass
+        
+        # Parse content_ids
+        content_ids = []
+        if content_ids_param:
+            try:
+                content_ids = [int(cid.strip()) for cid in content_ids_param.split(',') if cid.strip()]
+            except ValueError:
+                pass
+        
+        # Get tags
+        tags = []
+        if tag_ids:
+            # Get specific tags
+            specific_tags = Tag.objects.filter(id__in=tag_ids)
+            tags.extend([{'id': tag.id, 'name': tag.name} for tag in specific_tags])
+        
+        # Get random tags if needed
+        if random_tags_count > 0:
+            all_tags = Tag.objects.exclude(id__in=tag_ids) if tag_ids else Tag.objects.all()
+            random_tags = list(all_tags.order_by('?')[:random_tags_count])
+            tags.extend([{'id': tag.id, 'name': tag.name} for tag in random_tags])
+        
+        # Get contents
+        contents = []
+        if content_ids:
+            # Get specific contents
+            specific_contents = Content.objects.filter(id__in=content_ids)
+            for content in specific_contents:
+                summary = content.content[:300] if content.content else ''
+                contents.append({
+                    'id': content.id,
+                    'title': content.title,
+                    'summary': summary
+                })
+        
+        # Get random contents if needed
+        if random_contents_count > 0:
+            all_contents = Content.objects.exclude(id__in=content_ids) if content_ids else Content.objects.all()
+            random_contents = list(all_contents.order_by('?')[:random_contents_count])
+            for content in random_contents:
+                summary = content.content[:300] if content.content else ''
+                contents.append({
+                    'id': content.id,
+                    'title': content.title,
+                    'summary': summary
+                })
+        
+        # Get recent ideas sample
+        recent_ideas = PostIdea.objects.all().order_by('-created_at')[:10]
+        recent_ideas_sample = [{'id': idea.id, 'title': idea.title} for idea in recent_ideas]
+        
+        return JsonResponse({
+            'success': True,
+            'context': {
+                'tags': tags,
+                'contents': contents,
+                'recent_ideas_sample': recent_ideas_sample
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
 def generate_blog_post_api(request):
     """API endpoint to generate a blog post from a post idea and automatically generate metadata
     

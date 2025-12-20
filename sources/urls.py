@@ -33,6 +33,12 @@ urlpatterns = [
     path('api/blog-post', views.create_blog_post_api, name='create_blog_post_api_no_slash'),  # Support both with and without trailing slash
     path('api/post-ideas/', views.post_ideas_api, name='post_ideas_api'),
     path('api/post-ideas', views.post_ideas_api, name='post_ideas_api_no_slash'),  # Support both with and without trailing slash
+    path('api/post-ideas/check-similarity/', views.check_idea_similarity_api, name='check_idea_similarity_api'),
+    path('api/post-ideas/check-similarity', views.check_idea_similarity_api, name='check_idea_similarity_api_no_slash'),  # Support both with and without trailing slash
+    path('api/post-ideas/create/', views.create_post_idea_api, name='create_post_idea_api'),
+    path('api/post-ideas/create', views.create_post_idea_api, name='create_post_idea_api_no_slash'),  # Support both with and without trailing slash
+    path('api/post-ideas/context/', views.get_idea_context_api, name='get_idea_context_api'),
+    path('api/post-ideas/context', views.get_idea_context_api, name='get_idea_context_api_no_slash'),  # Support both with and without trailing slash
     path('api/blog-posts/', views.blog_posts_api, name='blog_posts_api'),
     path('api/blog-posts', views.blog_posts_api, name='blog_posts_api_no_slash'),  # Support both with and without trailing slash
     
