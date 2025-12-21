@@ -6019,10 +6019,13 @@ def generate_blog_post_api(request):
         
         # Extract FAQ - try multiple patterns
         faq_data = None
+        # Try to find FAQ section - look for FAQ: followed by JSON array (may span multiple lines)
         patterns = [
-            r'\*\*FAQ:\*\*\s*(\[.*?\])',
-            r'FAQ:\s*(\[.*?\])',
-            r'\*\*FAQ\*\*\s*(\[.*?\])',
+            r'\*\*FAQ:\*\*\s*(\[.*?\])\s*(?=\n\*\*|\n\n|$)',
+            r'FAQ:\s*(\[.*?\])\s*(?=\n\*\*|\n\n|$)',
+            r'\*\*FAQ\*\*\s*(\[.*?\])\s*(?=\n\*\*|\n\n|$)',
+            r'\*\*FAQ:\*\*\s*(\[[\s\S]*?\])',  # More flexible for multi-line
+            r'FAQ:\s*(\[[\s\S]*?\])',  # More flexible for multi-line
         ]
         for pattern in patterns:
             faq_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
@@ -6041,12 +6044,52 @@ def generate_blog_post_api(request):
                                     'question': str(item['question']).strip(),
                                     'answer': str(item['answer']).strip()
                                 })
-                        if len(valid_faq) == 4:  # Must have exactly 4 items
+                        # Accept any number of valid FAQ items (1-4) instead of requiring exactly 4
+                        if len(valid_faq) > 0:
                             blog_post.faq = valid_faq
                             break
-                except (json.JSONDecodeError, ValueError, KeyError):
-                    # If JSON parsing fails, try to extract from markdown format
+                except (json.JSONDecodeError, ValueError, KeyError) as e:
+                    # If JSON parsing fails, try next pattern
                     continue
+        
+        # If FAQ wasn't found with patterns, try to find JSON array anywhere after "FAQ:"
+        if not blog_post.faq:
+            # Find the position of "FAQ:" in the text
+            faq_label_match = re.search(r'FAQ:', generated_metadata, re.IGNORECASE)
+            if faq_label_match:
+                # Get text after FAQ:
+                text_after_faq = generated_metadata[faq_label_match.end():]
+                # Try to find a JSON array - look for opening bracket and try to match closing bracket
+                bracket_start = text_after_faq.find('[')
+                if bracket_start != -1:
+                    # Find matching closing bracket by counting brackets
+                    bracket_count = 0
+                    bracket_end = -1
+                    for i in range(bracket_start, len(text_after_faq)):
+                        if text_after_faq[i] == '[':
+                            bracket_count += 1
+                        elif text_after_faq[i] == ']':
+                            bracket_count -= 1
+                            if bracket_count == 0:
+                                bracket_end = i + 1
+                                break
+                    
+                    if bracket_end > bracket_start:
+                        faq_text = text_after_faq[bracket_start:bracket_end].strip()
+                        try:
+                            faq_data = json.loads(faq_text)
+                            if isinstance(faq_data, list) and len(faq_data) > 0:
+                                valid_faq = []
+                                for item in faq_data[:4]:
+                                    if isinstance(item, dict) and 'question' in item and 'answer' in item:
+                                        valid_faq.append({
+                                            'question': str(item['question']).strip(),
+                                            'answer': str(item['answer']).strip()
+                                        })
+                                if len(valid_faq) > 0:
+                                    blog_post.faq = valid_faq
+                        except (json.JSONDecodeError, ValueError, KeyError):
+                            pass
         
         # Save blog post with metadata
         blog_post.save()
