@@ -2749,6 +2749,7 @@ def blog_post_edit(request, pk):
         blog_post.meta_title = request.POST.get('meta_title', '')
         blog_post.meta_description = request.POST.get('meta_description', '')
         blog_post.featured_image_description = request.POST.get('featured_image_description', '')
+        blog_post.faq_title = request.POST.get('faq_title', '')
         blog_post.published = request.POST.get('published', 'off') == 'on'
         
         # Handle FAQ
@@ -3045,6 +3046,26 @@ def blog_post_generate_metadata(request, pk):
                         if len(featured_image_desc) > 200:
                             featured_image_desc = featured_image_desc[:197] + '...'
                         blog_post.featured_image_description = featured_image_desc
+                        break
+            
+            # Extract FAQ Section Title - try multiple patterns
+            faq_title = None
+            patterns = [
+                r'\*\*FAQ Section Title:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'FAQ Section Title:\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'\*\*FAQ Title:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'FAQ Title:\s*(.+?)(?=\n\*\*|\n\n|$)',
+            ]
+            for pattern in patterns:
+                faq_title_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+                if faq_title_match:
+                    faq_title = faq_title_match.group(1).strip()
+                    # Remove markdown formatting if present
+                    faq_title = re.sub(r'\*\*|\*|\[|\]|`', '', faq_title).strip()
+                    # Remove newlines and extra spaces
+                    faq_title = ' '.join(faq_title.split())
+                    if faq_title and len(faq_title) <= 200:
+                        blog_post.faq_title = faq_title
                         break
             
             # Extract FAQ - try multiple patterns
@@ -5974,6 +5995,26 @@ def generate_blog_post_api(request):
                     if len(featured_image_desc) > 200:
                         featured_image_desc = featured_image_desc[:197] + '...'
                     blog_post.featured_image_description = featured_image_desc
+                    break
+        
+        # Extract FAQ Section Title - try multiple patterns
+        faq_title = None
+        patterns = [
+            r'\*\*FAQ Section Title:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'FAQ Section Title:\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'\*\*FAQ Title:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+            r'FAQ Title:\s*(.+?)(?=\n\*\*|\n\n|$)',
+        ]
+        for pattern in patterns:
+            faq_title_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
+            if faq_title_match:
+                faq_title = faq_title_match.group(1).strip()
+                # Remove markdown formatting if present
+                faq_title = re.sub(r'\*\*|\*|\[|\]|`', '', faq_title).strip()
+                # Remove newlines and extra spaces
+                faq_title = ' '.join(faq_title.split())
+                if faq_title and len(faq_title) <= 200:
+                    blog_post.faq_title = faq_title
                     break
         
         # Extract FAQ - try multiple patterns

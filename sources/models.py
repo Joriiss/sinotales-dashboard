@@ -684,6 +684,11 @@ class BlogPost(models.Model):
         blank=True,
         help_text="FAQ items as JSON array, each with 'question' and 'answer' fields"
     )
+    faq_title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Title for the FAQ section displayed on the page"
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

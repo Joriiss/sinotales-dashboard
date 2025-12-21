@@ -118,6 +118,15 @@
                         </div>
                     </div>
                     
+                    <!-- FAQ Title -->
+                    <div class="mb-3">
+                        <label for="faq_title" class="form-label">FAQ Section Title</label>
+                        <input type="text" class="form-control" id="faq_title" name="faq_title" 
+                               value="{% if blog_post.faq_title %}{{ blog_post.faq_title }}{% endif %}" 
+                               placeholder="e.g., Frequently Asked Questions, Common Questions About [Topic]">
+                        <small class="text-muted">Title displayed above the FAQ section on the page</small>
+                    </div>
+                    
                     <!-- FAQ -->
                     <div class="mb-3">
                         <label for="faq" class="form-label">FAQ (JSON Format)</label>

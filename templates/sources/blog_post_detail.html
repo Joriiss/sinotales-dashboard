@@ -118,7 +118,7 @@
                 
                 {% if blog_post.faq %}
                 <div class="mb-3">
-                    <strong>FAQ:</strong><br>
+                    <strong>{% if blog_post.faq_title %}{{ blog_post.faq_title }}{% else %}FAQ{% endif %}:</strong><br>
                     <div class="mt-2">
                         {% for item in blog_post.faq %}
                         <div class="mb-3 p-2 border rounded">

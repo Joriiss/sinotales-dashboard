@@ -39,6 +39,12 @@
     - Answers should be concise (2-4 sentences) and directly address the question.
     - Format: JSON array with objects containing "question" and "answer" fields.
 
+7.  **FAQ Section Title:**
+    - Generate a compelling title for the FAQ section that will be displayed on the page.
+    - The title should be engaging and clearly indicate it's a FAQ section (e.g., "Frequently Asked Questions", "Common Questions About [Topic]", "Your Questions Answered").
+    - Keep it concise (3-8 words recommended).
+    - Make it relevant to the blog post topic.
+
 **Format:**
 Please provide the output in the following format:
 
@@ -47,6 +53,7 @@ Please provide the output in the following format:
 **URL Slug:** [Insert Slug Here]
 **Tags:** [Tag 1, Tag 2, Tag 3...]
 **Featured Image Alt Text:** [Concise alt text description, 50-125 characters]
+**FAQ Section Title:** [Engaging title for the FAQ section, 3-8 words]
 **FAQ:** 
 [
   {

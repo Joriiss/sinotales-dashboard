@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.safestring import mark_safe
 
 try:
     from .models import Source, Content, Tag, ContentChunk, PostIdea, ScheduledPostIdeaGeneration, BlogPost, BlogPostImage
@@ -242,10 +243,10 @@ class BlogPostImageAdmin(admin.ModelAdmin):
 
 @admin.register(BlogPost)
 class BlogPostAdmin(admin.ModelAdmin):
-    list_display = ['title', 'slug', 'post_idea', 'published', 'meta_title', 'tags_display', 'created_at', 'updated_at']
+    list_display = ['title', 'slug', 'post_idea', 'published', 'meta_title', 'tags_display', 'has_faq', 'created_at', 'updated_at']
     list_filter = ['published', 'created_at', 'updated_at', 'tags', 'post_idea']
-    search_fields = ['title', 'slug', 'content', 'meta_title', 'meta_description', 'post_idea__title', 'featured_image_description']
-    readonly_fields = ['created_at', 'updated_at']
+    search_fields = ['title', 'slug', 'content', 'meta_title', 'meta_description', 'post_idea__title', 'featured_image_description', 'faq_title']
+    readonly_fields = ['created_at', 'updated_at', 'faq_display']
     prepopulated_fields = {'slug': ('title',)}
     filter_horizontal = ['tags']
     raw_id_fields = ['post_idea']
@@ -263,6 +264,9 @@ class BlogPostAdmin(admin.ModelAdmin):
         ('SEO', {
             'fields': ('meta_title', 'meta_description')
         }),
+        ('FAQ', {
+            'fields': ('faq_title', 'faq', 'faq_display')
+        }),
         ('Tags', {
             'fields': ('tags',)
         }),
@@ -276,5 +280,25 @@ class BlogPostAdmin(admin.ModelAdmin):
         """Display tags as comma-separated list"""
         return ', '.join([tag.name for tag in obj.tags.all()[:5]])
     tags_display.short_description = 'Tags'
+    
+    def has_faq(self, obj):
+        """Check if blog post has FAQs"""
+        return bool(obj.faq and len(obj.faq) > 0)
+    has_faq.boolean = True
+    has_faq.short_description = 'Has FAQ'
+    
+    def faq_display(self, obj):
+        """Display FAQs in a readable format"""
+        if not obj.faq or not isinstance(obj.faq, list) or len(obj.faq) == 0:
+            return 'No FAQs'
+        
+        import json
+        try:
+            formatted = json.dumps(obj.faq, indent=2, ensure_ascii=False)
+            html = f'<pre style="white-space: pre-wrap; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 4px;">{formatted}</pre>'
+            return mark_safe(html)
+        except Exception:
+            return str(obj.faq)
+    faq_display.short_description = 'FAQ Preview'
 
 
