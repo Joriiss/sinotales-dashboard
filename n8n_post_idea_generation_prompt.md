@@ -17,7 +17,7 @@ Generate exactly {{ $json.num_ideas }} unique blog post ideas by:
 
 1. **`search_post_ideas`** - Search for existing post ideas
    - Parameters: `search` (keyword)
-   - Use: Check what ideas already exist before generating new ones. Use SHORT, GENERIC keywords (1-2 words) like "Chengdu", "metro", "food" - not full titles.
+   - Use: **REQUIRED for each idea** - Check what similar ideas already exist BEFORE creating. Extract keywords FROM your generated idea (e.g., if idea is about "Chengdu food", search for "Chengdu" or "food"). Use SHORT, SPECIFIC keywords (1-2 words) related to your idea - NOT generic terms like "china". Use DIFFERENT keywords for each idea.
 
 2. **`get_idea_context`** - Get tags and content sources for inspiration
    - Parameters: `random_tags` (number, default: 5), `random_contents` (number, default: 5), `tag_ids` (optional), `content_ids` (optional)
@@ -33,16 +33,22 @@ Generate exactly {{ $json.num_ideas }} unique blog post ideas by:
 
 **Workflow:**
 
-### Step 1: Research Existing Ideas (Optional but Recommended)
-- Use `search_post_ideas` with generic keywords to understand what topics are already covered
-- Search for broad topics like "Beijing", "Shanghai", "food", "transport", "visa", etc.
-- This helps you identify content gaps and avoid generating duplicate ideas
-
-### Step 2: Generate an Idea
+### Step 1: Generate an Idea
 - Use your LLM to generate a post idea with:
   - **title**: Compelling, SEO-friendly title (50-80 characters)
   - **description**: Brief description (1-2 sentences) explaining travel value
   - **primary_keyword**: Main SEO keyword (e.g., "Chengdu travel guide", "China visa requirements")
+
+### Step 2: Check for Similar Ideas (REQUIRED - Do this for EVERY idea)
+- **BEFORE attempting to create, search for similar ideas using keywords FROM your generated idea**
+- Extract 1-2 key words from your idea's title/keyword/description (e.g., if idea is about "Chengdu food guide", search for "Chengdu" or "food")
+- **DO NOT use generic terms like "china" - use specific keywords related to THIS specific idea**
+- Call `search_post_ideas` with a keyword extracted from your idea:
+  - If idea is about a city: use the city name (e.g., "Chengdu", "Shanghai", "Beijing")
+  - If idea is about a topic: use the topic (e.g., "visa", "metro", "food", "train")
+  - If idea combines both: use the most specific one (e.g., for "Chengdu food guide", use "Chengdu" not "china")
+- Review the search results to see if similar ideas already exist
+- **IMPORTANT: Use different search keywords for each idea - don't repeat the same search term**
 
 ### Step 3: Attempt to Create the Idea
 - Call `create_post_idea` with the generated idea (title, description, primary_keyword - ALL REQUIRED)
@@ -60,10 +66,10 @@ Generate exactly {{ $json.num_ideas }} unique blog post ideas by:
      - Different destination/region (if the similar idea was about a place)
      - Different topic/angle (if the similar idea was about a theme)
      - Different focus (e.g., if similar was about food, try transportation, logistics, or activities)
-  5. **Return to Step 3** with the NEW idea (not the old one)
+  5. **Return to Step 2** with the NEW idea (search for similar ideas, then attempt to create)
 
 ### Step 5: Repeat
-- Continue Steps 2-4 until you have created exactly {{ $json.num_ideas }} unique ideas
+- Continue Steps 1-4 until you have created exactly {{ $json.num_ideas }} unique ideas
 - Track your progress: "Created X of Y ideas"
 
 **Important Guidelines:**
@@ -90,10 +96,17 @@ Generate exactly {{ $json.num_ideas }} unique blog post ideas by:
    - Let these inspire you to explore different topics, regions, or angles
    - Don't just copy the context - use it as inspiration for originality
 
-5. **Search Strategy:**
-   - When using `search_post_ideas`, use SHORT, GENERIC keywords (1-2 words)
-   - Examples: "Chengdu", "metro", "food", "Tibet", "train" - NOT full titles
-   - The search uses partial matching, so broader terms find more results
+5. **Search Strategy - CRITICAL:**
+   - **You MUST search for each idea BEFORE creating it** - this is not optional
+   - Extract keywords FROM your generated idea (not generic terms)
+   - Use SHORT, SPECIFIC keywords (1-2 words) related to your idea:
+     - If your idea is "Complete Guide to Chengdu's Food Scene" → search for "Chengdu" or "food" (NOT "china")
+     - If your idea is "Beijing Metro Guide" → search for "Beijing" or "metro" (NOT "china")
+     - If your idea is "Tibet Travel Tips" → search for "Tibet" (NOT "china")
+   - **NEVER use "china" as a search term** - it's too broad and returns everything
+   - **Use DIFFERENT search keywords for each idea** - don't repeat the same search
+   - The search uses partial matching, so specific terms find relevant results
+   - Examples of good searches: "Chengdu", "metro", "food", "Tibet", "train", "visa", "Shanghai" - NOT "china"
 
 6. **Error Handling - CRITICAL:**
    - **When you get `success: false` with `rejected: true` and `reason: "idea_too_similar"`:**
@@ -138,10 +151,12 @@ Summary:
 
 **Example Workflow:**
 
-1. Research: `search_post_ideas(search="Chengdu")` → See existing Chengdu-related ideas
-2. Generate idea: "Complete Guide to Chengdu's Food Scene" with keyword "Chengdu food guide" and description "Discover the best restaurants, street food, and local dishes in Chengdu"
+1. Generate idea: "Complete Guide to Chengdu's Food Scene" with keyword "Chengdu food guide" and description "Discover the best restaurants, street food, and local dishes in Chengdu"
+2. Search for similar: `search_post_ideas(search="Chengdu")` → Check if similar Chengdu ideas exist (use keyword from your idea, not "china")
 3. Create idea: `create_post_idea(title="...", description="...", primary_keyword="...")` → `success: true` ✓
-4. Repeat for remaining ideas
+4. For next idea: Generate "Beijing Metro Guide" → Search `search_post_ideas(search="Beijing")` → Create
+5. For next idea: Generate "Tibet Travel Tips" → Search `search_post_ideas(search="Tibet")` → Create
+6. **Each idea gets its own unique search keyword extracted from that specific idea**
 
 **If idea is too similar (EXAMPLE):**
 1. Generate idea: "Hidden Gems in Shanghai: Beyond the Bund"
@@ -153,12 +168,20 @@ Summary:
 
 **Key Point:** When you get a similarity error, you MUST generate a NEW idea. The error tells you what's too similar - use that information plus context to create something different.
 
-**CRITICAL REMINDER:**
-- When `create_post_idea` returns `{"success": false, "rejected": true, "reason": "idea_too_similar"}`:
-  - This is a normal response (200 status), not an error
-  - This means STOP and generate a DIFFERENT idea
-  - Do NOT retry the same idea
-  - Get context and create something new
-  - The response includes `most_similar_idea` details - use that to avoid similar topics
+**CRITICAL REMINDERS:**
 
-**Now begin generating ideas. You have been given {{ $json.num_ideas }} as a parameter - generate exactly that many unique ideas.**
+1. **Search Strategy:**
+   - **For EVERY idea, you MUST search BEFORE creating it**
+   - Extract keywords FROM your generated idea (e.g., if idea is "Chengdu food guide", search for "Chengdu" or "food")
+   - **NEVER use "china" as a search term** - it's too broad
+   - **Use DIFFERENT search keywords for each idea** - don't repeat the same search term
+   - The search helps you avoid duplicates before attempting creation
+
+2. **When `create_post_idea` returns `{"success": false, "rejected": true, "reason": "idea_too_similar"}`:**
+   - This is a normal response (200 status), not an error
+   - This means STOP and generate a DIFFERENT idea
+   - Do NOT retry the same idea
+   - Get context and create something new
+   - The response includes `most_similar_idea` details - use that to avoid similar topics
+
+**Now begin generating ideas. You have been given {{ $json.num_ideas }} as a parameter - generate exactly that many unique ideas. Remember: for each idea, search with keywords FROM that idea before creating it.**
