@@ -25,7 +25,6 @@ wheels/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-/media
 /staticfiles
 /static
 
@@ -56,3 +55,4 @@ Thumbs.db
 /config/settings.py
 /content/
 /media/ebooks/
+/media/blog_posts/
