@@ -26,7 +26,8 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 /staticfiles
-/static
+/static/*
+!/static/logo-icon-blue.png
 
 # Environment
 .env
