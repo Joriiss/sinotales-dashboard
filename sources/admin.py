@@ -281,6 +281,7 @@ class BlogPostAdmin(admin.ModelAdmin):
         return ', '.join([tag.name for tag in obj.tags.all()[:5]])
     tags_display.short_description = 'Tags'
     
+    
     def has_faq(self, obj):
         """Check if blog post has FAQs"""
         return bool(obj.faq and len(obj.faq) > 0)
