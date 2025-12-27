@@ -5328,16 +5328,86 @@ def _parse_blog_content_sections(content):
     content = content.strip()
     
     # Find the "Quick Summary" or "Key Takeaways" section
-    # Look for H2 with "Quick Summary" or "Key Takeaways" in the text
-    # Pattern matches "Quick Summary" even when followed by colon and more text like "Quick Summary: Key Takeaways for Your Itinerary"
-    # First try to find H2 containing "Quick Summary" (with or without colon and additional text)
-    summary_pattern = r'<h2[^>]*>([^<]*Quick\s+Summary[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
-    summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+    # Look for H2, H3, or div containing H3 with "Quick Summary" or "Key Takeaways"
+    # Pattern matches "Quick Summary" even when followed by colon and more text
     
-    # If not found, try "Key Takeaways"
+    summary_match = None
+    
+    # First try to find div containing H3 with "Quick Summary" (most common case)
+    # Need to handle nested divs properly by finding the opening div and matching closing div
+    h3_pattern = r'<h3[^>]*>([^<]*Quick\s+Summary[^<]*)</h3>'
+    h3_match = re.search(h3_pattern, content, re.IGNORECASE | re.DOTALL)
+    if h3_match:
+        # Find the div that contains this H3
+        # Look backwards from H3 to find the opening <div> tag
+        h3_start = h3_match.start()
+        # Find the last <div> before this H3
+        div_start_match = None
+        for match in re.finditer(r'<div[^>]*>', content[:h3_start], re.IGNORECASE):
+            div_start_match = match
+        
+        if div_start_match:
+            # Find the matching closing </div> after the H3
+            # Count div tags to find the matching closing tag
+            div_start_pos = div_start_match.start()
+            div_count = 1
+            pos = div_start_match.end()
+            div_end_pos = -1
+            
+            while pos < len(content) and div_count > 0:
+                next_open = content.find('<div', pos)
+                next_close = content.find('</div>', pos)
+                
+                if next_close == -1:
+                    break
+                
+                if next_open != -1 and next_open < next_close:
+                    div_count += 1
+                    pos = next_open + 4
+                else:
+                    div_count -= 1
+                    if div_count == 0:
+                        div_end_pos = next_close + 6
+                        break
+                    pos = next_close + 6
+            
+            if div_end_pos > 0:
+                summary_title_raw = h3_match.group(1).strip()
+                summary_content = content[div_start_pos:div_end_pos]
+                # Create a match-like object
+                class MatchObj:
+                    def __init__(self, start, end, title, content):
+                        self._start = start
+                        self._end = end
+                        self._title = title
+                        self._content = content
+                    def start(self):
+                        return self._start
+                    def end(self):
+                        return self._end
+                    def group(self, n):
+                        return self._title if n == 1 else self._content
+                summary_match = MatchObj(div_start_pos, div_end_pos, summary_title_raw, summary_content)
+    
+    # If not found in div, try H2 with "Quick Summary"
     if not summary_match:
-        summary_pattern = r'<h2[^>]*>([^<]*Key\s+Takeaways[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+        summary_pattern = r'<h2[^>]*>([^<]*Quick\s+Summary[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
         summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+        
+        # If not found, try H3 with "Quick Summary" (standalone, not in div)
+        if not summary_match:
+            summary_pattern = r'<h3[^>]*>([^<]*Quick\s+Summary[^<]*)</h3>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+        
+        # If not found, try "Key Takeaways" in H2
+        if not summary_match:
+            summary_pattern = r'<h2[^>]*>([^<]*Key\s+Takeaways[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+        
+        # If not found, try "Key Takeaways" in H3
+        if not summary_match:
+            summary_pattern = r'<h3[^>]*>([^<]*Key\s+Takeaways[^<]*)</h3>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
     
     intro = ''
     summary_title = ''
