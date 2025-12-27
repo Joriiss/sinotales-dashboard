@@ -41,6 +41,8 @@ urlpatterns = [
     path('api/post-ideas/context', views.get_idea_context_api, name='get_idea_context_api_no_slash'),  # Support both with and without trailing slash
     path('api/blog-posts/', views.blog_posts_api, name='blog_posts_api'),
     path('api/blog-posts', views.blog_posts_api, name='blog_posts_api_no_slash'),  # Support both with and without trailing slash
+    path('api/blog-posts/export-wordpress/', views.blog_posts_export_wordpress_api, name='blog_posts_export_wordpress_api'),
+    path('api/blog-posts/export-wordpress', views.blog_posts_export_wordpress_api, name='blog_posts_export_wordpress_api_no_slash'),  # Support both with and without trailing slash
     
     # Logs
     path('logs/', views.logs_view, name='logs'),

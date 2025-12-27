@@ -5301,6 +5301,323 @@ def blog_posts_api(request):
         }, status=500)
 
 
+def _parse_blog_content_sections(content):
+    """
+    Parse HTML blog post content into sections: intro, summary, main_content, conclusion
+    
+    Returns a dict with:
+    - intro: Content from H1 until "Quick Summary" or "Key Takeaways" heading
+    - summary_title: The heading text of the summary section
+    - summary_content: The content within the summary section
+    - main_content: Content between summary and conclusion
+    - conclusion: The last paragraph/section
+    """
+    import re
+    
+    if not content:
+        return {
+            'intro': '',
+            'summary_title': '',
+            'summary_content': '',
+            'main_content': '',
+            'conclusion': ''
+        }
+    
+    # Remove H1 if present (we don't need it in sections)
+    content = re.sub(r'<h1[^>]*>.*?</h1>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = content.strip()
+    
+    # Find the "Quick Summary" or "Key Takeaways" section
+    # Look for H2 with "Quick Summary" or "Key Takeaways" in the text
+    # Pattern matches "Quick Summary" even when followed by colon and more text like "Quick Summary: Key Takeaways for Your Itinerary"
+    # First try to find H2 containing "Quick Summary" (with or without colon and additional text)
+    summary_pattern = r'<h2[^>]*>([^<]*Quick\s+Summary[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+    summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+    
+    # If not found, try "Key Takeaways"
+    if not summary_match:
+        summary_pattern = r'<h2[^>]*>([^<]*Key\s+Takeaways[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+        summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+    
+    intro = ''
+    summary_title = ''
+    summary_content = ''
+    main_content = ''
+    conclusion = ''
+    
+    if summary_match:
+        # Extract intro (everything before the summary section)
+        intro_end = summary_match.start()
+        intro = content[:intro_end].strip()
+        
+        # Extract summary title and content
+        summary_title_raw = summary_match.group(1).strip()
+        summary_title = re.sub(r'<[^>]+>', '', summary_title_raw).strip()  # Remove HTML tags
+        summary_content = summary_match.group(2).strip()
+        
+        # Find the end of summary section (next H2/H3 or end of content)
+        summary_end = summary_match.end()
+        content_after_summary = content[summary_end:].strip()
+        
+        # Extract conclusion: find the last paragraph in the remaining content
+        # Look for the last <p> tag
+        paragraph_matches = list(re.finditer(r'<p[^>]*>.*?</p>', content_after_summary, re.IGNORECASE | re.DOTALL))
+        
+        if paragraph_matches:
+            # Last paragraph is conclusion
+            last_para_match = paragraph_matches[-1]
+            conclusion = last_para_match.group(0)
+            # Everything before the last paragraph is main_content
+            main_content = content_after_summary[:last_para_match.start()].strip()
+        else:
+            # No paragraphs found, try to find last section
+            # Look for last block of content (could be wrapped in div, or just text)
+            # Split by common block-level tags
+            blocks = re.split(r'(<h[2-6][^>]*>.*?</h[2-6]>)', content_after_summary, flags=re.IGNORECASE | re.DOTALL)
+            if len(blocks) > 2:
+                # Last block might be conclusion
+                conclusion = blocks[-1].strip()
+                main_content = ''.join(blocks[:-1]).strip()
+            else:
+                # Can't split, put everything in main_content
+                main_content = content_after_summary
+                conclusion = ''
+    else:
+        # No summary section found
+        # Try to split content: conclusion is last paragraph, intro is first paragraph(s)
+        paragraph_matches = list(re.finditer(r'<p[^>]*>.*?</p>', content, re.IGNORECASE | re.DOTALL))
+        
+        if paragraph_matches and len(paragraph_matches) > 1:
+            # First paragraph as intro
+            intro = paragraph_matches[0].group(0)
+            # Last paragraph as conclusion
+            conclusion = paragraph_matches[-1].group(0)
+            # Everything in between is main_content
+            main_content = content[paragraph_matches[0].end():paragraph_matches[-1].start()].strip()
+        elif paragraph_matches:
+            # Only one paragraph - use as intro
+            intro = paragraph_matches[0].group(0)
+            main_content = ''
+            conclusion = ''
+        else:
+            # No paragraphs found, put everything in main_content
+            main_content = content
+            intro = ''
+            conclusion = ''
+    
+    return {
+        'intro': intro,
+        'summary_title': summary_title,
+        'summary_content': summary_content,
+        'main_content': main_content,
+        'conclusion': conclusion
+    }
+
+
+def _format_acf_field(value, label, field_type='text'):
+    """
+    Format an ACF field with both raw value and _source object
+    
+    Args:
+        value: The raw field value
+        label: The field label
+        field_type: 'text' or 'wysiwyg'
+    
+    Returns:
+        Dict with _source object containing label, type, and formatted_value
+    """
+    return {
+        'label': label,
+        'type': field_type,
+        'formatted_value': value or ''
+    }
+
+
+def _format_faq_acf_fields(blog_post):
+    """
+    Format FAQ data into individual ACF fields (question_1, answer_1, etc.)
+    
+    Returns a dict with all FAQ-related ACF fields
+    """
+    import re
+    
+    faq_fields = {}
+    
+    # FAQ title
+    faq_title = blog_post.faq_title or ''
+    faq_fields['faqs_title'] = faq_title
+    faq_fields['faqs_title_source'] = {
+        'label': 'Title',
+        'type': 'text',
+        'formatted_value': faq_title
+    }
+    
+    # FAQ questions and answers (up to 4)
+    faq_list = blog_post.faq if blog_post.faq and isinstance(blog_post.faq, list) else []
+    
+    for i in range(1, 5):  # question_1 through question_4
+        index = i - 1
+        if index < len(faq_list) and isinstance(faq_list[index], dict):
+            question = faq_list[index].get('question', '').strip()
+            answer = faq_list[index].get('answer', '').strip()
+        else:
+            question = ''
+            answer = ''
+        
+        # Question field (text)
+        faq_fields[f'question_{i}'] = question
+        faq_fields[f'question_{i}_source'] = {
+            'label': 'Title',
+            'type': 'text',
+            'formatted_value': question
+        }
+        
+        # Answer field (wysiwyg)
+        # Raw answer is just the text
+        faq_fields[f'answer_{i}'] = answer
+        
+        # Formatted answer: wrap in <p> tags if not already HTML
+        if answer:
+            # Check if answer already contains HTML tags
+            if re.search(r'<[^>]+>', answer):
+                formatted_answer = answer
+            else:
+                # Wrap in <p> tags
+                formatted_answer = f'<p>{answer}</p>'
+        else:
+            formatted_answer = ''
+        
+        faq_fields[f'answer_{i}_source'] = {
+            'label': 'Content',
+            'type': 'wysiwyg',
+            'formatted_value': formatted_answer
+        }
+    
+    return faq_fields
+
+
+@csrf_exempt
+def blog_posts_export_wordpress_api(request):
+    """API endpoint to export blog posts in WordPress ACF-compatible format for n8n integration
+    
+    Query parameters:
+    - published: Filter by published status (true/false). If not provided, returns all posts.
+    - limit: Maximum number of posts to return (integer). If not provided, returns all posts.
+    - post_id: Return a single post by ID (overrides other filters)
+    - oldest_unpublished: If true, returns only the oldest unpublished post (overrides other filters except post_id)
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Check if single post requested
+        post_id_param = request.GET.get('post_id', '').strip()
+        if post_id_param:
+            try:
+                post_id = int(post_id_param)
+                blog_posts = BlogPost.objects.filter(id=post_id)
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid post_id parameter'
+                }, status=400)
+        else:
+            # Check if oldest unpublished is requested
+            oldest_unpublished = request.GET.get('oldest_unpublished', '').strip().lower() == 'true'
+            
+            if oldest_unpublished:
+                # Get only the oldest unpublished post
+                blog_posts = BlogPost.objects.filter(published=False).order_by('created_at')[:1]
+            else:
+                # Get all blog posts, ordered by creation date (newest first)
+                blog_posts = BlogPost.objects.all().order_by('-created_at')
+                
+                # Filter by published status if provided
+                published_param = request.GET.get('published', '').strip().lower()
+                if published_param == 'true':
+                    blog_posts = blog_posts.filter(published=True)
+                elif published_param == 'false':
+                    blog_posts = blog_posts.filter(published=False)
+                
+                # Apply limit if provided
+                limit_param = request.GET.get('limit', '').strip()
+                if limit_param:
+                    try:
+                        limit = int(limit_param)
+                        if limit > 0:
+                            blog_posts = blog_posts[:limit]
+                    except ValueError:
+                        pass
+        
+        # Build WordPress-compatible response with ACF fields
+        posts = []
+        for post in blog_posts:
+            # Parse content sections
+            sections = _parse_blog_content_sections(post.content)
+            
+            # Get featured image URL if exists
+            featured_image_url = None
+            if post.featured_image:
+                featured_image_url = request.build_absolute_uri(post.featured_image.url)
+            
+            # Get tag names
+            tag_names = [tag.name for tag in post.tags.all()]
+            
+            # Format FAQ fields
+            faq_fields = _format_faq_acf_fields(post)
+            
+            # Build ACF object
+            acf = {
+                'intro': sections['intro'],
+                'intro_source': _format_acf_field(sections['intro'], 'Intro', 'wysiwyg'),
+                'main_content': sections['main_content'],
+                'main_content_source': _format_acf_field(sections['main_content'], 'Main content', 'wysiwyg'),
+                'conclusion': sections['conclusion'],
+                'conclusion_source': _format_acf_field(sections['conclusion'], 'Conclusion', 'wysiwyg'),
+                'summary_title': sections['summary_title'],
+                'summary_title_source': _format_acf_field(sections['summary_title'], 'Title', 'text'),
+                'summary_content': sections['summary_content'],
+                'summary_content_source': _format_acf_field(sections['summary_content'], 'Content', 'wysiwyg'),
+                **faq_fields  # Spread FAQ fields into ACF object
+            }
+            
+            posts.append({
+                'id': post.id,
+                'title': post.title,
+                'slug': post.slug,
+                'content': post.content,  # Full content for reference
+                'excerpt': post.meta_description or '',
+                'status': 'publish' if post.published else 'draft',
+                'date': post.created_at.isoformat() if post.created_at else None,
+                'meta': {
+                    'meta_title': post.meta_title or '',
+                    'meta_description': post.meta_description or '',
+                    'featured_image_alt': post.featured_image_description or '',
+                },
+                'acf': acf,
+                'tags': tag_names,
+                'featured_image_url': featured_image_url,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'blog_posts': posts,
+            'count': len(posts)
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
 @csrf_exempt
 def check_idea_similarity_api(request):
     """API endpoint to check if a post idea is too similar to existing ideas (token-based authentication)
