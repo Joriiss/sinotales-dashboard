@@ -5367,7 +5367,7 @@ def _parse_blog_content_sections(content):
                 else:
                     div_count -= 1
                     if div_count == 0:
-                        div_end_pos = next_close + 6
+                        div_end_pos = next_close + 6  # Position after </div>
                         break
                     pos = next_close + 6
             
@@ -5375,7 +5375,14 @@ def _parse_blog_content_sections(content):
                 summary_title_raw = h3_match.group(1).strip()
                 # Remove emojis from title
                 summary_title_clean = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title_raw).strip()
-                summary_content = content[div_start_pos:div_end_pos]
+                # Extract inner content: remove outer div wrapper and H3 tag
+                # Find the H3 closing tag and extract everything after it until the div closing tag
+                h3_end = h3_match.end()  # Position after </h3>
+                # Extract content between H3 closing tag and div closing tag
+                # div_end_pos is after </div>, so we need to go back 6 chars to get before </div>
+                inner_content_start = h3_end
+                inner_content_end = div_end_pos - 6  # Position before </div>
+                summary_content = content[inner_content_start:inner_content_end].strip()
                 # Create a match-like object
                 class MatchObj:
                     def __init__(self, start, end, title, content):
