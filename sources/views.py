@@ -5373,6 +5373,8 @@ def _parse_blog_content_sections(content):
             
             if div_end_pos > 0:
                 summary_title_raw = h3_match.group(1).strip()
+                # Remove emojis from title
+                summary_title_clean = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title_raw).strip()
                 summary_content = content[div_start_pos:div_end_pos]
                 # Create a match-like object
                 class MatchObj:
@@ -5387,7 +5389,7 @@ def _parse_blog_content_sections(content):
                         return self._end
                     def group(self, n):
                         return self._title if n == 1 else self._content
-                summary_match = MatchObj(div_start_pos, div_end_pos, summary_title_raw, summary_content)
+                summary_match = MatchObj(div_start_pos, div_end_pos, summary_title_clean, summary_content)
     
     # If not found in div, try H2 with "Quick Summary"
     if not summary_match:
@@ -5423,6 +5425,8 @@ def _parse_blog_content_sections(content):
         # Extract summary title and content
         summary_title_raw = summary_match.group(1).strip()
         summary_title = re.sub(r'<[^>]+>', '', summary_title_raw).strip()  # Remove HTML tags
+        # Remove emojis (common emoji ranges and symbols)
+        summary_title = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title).strip()
         summary_content = summary_match.group(2).strip()
         
         # Find the end of summary section (next H2/H3 or end of content)
