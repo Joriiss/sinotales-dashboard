@@ -5675,6 +5675,7 @@ def blog_posts_export_wordpress_api(request):
                         alt_text = img.alt_text or ''
                     
                     images_data.append({
+                        'id': img.id,
                         'filename': img.filename,
                         'url': request.build_absolute_uri(img.image_file.url),
                         'alt_text': alt_text,
@@ -5683,7 +5684,10 @@ def blog_posts_export_wordpress_api(request):
             
             # Also include featured image from BlogPost model if it exists and not already in images_data
             if post.featured_image and not any(img['is_featured'] for img in images_data):
+                # Try to find the BlogPostImage record for the featured image
+                featured_img_record = post.images.filter(is_featured=True).first()
                 images_data.append({
+                    'id': featured_img_record.id if featured_img_record else None,
                     'filename': 'featured_image',
                     'url': featured_image_url,
                     'alt_text': post.featured_image_description or '',
