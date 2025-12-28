@@ -5002,6 +5002,10 @@ def _parse_and_create_blog_post_images(blog_post):
 @login_required
 def blog_post_images_list(request):
     """Display list of all blog post images with upload status"""
+    # Get query parameters
+    status_filter = request.GET.get('status', '').strip()
+    post_id = request.GET.get('post', '').strip()
+    
     # Get all blog posts with their images
     blog_posts = BlogPost.objects.prefetch_related('images').select_related('post_idea').order_by('-created_at')
     
@@ -5034,15 +5038,29 @@ def blog_post_images_list(request):
                 'has_file': bool(post.featured_image or (featured_img and featured_img.image_file)),
             })
     
+    # If no filters are provided, default to oldest post with missing images
+    if not post_id and not status_filter:
+        # Get all blog posts ordered by created_at (oldest first)
+        all_posts_ordered = BlogPost.objects.prefetch_related('images').select_related('post_idea').order_by('created_at')
+        
+        # Find the oldest post that has missing images
+        for post in all_posts_ordered:
+            # Check if this post has any missing images
+            post_images = [img for img in all_images if img['blog_post'].id == post.id]
+            has_missing = any(not img['has_file'] for img in post_images)
+            
+            if has_missing:
+                post_id = str(post.id)
+                all_images = post_images
+                break
+    
     # Filter by status if provided
-    status_filter = request.GET.get('status', '').strip()
     if status_filter == 'missing':
         all_images = [img for img in all_images if not img['has_file']]
     elif status_filter == 'uploaded':
         all_images = [img for img in all_images if img['has_file']]
     
     # Filter by blog post if provided
-    post_id = request.GET.get('post', '').strip()
     if post_id:
         try:
             post = BlogPost.objects.get(pk=post_id)
@@ -5601,7 +5619,7 @@ def blog_posts_export_wordpress_api(request):
         if post_id_param:
             try:
                 post_id = int(post_id_param)
-                blog_posts = BlogPost.objects.filter(id=post_id)
+                blog_posts = BlogPost.objects.filter(id=post_id).prefetch_related('images', 'tags')
             except ValueError:
                 return JsonResponse({
                     'success': False,
@@ -5613,10 +5631,10 @@ def blog_posts_export_wordpress_api(request):
             
             if oldest_unpublished:
                 # Get only the oldest unpublished post
-                blog_posts = BlogPost.objects.filter(published=False).order_by('created_at')[:1]
+                blog_posts = BlogPost.objects.filter(published=False).prefetch_related('images', 'tags').order_by('created_at')[:1]
             else:
                 # Get all blog posts, ordered by creation date (newest first)
-                blog_posts = BlogPost.objects.all().order_by('-created_at')
+                blog_posts = BlogPost.objects.all().prefetch_related('images', 'tags').order_by('-created_at')
                 
                 # Filter by published status if provided
                 published_param = request.GET.get('published', '').strip().lower()
@@ -5645,6 +5663,32 @@ def blog_posts_export_wordpress_api(request):
             featured_image_url = None
             if post.featured_image:
                 featured_image_url = request.build_absolute_uri(post.featured_image.url)
+            
+            # Get all images for this post (both content images and featured image)
+            images_data = []
+            for img in post.images.all():
+                if img.image_file:  # Only include images that have been uploaded
+                    # For featured images, prioritize post.featured_image_description over img.alt_text
+                    if img.is_featured:
+                        alt_text = post.featured_image_description or img.alt_text or ''
+                    else:
+                        alt_text = img.alt_text or ''
+                    
+                    images_data.append({
+                        'filename': img.filename,
+                        'url': request.build_absolute_uri(img.image_file.url),
+                        'alt_text': alt_text,
+                        'is_featured': img.is_featured,
+                    })
+            
+            # Also include featured image from BlogPost model if it exists and not already in images_data
+            if post.featured_image and not any(img['is_featured'] for img in images_data):
+                images_data.append({
+                    'filename': 'featured_image',
+                    'url': featured_image_url,
+                    'alt_text': post.featured_image_description or '',
+                    'is_featured': True,
+                })
             
             # Get tag names
             tag_names = [tag.name for tag in post.tags.all()]
@@ -5683,6 +5727,7 @@ def blog_posts_export_wordpress_api(request):
                 'acf': acf,
                 'tags': tag_names,
                 'featured_image_url': featured_image_url,
+                'images': images_data,  # Include all images with their URLs and metadata
             })
         
         return JsonResponse({
