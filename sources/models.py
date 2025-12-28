@@ -662,6 +662,12 @@ class BlogPost(models.Model):
         default=False,
         help_text="Whether this blog post is published"
     )
+    online_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="URL of the published blog post on the live website"
+    )
     tags = models.ManyToManyField(
         Tag,
         related_name='blog_posts',

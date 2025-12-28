@@ -5602,6 +5602,7 @@ def blog_post_update_status_api(request, pk):
     Methods: PATCH or POST
     Body (JSON or form-data):
     - published: boolean (true/false) - whether to publish the post
+    - online_url: string (optional) - URL of the published blog post on the live website
     """
     if request.method not in ['PATCH', 'POST']:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -5615,14 +5616,16 @@ def blog_post_update_status_api(request, pk):
         # Get the blog post
         blog_post = get_object_or_404(BlogPost, pk=pk)
         
-        # Get published status from request
+        # Get published status and online_url from request
         if request.content_type == 'application/json':
             import json
             data = json.loads(request.body)
             published = data.get('published', None)
+            online_url = data.get('online_url', None)
         else:
             # Form data
             published = request.POST.get('published', None)
+            online_url = request.POST.get('online_url', None)
         
         if published is None:
             return JsonResponse({
@@ -5639,18 +5642,40 @@ def blog_post_update_status_api(request, pk):
                 'error': 'Invalid published value. Must be boolean or string representation of boolean.'
             }, status=400)
         
-        # Update published status
+        # Validate online_url if provided
+        if online_url is not None:
+            online_url = online_url.strip()
+            if online_url == '':
+                online_url = None
+            elif not online_url.startswith(('http://', 'https://')):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid online_url. Must be a valid URL starting with http:// or https://'
+                }, status=400)
+        
+        # Update published status and online_url
+        update_fields = ['published']
         blog_post.published = published
-        blog_post.save(update_fields=['published'])
+        
+        if online_url is not None:
+            blog_post.online_url = online_url
+            update_fields.append('online_url')
+        
+        blog_post.save(update_fields=update_fields)
         
         # Log activity
+        log_message = f'Blog post "{blog_post.title}" status updated to {"published" if published else "draft"}'
+        if online_url and published:
+            log_message += f' with URL: {online_url}'
+        
         log_activity(
             'blog_post_status_updated',
-            f'Blog post "{blog_post.title}" status updated to {"published" if published else "draft"}',
+            log_message,
             user=None,  # API call, no user
             metadata={
                 'blog_post_id': blog_post.id,
-                'published': published
+                'published': published,
+                'online_url': online_url if online_url else None
             }
         )
         
@@ -5661,6 +5686,7 @@ def blog_post_update_status_api(request, pk):
                 'title': blog_post.title,
                 'slug': blog_post.slug,
                 'published': blog_post.published,
+                'online_url': blog_post.online_url or None,
             }
         })
     except BlogPost.DoesNotExist:
