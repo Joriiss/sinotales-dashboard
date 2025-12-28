@@ -5694,6 +5694,26 @@ def blog_posts_export_wordpress_api(request):
                     'is_featured': True,
                 })
             
+            # Replace <img> tags in main_content with [IMG-{id}] placeholders
+            main_content = sections['main_content']
+            if images_data:
+                # Create a mapping from filename to image ID
+                filename_to_id = {img['filename']: img['id'] for img in images_data if img['id'] is not None}
+                
+                # Pattern to match <img> tags with data-filename attribute
+                import re
+                img_pattern = r'<img[^>]*data-filename=["\']([^"\']+)["\'][^>]*>'
+                
+                def replace_img_with_placeholder(match):
+                    filename = match.group(1)
+                    img_id = filename_to_id.get(filename)
+                    if img_id:
+                        return f'[IMG-{img_id}]'
+                    # If no matching image found, return the original tag
+                    return match.group(0)
+                
+                main_content = re.sub(img_pattern, replace_img_with_placeholder, main_content, flags=re.IGNORECASE)
+            
             # Get tag names
             tag_names = [tag.name for tag in post.tags.all()]
             
@@ -5704,8 +5724,8 @@ def blog_posts_export_wordpress_api(request):
             acf = {
                 'intro': sections['intro'],
                 'intro_source': _format_acf_field(sections['intro'], 'Intro', 'wysiwyg'),
-                'main_content': sections['main_content'],
-                'main_content_source': _format_acf_field(sections['main_content'], 'Main content', 'wysiwyg'),
+                'main_content': main_content,
+                'main_content_source': _format_acf_field(main_content, 'Main content', 'wysiwyg'),
                 'conclusion': sections['conclusion'],
                 'conclusion_source': _format_acf_field(sections['conclusion'], 'Conclusion', 'wysiwyg'),
                 'summary_title': sections['summary_title'],
