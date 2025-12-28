@@ -1,0 +1,314 @@
+from django.http import JsonResponse
+from django.conf import settings
+import re
+
+def _validate_api_token(request):
+    """Helper function to validate API token from request"""
+    api_token = settings.API_TOKEN
+    if not api_token:
+        return None, JsonResponse({
+            'success': False,
+            'error': 'API token not configured'
+        }, status=500)
+    
+    # Get token from Authorization header or query parameter
+    provided_token = None
+    
+    # Check Authorization header: "Token <token>" or "Bearer <token>"
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    if auth_header:
+        parts = auth_header.split()
+        if len(parts) == 2 and parts[0].lower() in ('token', 'bearer'):
+            provided_token = parts[1]
+    
+    # Check query parameter
+    if not provided_token:
+        provided_token = request.GET.get('token', None)
+    
+    # Validate token
+    if not provided_token or provided_token != api_token:
+        return None, JsonResponse({
+            'success': False,
+            'error': 'Invalid or missing authentication token'
+        }, status=401)
+    
+    return True, None
+
+
+
+def _parse_blog_content_sections(content):
+    """
+    Parse HTML blog post content into sections: intro, summary, main_content, conclusion
+    
+    Returns a dict with:
+    - intro: Content from H1 until "Quick Summary" or "Key Takeaways" heading
+    - summary_title: The heading text of the summary section
+    - summary_content: The content within the summary section
+    - main_content: Content between summary and conclusion
+    - conclusion: The last paragraph/section
+    """
+    import re
+    
+    if not content:
+        return {
+            'intro': '',
+            'summary_title': '',
+            'summary_content': '',
+            'main_content': '',
+            'conclusion': ''
+        }
+    
+    # Remove H1 if present (we don't need it in sections)
+    content = re.sub(r'<h1[^>]*>.*?</h1>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = content.strip()
+    
+    # Find the "Quick Summary" or "Key Takeaways" section
+    # Look for H2, H3, or div containing H3 with "Quick Summary" or "Key Takeaways"
+    # Pattern matches "Quick Summary" even when followed by colon and more text
+    
+    summary_match = None
+    
+    # First try to find div containing H3 with "Quick Summary" (most common case)
+    # Need to handle nested divs properly by finding the opening div and matching closing div
+    h3_pattern = r'<h3[^>]*>([^<]*Quick\s+Summary[^<]*)</h3>'
+    h3_match = re.search(h3_pattern, content, re.IGNORECASE | re.DOTALL)
+    if h3_match:
+        # Find the div that contains this H3
+        # Look backwards from H3 to find the opening <div> tag
+        h3_start = h3_match.start()
+        # Find the last <div> before this H3
+        div_start_match = None
+        for match in re.finditer(r'<div[^>]*>', content[:h3_start], re.IGNORECASE):
+            div_start_match = match
+        
+        if div_start_match:
+            # Find the matching closing </div> after the H3
+            # Count div tags to find the matching closing tag
+            div_start_pos = div_start_match.start()
+            div_count = 1
+            pos = div_start_match.end()
+            div_end_pos = -1
+            
+            while pos < len(content) and div_count > 0:
+                next_open = content.find('<div', pos)
+                next_close = content.find('</div>', pos)
+                
+                if next_close == -1:
+                    break
+                
+                if next_open != -1 and next_open < next_close:
+                    div_count += 1
+                    pos = next_open + 4
+                else:
+                    div_count -= 1
+                    if div_count == 0:
+                        div_end_pos = next_close + 6  # Position after </div>
+                        break
+                    pos = next_close + 6
+            
+            if div_end_pos > 0:
+                summary_title_raw = h3_match.group(1).strip()
+                # Remove emojis from title
+                summary_title_clean = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title_raw).strip()
+                # Extract inner content: remove outer div wrapper and H3 tag
+                # Find the H3 closing tag and extract everything after it until the div closing tag
+                h3_end = h3_match.end()  # Position after </h3>
+                # Extract content between H3 closing tag and div closing tag
+                # div_end_pos is after </div>, so we need to go back 6 chars to get before </div>
+                inner_content_start = h3_end
+                inner_content_end = div_end_pos - 6  # Position before </div>
+                summary_content = content[inner_content_start:inner_content_end].strip()
+                # Create a match-like object
+                class MatchObj:
+                    def __init__(self, start, end, title, content):
+                        self._start = start
+                        self._end = end
+                        self._title = title
+                        self._content = content
+                    def start(self):
+                        return self._start
+                    def end(self):
+                        return self._end
+                    def group(self, n):
+                        return self._title if n == 1 else self._content
+                summary_match = MatchObj(div_start_pos, div_end_pos, summary_title_clean, summary_content)
+    
+    # If not found in div, try H2 with "Quick Summary"
+    if not summary_match:
+        summary_pattern = r'<h2[^>]*>([^<]*Quick\s+Summary[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+        summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+        
+        # If not found, try H3 with "Quick Summary" (standalone, not in div)
+        if not summary_match:
+            summary_pattern = r'<h3[^>]*>([^<]*Quick\s+Summary[^<]*)</h3>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+        
+        # If not found, try "Key Takeaways" in H2
+        if not summary_match:
+            summary_pattern = r'<h2[^>]*>([^<]*Key\s+Takeaways[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+        
+        # If not found, try "Key Takeaways" in H3
+        if not summary_match:
+            summary_pattern = r'<h3[^>]*>([^<]*Key\s+Takeaways[^<]*)</h3>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+    
+    intro = ''
+    summary_title = ''
+    summary_content = ''
+    main_content = ''
+    conclusion = ''
+    
+    if summary_match:
+        # Extract intro (everything before the summary section)
+        intro_end = summary_match.start()
+        intro = content[:intro_end].strip()
+        
+        # Extract summary title and content
+        summary_title_raw = summary_match.group(1).strip()
+        summary_title = re.sub(r'<[^>]+>', '', summary_title_raw).strip()  # Remove HTML tags
+        # Remove emojis (common emoji ranges and symbols)
+        summary_title = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title).strip()
+        summary_content = summary_match.group(2).strip()
+        
+        # Find the end of summary section (next H2/H3 or end of content)
+        summary_end = summary_match.end()
+        content_after_summary = content[summary_end:].strip()
+        
+        # Extract conclusion: find the last paragraph in the remaining content
+        # Look for the last <p> tag
+        paragraph_matches = list(re.finditer(r'<p[^>]*>.*?</p>', content_after_summary, re.IGNORECASE | re.DOTALL))
+        
+        if paragraph_matches:
+            # Last paragraph is conclusion
+            last_para_match = paragraph_matches[-1]
+            conclusion = last_para_match.group(0)
+            # Everything before the last paragraph is main_content
+            main_content = content_after_summary[:last_para_match.start()].strip()
+        else:
+            # No paragraphs found, try to find last section
+            # Look for last block of content (could be wrapped in div, or just text)
+            # Split by common block-level tags
+            blocks = re.split(r'(<h[2-6][^>]*>.*?</h[2-6]>)', content_after_summary, flags=re.IGNORECASE | re.DOTALL)
+            if len(blocks) > 2:
+                # Last block might be conclusion
+                conclusion = blocks[-1].strip()
+                main_content = ''.join(blocks[:-1]).strip()
+            else:
+                # Can't split, put everything in main_content
+                main_content = content_after_summary
+                conclusion = ''
+    else:
+        # No summary section found
+        # Try to split content: conclusion is last paragraph, intro is first paragraph(s)
+        paragraph_matches = list(re.finditer(r'<p[^>]*>.*?</p>', content, re.IGNORECASE | re.DOTALL))
+        
+        if paragraph_matches and len(paragraph_matches) > 1:
+            # First paragraph as intro
+            intro = paragraph_matches[0].group(0)
+            # Last paragraph as conclusion
+            conclusion = paragraph_matches[-1].group(0)
+            # Everything in between is main_content
+            main_content = content[paragraph_matches[0].end():paragraph_matches[-1].start()].strip()
+        elif paragraph_matches:
+            # Only one paragraph - use as intro
+            intro = paragraph_matches[0].group(0)
+            main_content = ''
+            conclusion = ''
+        else:
+            # No paragraphs found, put everything in main_content
+            main_content = content
+            intro = ''
+            conclusion = ''
+    
+    return {
+        'intro': intro,
+        'summary_title': summary_title,
+        'summary_content': summary_content,
+        'main_content': main_content,
+        'conclusion': conclusion
+    }
+
+
+
+def _format_acf_field(value, label, field_type='text'):
+    """
+    Format an ACF field with both raw value and _source object
+    
+    Args:
+        value: The raw field value
+        label: The field label
+        field_type: 'text' or 'wysiwyg'
+    
+    Returns:
+        Dict with _source object containing label, type, and formatted_value
+    """
+    return {
+        'label': label,
+        'type': field_type,
+        'formatted_value': value or ''
+    }
+
+
+
+def _format_faq_acf_fields(blog_post):
+    """
+    Format FAQ data into individual ACF fields (question_1, answer_1, etc.)
+    
+    Returns a dict with all FAQ-related ACF fields
+    """
+    import re
+    
+    faq_fields = {}
+    
+    # FAQ title
+    faq_title = blog_post.faq_title or ''
+    faq_fields['faqs_title'] = faq_title
+    faq_fields['faqs_title_source'] = {
+        'label': 'Title',
+        'type': 'text',
+        'formatted_value': faq_title
+    }
+    
+    # FAQ questions and answers (up to 4)
+    faq_list = blog_post.faq if blog_post.faq and isinstance(blog_post.faq, list) else []
+    
+    for i in range(1, 5):  # question_1 through question_4
+        index = i - 1
+        if index < len(faq_list) and isinstance(faq_list[index], dict):
+            question = faq_list[index].get('question', '').strip()
+            answer = faq_list[index].get('answer', '').strip()
+        else:
+            question = ''
+            answer = ''
+        
+        # Question field (text)
+        faq_fields[f'question_{i}'] = question
+        faq_fields[f'question_{i}_source'] = {
+            'label': 'Title',
+            'type': 'text',
+            'formatted_value': question
+        }
+        
+        # Answer field (wysiwyg)
+        # Raw answer is just the text
+        faq_fields[f'answer_{i}'] = answer
+        
+        # Formatted answer: wrap in <p> tags if not already HTML
+        if answer:
+            # Check if answer already contains HTML tags
+            if re.search(r'<[^>]+>', answer):
+                formatted_answer = answer
+            else:
+                # Wrap in <p> tags
+                formatted_answer = f'<p>{answer}</p>'
+        else:
+            formatted_answer = ''
+        
+        faq_fields[f'answer_{i}_source'] = {
+            'label': 'Content',
+            'type': 'wysiwyg',
+            'formatted_value': formatted_answer
+        }
+    
+    return faq_fields
