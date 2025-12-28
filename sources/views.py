@@ -5596,6 +5596,88 @@ def _format_faq_acf_fields(blog_post):
 
 
 @csrf_exempt
+def blog_post_update_status_api(request, pk):
+    """API endpoint to update blog post published status (token-based authentication)
+    
+    Methods: PATCH or POST
+    Body (JSON or form-data):
+    - published: boolean (true/false) - whether to publish the post
+    """
+    if request.method not in ['PATCH', 'POST']:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Validate token
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+    
+    try:
+        # Get the blog post
+        blog_post = get_object_or_404(BlogPost, pk=pk)
+        
+        # Get published status from request
+        if request.content_type == 'application/json':
+            import json
+            data = json.loads(request.body)
+            published = data.get('published', None)
+        else:
+            # Form data
+            published = request.POST.get('published', None)
+        
+        if published is None:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing required parameter: published'
+            }, status=400)
+        
+        # Convert to boolean
+        if isinstance(published, str):
+            published = published.lower() in ('true', '1', 'yes', 'on')
+        elif not isinstance(published, bool):
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid published value. Must be boolean or string representation of boolean.'
+            }, status=400)
+        
+        # Update published status
+        blog_post.published = published
+        blog_post.save(update_fields=['published'])
+        
+        # Log activity
+        log_activity(
+            'blog_post_status_updated',
+            f'Blog post "{blog_post.title}" status updated to {"published" if published else "draft"}',
+            user=None,  # API call, no user
+            metadata={
+                'blog_post_id': blog_post.id,
+                'published': published
+            }
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'blog_post': {
+                'id': blog_post.id,
+                'title': blog_post.title,
+                'slug': blog_post.slug,
+                'published': blog_post.published,
+            }
+        })
+    except BlogPost.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Blog post not found'
+        }, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
 def blog_posts_export_wordpress_api(request):
     """API endpoint to export blog posts in WordPress ACF-compatible format for n8n integration
     
