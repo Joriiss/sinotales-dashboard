@@ -58,6 +58,13 @@
                     <strong>Status:</strong><br>
                     {% if blog_post.published %}
                     <span class="badge bg-success">Published</span>
+                    {% if blog_post.online_url %}
+                    <div class="mt-2">
+                        <a href="{{ blog_post.online_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> View Online
+                        </a>
+                    </div>
+                    {% endif %}
                     {% else %}
                     <span class="badge bg-secondary">Draft</span>
                     {% endif %}
@@ -226,6 +233,27 @@
     margin-left: 0;
     color: #64748b;
     font-style: italic;
+}
+
+.blog-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5rem auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@media (min-width: 768px) {
+    .blog-content img {
+        max-width: 80%;
+    }
+}
+
+@media (min-width: 992px) {
+    .blog-content img {
+        max-width: 70%;
+    }
 }
 </style>
 {% endblock %}
