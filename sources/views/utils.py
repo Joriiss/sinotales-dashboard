@@ -68,9 +68,11 @@ def _parse_blog_content_sections(content):
     
     summary_match = None
     
-    # First try to find div containing H3 with "Quick Summary" (most common case)
+    # First try to find div containing H3 with "Quick Summary" or "Key Takeaways" (most common case)
     # Need to handle nested divs properly by finding the opening div and matching closing div
-    h3_pattern = r'<h3[^>]*>([^<]*Quick\s+Summary[^<]*)</h3>'
+    # Pattern must handle HTML tags inside H3 (like <strong>)
+    # Match either "Quick Summary" or "Key Takeaways" (or both)
+    h3_pattern = r'<h3[^>]*>(.*?(?:Quick\s+Summary|Key\s+Takeaways).*?)</h3>'
     h3_match = re.search(h3_pattern, content, re.IGNORECASE | re.DOTALL)
     if h3_match:
         # Find the div that contains this H3
@@ -108,8 +110,10 @@ def _parse_blog_content_sections(content):
             
             if div_end_pos > 0:
                 summary_title_raw = h3_match.group(1).strip()
+                # Remove HTML tags from title first
+                summary_title_clean = re.sub(r'<[^>]+>', '', summary_title_raw).strip()
                 # Remove emojis from title
-                summary_title_clean = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title_raw).strip()
+                summary_title_clean = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title_clean).strip()
                 # Extract inner content: remove outer div wrapper and H3 tag
                 # Find the H3 closing tag and extract everything after it until the div closing tag
                 h3_end = h3_match.end()  # Position after </h3>
@@ -135,22 +139,22 @@ def _parse_blog_content_sections(content):
     
     # If not found in div, try H2 with "Quick Summary"
     if not summary_match:
-        summary_pattern = r'<h2[^>]*>([^<]*Quick\s+Summary[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+        summary_pattern = r'<h2[^>]*>(.*?Quick\s+Summary.*?)</h2>(.*?)(?=<h[2-6]|$)'
         summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
         
         # If not found, try H3 with "Quick Summary" (standalone, not in div)
         if not summary_match:
-            summary_pattern = r'<h3[^>]*>([^<]*Quick\s+Summary[^<]*)</h3>(.*?)(?=<h[2-6]|$)'
+            summary_pattern = r'<h3[^>]*>(.*?Quick\s+Summary.*?)</h3>(.*?)(?=<h[2-6]|$)'
             summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
         
         # If not found, try "Key Takeaways" in H2
         if not summary_match:
-            summary_pattern = r'<h2[^>]*>([^<]*Key\s+Takeaways[^<]*)</h2>(.*?)(?=<h[2-6]|$)'
+            summary_pattern = r'<h2[^>]*>(.*?Key\s+Takeaways.*?)</h2>(.*?)(?=<h[2-6]|$)'
             summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
         
         # If not found, try "Key Takeaways" in H3
         if not summary_match:
-            summary_pattern = r'<h3[^>]*>([^<]*Key\s+Takeaways[^<]*)</h3>(.*?)(?=<h[2-6]|$)'
+            summary_pattern = r'<h3[^>]*>(.*?Key\s+Takeaways.*?)</h3>(.*?)(?=<h[2-6]|$)'
             summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
     
     intro = ''
