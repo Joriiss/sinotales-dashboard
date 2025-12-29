@@ -68,19 +68,26 @@ def _parse_blog_content_sections(content):
     
     summary_match = None
     
-    # First try to find div containing H3 with "Quick Summary" or "Key Takeaways" (most common case)
+    # First try to find div containing H2 or H3 with "Quick Summary" or "Key Takeaways" (most common case)
     # Need to handle nested divs properly by finding the opening div and matching closing div
-    # Pattern must handle HTML tags inside H3 (like <strong>)
+    # Pattern must handle HTML tags inside H2/H3 (like <strong>)
     # Match either "Quick Summary" or "Key Takeaways" (or both)
-    h3_pattern = r'<h3[^>]*>(.*?(?:Quick\s+Summary|Key\s+Takeaways).*?)</h3>'
-    h3_match = re.search(h3_pattern, content, re.IGNORECASE | re.DOTALL)
-    if h3_match:
-        # Find the div that contains this H3
-        # Look backwards from H3 to find the opening <div> tag
-        h3_start = h3_match.start()
-        # Find the last <div> before this H3
+    # Try H2 first, then H3
+    h2_pattern = r'<h2[^>]*>(.*?(?:Quick\s+Summary|Key\s+Takeaways).*?)</h2>'
+    h2_match = re.search(h2_pattern, content, re.IGNORECASE | re.DOTALL)
+    heading_match = h2_match
+    if not heading_match:
+        h3_pattern = r'<h3[^>]*>(.*?(?:Quick\s+Summary|Key\s+Takeaways).*?)</h3>'
+        h3_match = re.search(h3_pattern, content, re.IGNORECASE | re.DOTALL)
+        heading_match = h3_match
+    
+    if heading_match:
+        # Find the div that contains this heading (H2 or H3)
+        # Look backwards from heading to find the opening <div> tag
+        heading_start = heading_match.start()
+        # Find the last <div> before this heading
         div_start_match = None
-        for match in re.finditer(r'<div[^>]*>', content[:h3_start], re.IGNORECASE):
+        for match in re.finditer(r'<div[^>]*>', content[:heading_start], re.IGNORECASE):
             div_start_match = match
         
         if div_start_match:
@@ -109,19 +116,21 @@ def _parse_blog_content_sections(content):
                     pos = next_close + 6
             
             if div_end_pos > 0:
-                summary_title_raw = h3_match.group(1).strip()
+                summary_title_raw = heading_match.group(1).strip()
                 # Remove HTML tags from title first
                 summary_title_clean = re.sub(r'<[^>]+>', '', summary_title_raw).strip()
                 # Remove emojis from title
                 summary_title_clean = re.sub(r'[\U0001F300-\U0001F9FF]|[\U00002600-\U000027BF]|[\U0001F600-\U0001F64F]|[\U0001F680-\U0001F6FF]|[\U0001F1E0-\U0001F1FF]|[\U00002700-\U000027BF]|[\U0001F900-\U0001F9FF]|[\U0001FA00-\U0001FA6F]|[\U0001FA70-\U0001FAFF]|[\U00002600-\U000026FF]|[\U00002700-\U000027BF]', '', summary_title_clean).strip()
-                # Extract inner content: remove outer div wrapper and H3 tag
-                # Find the H3 closing tag and extract everything after it until the div closing tag
-                h3_end = h3_match.end()  # Position after </h3>
-                # Extract content between H3 closing tag and div closing tag
+                # Extract inner content: remove outer div wrapper and heading tag
+                # Find the heading closing tag and extract everything after it until the div closing tag
+                heading_end = heading_match.end()  # Position after </h2> or </h3>
+                # Extract content between heading closing tag and div closing tag
                 # div_end_pos is after </div>, so we need to go back 6 chars to get before </div>
-                inner_content_start = h3_end
+                inner_content_start = heading_end
                 inner_content_end = div_end_pos - 6  # Position before </div>
                 summary_content = content[inner_content_start:inner_content_end].strip()
+                # Remove any trailing </div> tags that might have been included
+                summary_content = re.sub(r'</div>\s*$', '', summary_content, flags=re.IGNORECASE | re.MULTILINE).strip()
                 # Create a match-like object
                 class MatchObj:
                     def __init__(self, start, end, title, content):
@@ -174,10 +183,18 @@ def _parse_blog_content_sections(content):
             # This is a div-wrapped summary
             # The intro_end is at div_start_pos, which is where <div> begins
             # We need to make sure intro doesn't include the opening <div> tag
-            # Check if intro ends with a <div> tag (incomplete or complete)
-            # Remove any trailing <div> tags from intro
-            intro = re.sub(r'<div[^>]*>\s*$', '', intro, flags=re.IGNORECASE | re.MULTILINE)
-            intro = intro.strip()
+            # Find the last <div> tag in the intro and remove everything from that point
+            # This handles cases where the div might not be at the absolute end
+            div_matches = list(re.finditer(r'<div[^>]*>', intro, re.IGNORECASE))
+            if div_matches:
+                # Get the last div tag position
+                last_div_pos = div_matches[-1].start()
+                # Truncate intro at the last div tag
+                intro = intro[:last_div_pos].strip()
+            else:
+                # Fallback: try to remove any div tag at the end
+                intro = re.sub(r'\s*<div[^>]*>\s*$', '', intro, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                intro = intro.strip()
         
         # Extract summary title and content
         summary_title_raw = summary_match.group(1).strip()
@@ -190,29 +207,43 @@ def _parse_blog_content_sections(content):
         summary_end = summary_match.end()
         content_after_summary = content[summary_end:].strip()
         
-        # Extract conclusion: find the last paragraph in the remaining content
-        # Look for the last <p> tag
-        paragraph_matches = list(re.finditer(r'<p[^>]*>.*?</p>', content_after_summary, re.IGNORECASE | re.DOTALL))
+        # Extract conclusion: look for "Conclusion" heading first
+        # Pattern to match H2 or H3 with "Conclusion" (case-insensitive)
+        # Match a single heading tag that contains "Conclusion" - must not match across multiple heading tags
+        # Use a pattern that matches the opening tag, then content (possibly with nested tags), then closing tag
+        # The key is to ensure we don't match across </h2> boundaries
+        conclusion_heading_pattern = r'<h[23][^>]*>(?:(?!</h[23]>).)*\bConclusion\b(?:(?!</h[23]>).)*</h[23]>'
+        conclusion_heading_match = re.search(conclusion_heading_pattern, content_after_summary, re.IGNORECASE | re.DOTALL)
         
-        if paragraph_matches:
-            # Last paragraph is conclusion
-            last_para_match = paragraph_matches[-1]
-            conclusion = last_para_match.group(0)
-            # Everything before the last paragraph is main_content
-            main_content = content_after_summary[:last_para_match.start()].strip()
+        if conclusion_heading_match:
+            # Found conclusion heading - include heading and everything after it
+            conclusion_start = conclusion_heading_match.start()
+            conclusion = content_after_summary[conclusion_start:].strip()
+            # Everything before the conclusion heading is main_content
+            main_content = content_after_summary[:conclusion_start].strip()
         else:
-            # No paragraphs found, try to find last section
-            # Look for last block of content (could be wrapped in div, or just text)
-            # Split by common block-level tags
-            blocks = re.split(r'(<h[2-6][^>]*>.*?</h[2-6]>)', content_after_summary, flags=re.IGNORECASE | re.DOTALL)
-            if len(blocks) > 2:
-                # Last block might be conclusion
-                conclusion = blocks[-1].strip()
-                main_content = ''.join(blocks[:-1]).strip()
+            # No conclusion heading found, try to find the last paragraph
+            paragraph_matches = list(re.finditer(r'<p[^>]*>.*?</p>', content_after_summary, re.IGNORECASE | re.DOTALL))
+            
+            if paragraph_matches:
+                # Last paragraph is conclusion
+                last_para_match = paragraph_matches[-1]
+                conclusion = last_para_match.group(0)
+                # Everything before the last paragraph is main_content
+                main_content = content_after_summary[:last_para_match.start()].strip()
             else:
-                # Can't split, put everything in main_content
-                main_content = content_after_summary
-                conclusion = ''
+                # No paragraphs found, try to find last section
+                # Look for last block of content (could be wrapped in div, or just text)
+                # Split by common block-level tags
+                blocks = re.split(r'(<h[2-6][^>]*>.*?</h[2-6]>)', content_after_summary, flags=re.IGNORECASE | re.DOTALL)
+                if len(blocks) > 2:
+                    # Last block might be conclusion
+                    conclusion = blocks[-1].strip()
+                    main_content = ''.join(blocks[:-1]).strip()
+                else:
+                    # Can't split, put everything in main_content
+                    main_content = content_after_summary
+                    conclusion = ''
     else:
         # No summary section found
         # Try to split content: conclusion is last paragraph, intro is first paragraph(s)
