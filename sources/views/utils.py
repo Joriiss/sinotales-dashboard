@@ -168,6 +168,17 @@ def _parse_blog_content_sections(content):
         intro_end = summary_match.start()
         intro = content[:intro_end].strip()
         
+        # For div-wrapped summaries, ensure intro ends before the opening <div> tag
+        # Check if this is a div-wrapped summary (has _content attribute)
+        if hasattr(summary_match, '_content'):
+            # This is a div-wrapped summary
+            # The intro_end is at div_start_pos, which is where <div> begins
+            # We need to make sure intro doesn't include the opening <div> tag
+            # Check if intro ends with a <div> tag (incomplete or complete)
+            # Remove any trailing <div> tags from intro
+            intro = re.sub(r'<div[^>]*>\s*$', '', intro, flags=re.IGNORECASE | re.MULTILINE)
+            intro = intro.strip()
+        
         # Extract summary title and content
         summary_title_raw = summary_match.group(1).strip()
         summary_title = re.sub(r'<[^>]+>', '', summary_title_raw).strip()  # Remove HTML tags
