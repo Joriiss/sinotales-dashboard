@@ -25,7 +25,7 @@
 
 **2. Demonstrating E-E-A-T (Experience & Expertise)**
 
-- **The "Insider" Angle:** Do not just describe places. Include specific **"Mistakes to Avoid"** and **"Contra-arian Tips"** (e.g., "Why you should skip and go to instead").
+- The "Insider" Angle: Do not just describe places. You MUST include a unique perspective, such as a common mistake to avoid or an overrated attraction to skip. Integrate this naturally into the content or use varied headers like "Insider Tip," "What to Know Before You Go," or "Is it Worth It?"—do not repeatedly use the exact header "Contrarian Tip."
 - **Sensory Details:** Use specific details that prove experience: mention specific crowds, smells, navigation difficulties, or the price of a bottle of water.
 - **Authoritative Sourcing:** When mentioning visa rules or ticket prices, imply citation of official sources (e.g., "According to the official 12306 rail policy...").
 
