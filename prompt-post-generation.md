@@ -14,6 +14,7 @@
 - **Description:** {description}
 - **Primary Keyword:** {primary_keyword}
 - **Target Audience:** Travelers planning a trip to China who need practical, actionable information.
+- **Current Year:** {current_year} (Ensure all advice, pricing, and visa rules are current).
 
 ### **Strategic Content Requirements**
 
@@ -64,6 +65,7 @@
 - *Logistics:* How to get there, book tickets, navigate (include specific Apps like Alipay/WeChat).
 - *Real Experiences:* Honest assessment of crowds/weather.
 - *Practical Tips:* Pricing, opening hours, contact info.
+- *eSIM Recommendation:* If the post mentions using an eSIM in China, insert the WordPress shortcode `[wpcode id="1532"]` immediately after the first mention of eSIM or in the logistics section where connectivity is discussed. This shortcode will display an Editor's Pick CTA recommending Nomad eSIM for China (with a $5 USD discount code) that reliably bypasses the Great Firewall with stable speeds.
 
 **Section 4: Conclusion**
 

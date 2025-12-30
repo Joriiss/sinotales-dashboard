@@ -20,6 +20,7 @@ from ..embedding_service import EmbeddingService
 from pgvector.django import CosineDistance
 import random
 import re
+from datetime import datetime
 from .utils import _validate_api_token, _parse_blog_content_sections, _format_acf_field, _format_faq_acf_fields
 from .blog_posts import _parse_and_create_blog_post_images
 from .post_ideas import _generate_post_ideas
@@ -1679,7 +1680,8 @@ def generate_blog_post_api(request):
         prompt = prompt_template.format(
             title=post_idea.title,
             description=post_idea.description or "No description provided.",
-            primary_keyword=primary_keyword
+            primary_keyword=primary_keyword,
+            current_year=datetime.now().year
         )
         
         # Add RAG context if available

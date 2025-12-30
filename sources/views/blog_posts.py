@@ -12,6 +12,7 @@ from django.utils.html import json_script
 from django.utils.text import slugify
 from django.core.cache import cache
 import json
+from datetime import datetime
 from ..models import BlogPost, BlogPostImage, Tag, PostIdea
 from ..forms import SourceForm
 from ..utils import log_activity
@@ -628,7 +629,8 @@ def blog_post_generate(request, pk):
             prompt = prompt_template.format(
                 title=post_idea.title,
                 description=post_idea.description or "No description provided.",
-                primary_keyword=primary_keyword
+                primary_keyword=primary_keyword,
+                current_year=datetime.now().year
             )
             
             # Add RAG context if available
