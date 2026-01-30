@@ -22,6 +22,7 @@ from .utils import log_activity, is_idea_too_similar_with_embeddings
 from .content_processing_service import ContentProcessingService
 from .embedding_service import EmbeddingService
 from pgvector.django import CosineDistance
+from datetime import datetime
 
 
 class CustomLoginView(LoginView):
@@ -2904,8 +2905,9 @@ def blog_post_generate_metadata(request, pk):
             # Clean up extra whitespace
             text_content = ' '.join(text_content.split())
             
-            # Build the prompt with the cleaned text content
-            prompt = prompt_template.replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
+            # Build the prompt with the cleaned text content and current year
+            current_year = str(datetime.now().year)
+            prompt = prompt_template.replace('{current_year}', current_year).replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
             
             # Call the appropriate AI provider
             # Use higher token limits for metadata generation (especially for Gemini which uses "thoughts" tokens)
@@ -6392,7 +6394,8 @@ def generate_blog_post_api(request):
         prompt = prompt_template.format(
             title=post_idea.title,
             description=post_idea.description or "No description provided.",
-            primary_keyword=primary_keyword
+            primary_keyword=primary_keyword,
+            current_year=datetime.now().year
         )
         
         # Add RAG context if available
@@ -6461,8 +6464,9 @@ def generate_blog_post_api(request):
         text_content = re.sub(r'<[^>]+>', ' ', blog_post.content)
         text_content = ' '.join(text_content.split())
         
-        # Build metadata prompt
-        metadata_prompt = metadata_prompt_template.replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
+        # Build metadata prompt with current year
+        current_year = str(datetime.now().year)
+        metadata_prompt = metadata_prompt_template.replace('{current_year}', current_year).replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
         
         # Generate metadata
         if metadata_provider == 'ollama':

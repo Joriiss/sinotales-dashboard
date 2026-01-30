@@ -11,6 +11,7 @@ import json
 import time
 from tqdm import tqdm
 import os
+from datetime import datetime
 from django.conf import settings
 
 
@@ -134,8 +135,9 @@ class Command(BaseCommand):
                         pbar.update(1)
                         continue
                     
-                    # Build metadata prompt
-                    metadata_prompt = metadata_prompt_template.replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
+                    # Build metadata prompt with current year
+                    current_year = str(datetime.now().year)
+                    metadata_prompt = metadata_prompt_template.replace('{current_year}', current_year).replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
                     
                     # Generate metadata
                     if provider == 'ollama':

@@ -4,13 +4,13 @@
 
 **Input Context:**
 - **Target Keyword Focus:** First-time travel to China / China travel tips
-- **Year:** 2025 (Ensure freshness is emphasized)
+- **Year:** {current_year} (Use this exact year. Ensure freshness is emphasized.)
 
 **Output Requirements:**
 
 1.  **Meta Title (Title Tag):**
     - **Length:** 50-60 characters (max 580 pixels).
-    - **Strategy:** Front-load the main keyword. Must include "2025".
+    - **Strategy:** Front-load the main keyword. Must include the current year ("{current_year}").
     - **Style:** Compelling, promising a solution (e.g., "Essential," "Guide," "Mistakes").
 
 2.  **Meta Description:**

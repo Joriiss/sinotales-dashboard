@@ -1750,8 +1750,9 @@ def generate_blog_post_api(request):
         text_content = re.sub(r'<[^>]+>', ' ', blog_post.content)
         text_content = ' '.join(text_content.split())
         
-        # Build metadata prompt
-        metadata_prompt = metadata_prompt_template.replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
+        # Build metadata prompt with current year
+        current_year = str(datetime.now().year)
+        metadata_prompt = metadata_prompt_template.replace('{current_year}', current_year).replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
         
         # Generate metadata
         if metadata_provider == 'ollama':
