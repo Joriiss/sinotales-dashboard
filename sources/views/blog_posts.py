@@ -295,8 +295,9 @@ def blog_post_generate_metadata(request, pk):
             # Clean up extra whitespace
             text_content = ' '.join(text_content.split())
             
-            # Build the prompt with the cleaned text content
-            prompt = prompt_template.replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
+            # Build the prompt with the cleaned text content and current year
+            current_year = str(datetime.now().year)
+            prompt = prompt_template.replace('{current_year}', current_year).replace('[PASTE YOUR GENERATED HTML CONTENT HERE]', text_content)
             
             # Call the appropriate AI provider
             # Use higher token limits for metadata generation (especially for Gemini which uses "thoughts" tokens)
