@@ -316,27 +316,31 @@ def blog_post_generate_metadata(request, pk):
             # Parse the generated metadata
             import re
             
-            # Extract meta title - try multiple patterns
+            # Extract meta title - try multiple patterns; truncate if over 60 chars; fallback to post title
             meta_title = None
             patterns = [
-                r'\*\*Meta Title:\*\*\s*(.+?)(?:\n|$)',
+                r'\*\*Meta Title:\*\*\s*(.+?)(?=\n\*\*|\n\n|\n|$)',
+                r'Meta [Tt]itle\s*:?\s*(.+?)(?=\n\*\*|\n\n|\n|$)',
+                r'Title [Tt]ag\s*:?\s*(.+?)(?=\n\*\*|\n\n|\n|$)',
                 r'Meta Title:\s*(.+?)(?:\n|$)',
-                r'Title:\s*(.+?)(?:\n|$)',
+                r'Title:\s*(.+?)(?=\n\*\*|\n\n|\n|$)',
             ]
             for pattern in patterns:
                 meta_title_match = re.search(pattern, generated_metadata, re.IGNORECASE)
                 if meta_title_match:
                     meta_title = meta_title_match.group(1).strip()
-                    # Remove markdown formatting if present
                     meta_title = re.sub(r'\*\*|\*|\[|\]|`', '', meta_title).strip()
-                    if meta_title and len(meta_title) <= 60:
-                        blog_post.meta_title = meta_title
+                    if meta_title:
+                        blog_post.meta_title = meta_title[:60] if len(meta_title) > 60 else meta_title
                         break
-            
-            # Extract meta description - try multiple patterns
+            if not (blog_post.meta_title and blog_post.meta_title.strip()):
+                blog_post.meta_title = (blog_post.title or '')[:60]
+
+            # Extract meta description - try multiple patterns; truncate if over 160 chars; fallback to content
             meta_description = None
             patterns = [
                 r'\*\*Meta Description:\*\*\s*(.+?)(?=\n\*\*|\n\n|$)',
+                r'Meta [Dd]escription\s*:?\s*(.+?)(?=\n\*\*|\n\n|$)',
                 r'Meta Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
                 r'Description:\s*(.+?)(?=\n\*\*|\n\n|$)',
             ]
@@ -344,14 +348,15 @@ def blog_post_generate_metadata(request, pk):
                 meta_desc_match = re.search(pattern, generated_metadata, re.IGNORECASE | re.DOTALL)
                 if meta_desc_match:
                     meta_description = meta_desc_match.group(1).strip()
-                    # Remove markdown formatting if present
                     meta_description = re.sub(r'\*\*|\*|\[|\]|`', '', meta_description).strip()
-                    # Remove newlines and extra spaces
                     meta_description = ' '.join(meta_description.split())
-                    if meta_description and len(meta_description) <= 160:
-                        blog_post.meta_description = meta_description
+                    if meta_description:
+                        blog_post.meta_description = meta_description[:160] if len(meta_description) > 160 else meta_description
                         break
-            
+            if not (blog_post.meta_description and blog_post.meta_description.strip()):
+                fallback_desc = (text_content or '').strip()[:160]
+                blog_post.meta_description = fallback_desc or (blog_post.title or '')[:160]
+
             # Extract URL slug - try multiple patterns
             slug = None
             patterns = [
