@@ -65,18 +65,19 @@ def _parse_blog_content_sections(content):
     # Find the summary section: "Quick Summary", "Key Takeaways", or "TL;DR: ..." (etc.)
     # Look for H2, H3, or div containing H2/H3 with those phrases
     # Pattern matches "Quick Summary" / "Key Takeaways" / "TL;DR" even when followed by colon and more text
+    # Use [^\n]* after the phrase so the title stops at newline (avoids capturing rest of post)
     
     summary_match = None
-    summary_heading_re = r'(?:Quick\s+Summary|Key\s+Takeaways|TL\.?;DR|TLDR)(?:\s*:.*)?'
+    summary_heading_re = r'(?:Quick\s+Summary|Key\s+Takeaways|TL\.?;DR|TLDR)(?:\s*:[^\n]*)?'
     
     # First try to find div containing H2 or H3 with summary phrase (most common case)
     # Need to handle nested divs properly by finding the opening div and matching closing div
-    # Pattern must handle HTML tags inside H2/H3 (like <strong>)
-    h2_pattern = r'<h2[^>]*>(.*?' + summary_heading_re + r'.*?)</h2>'
+    # Title ends at newline so we don't pull in following content; HTML inside heading (e.g. <strong>) still allowed
+    h2_pattern = r'<h2[^>]*>(.*?' + summary_heading_re + r'[^\n]*)</h2>'
     h2_match = re.search(h2_pattern, content, re.IGNORECASE | re.DOTALL)
     heading_match = h2_match
     if not heading_match:
-        h3_pattern = r'<h3[^>]*>(.*?' + summary_heading_re + r'.*?)</h3>'
+        h3_pattern = r'<h3[^>]*>(.*?' + summary_heading_re + r'[^\n]*)</h3>'
         h3_match = re.search(h3_pattern, content, re.IGNORECASE | re.DOTALL)
         heading_match = h3_match
     
@@ -146,13 +147,14 @@ def _parse_blog_content_sections(content):
                 summary_match = MatchObj(div_start_pos, div_end_pos, summary_title_clean, summary_content)
     
     # If not found in div, try standalone H2/H3 with summary phrases
+    # Title capture stops at newline so we don't pull in the rest of the post
     if not summary_match:
         for phrase in (r'Quick\s+Summary', r'Key\s+Takeaways', r'TL\.?;DR', r'TLDR'):
-            pattern = r'<h2[^>]*>(.*?' + phrase + r'.*?)</h2>(.*?)(?=<h[2-6]|$)'
+            pattern = r'<h2[^>]*>(.*?' + phrase + r'(?:\s*:[^\n]*)?[^\n]*)</h2>(.*?)(?=<h[2-6]|$)'
             summary_match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
             if summary_match:
                 break
-            pattern = r'<h3[^>]*>(.*?' + phrase + r'.*?)</h3>(.*?)(?=<h[2-6]|$)'
+            pattern = r'<h3[^>]*>(.*?' + phrase + r'(?:\s*:[^\n]*)?[^\n]*)</h3>(.*?)(?=<h[2-6]|$)'
             summary_match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
             if summary_match:
                 break
