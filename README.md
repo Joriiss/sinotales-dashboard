@@ -1036,6 +1036,7 @@ Generates a complete blog post from a post idea, including content and metadata.
 - `metadata_model`: Model name for metadata generation. Default: same as `model`
 - `enable_internal_links`: Automatically insert internal links into generated content. Default: `true`
 - `internal_links_limit`: Max number of inserted internal links (`1-10`). Default: `5`
+- Internal links are quality-gated: weak one-word anchors and low-confidence matches are skipped.
 
 **Response (Success)**:
 ```json
@@ -1140,7 +1141,8 @@ curl -H "Authorization: Token your-api-token" \
 - Excludes the source post itself
 - Prioritizes posts sharing tags with the source post
 - Uses recency as a secondary sort signal
-- Returns an anchor suggestion based on phrase matches in source content
+- Returns an anchor suggestion only when a natural multi-word phrase is found in source content
+- Skips low-confidence suggestions with no shared tags and no title-overlap signal
 
 ## Next Steps
 

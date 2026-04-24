@@ -31,29 +31,46 @@ _ANCHOR_STOPWORDS = {
     'with', 'your', 'you', 'first', 'time', 'china'
 }
 
+_GENERIC_ANCHOR_TOKENS = {
+    'area', 'areas', 'city', 'countries', 'country', 'destination', 'destinations',
+    'inside', 'local', 'place', 'places', 'region', 'spot', 'spots', 'trip', 'visit'
+}
+
+
+def _is_natural_anchor(anchor_text):
+    """Require anchors to be specific phrases, not weak single words."""
+    if not anchor_text:
+        return False
+    tokens = re.findall(r"[a-zA-Z0-9']+", anchor_text.lower())
+    if len(tokens) < 2:
+        return False
+    if len(anchor_text.strip()) < 8:
+        return False
+    meaningful = [t for t in tokens if len(t) >= 3 and t not in _ANCHOR_STOPWORDS]
+    if len(meaningful) < 2:
+        return False
+    if all(t in _GENERIC_ANCHOR_TOKENS for t in meaningful):
+        return False
+    return True
+
 
 def _extract_anchor_candidate(source_plain_text, candidate_title):
     """
     Try to extract a natural anchor phrase from candidate title that exists in source text.
-    Falls back to candidate title when no clean match is found.
+    Returns None when no clean/natural match is found.
     """
     source_lc = source_plain_text.lower()
     title_tokens = re.findall(r"[a-zA-Z0-9']+", candidate_title.lower())
     meaningful_tokens = [t for t in title_tokens if len(t) >= 4 and t not in _ANCHOR_STOPWORDS]
 
-    # Try matching 3-word, then 2-word phrases from the title
-    for size in (3, 2):
+    # Prefer longer, more specific phrases
+    for size in (4, 3, 2):
         for i in range(0, len(meaningful_tokens) - size + 1):
             phrase = ' '.join(meaningful_tokens[i:i + size])
-            if phrase in source_lc:
+            if phrase in source_lc and _is_natural_anchor(phrase):
                 return phrase
 
-    # Try single token
-    for token in meaningful_tokens:
-        if token in source_lc:
-            return token
-
-    return candidate_title
+    return None
 
 
 def _build_internal_link_suggestions(source_post, limit=5):
@@ -98,15 +115,24 @@ def _build_internal_link_suggestions(source_post, limit=5):
         anchor = _extract_anchor_candidate(source_plain_text, candidate.title)
         title_in_source = candidate.title.lower() in source_plain_text.lower() if source_plain_text else False
 
+        if not anchor:
+            continue
+
+        shared_tag_count = int(getattr(candidate, 'shared_tag_count', 0))
+        has_strong_relevance = shared_tag_count > 0 or bool(title_in_source)
+        if not has_strong_relevance:
+            continue
+
         suggestions.append({
             'target_post_id': candidate.id,
             'target_title': candidate.title,
             'target_slug': candidate.slug,
             'target_url': target_url,
             'suggested_anchor': anchor,
-            'shared_tag_count': getattr(candidate, 'shared_tag_count', 0),
+            'shared_tag_count': shared_tag_count,
             'shared_tags': shared_tags,
             'title_appears_in_source': title_in_source,
+            'relevance_score': shared_tag_count + (1 if title_in_source else 0),
         })
         used_targets.add(candidate.pk)
 
