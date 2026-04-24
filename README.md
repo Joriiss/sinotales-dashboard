@@ -1089,6 +1089,7 @@ Generates a complete blog post from a post idea, including content and metadata.
 If `mode` is `ai` but `used_ai` is `false`, check:
 - `ai_failure_reason` (e.g. `invalid_json`, `missing_updated_html`, `invalid_applied_links_type`, `no_valid_links_after_validation`, `provider_error`)
 - `ai_failure_details` for extra debug context.
+  - For `provider_error`, details include `provider`, `model`, `error_message`, and `traceback_preview`.
 
 ### API: Internal Link Suggestions
 

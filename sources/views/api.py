@@ -2263,10 +2263,17 @@ def generate_blog_post_api(request):
                     internal_linking['used_ai'] = bool(used_ai)
                     internal_linking['ai_failure_reason'] = ai_failure_reason
                     internal_linking['ai_failure_details'] = ai_failure_details or {}
-                except Exception:
+                except Exception as e:
+                    import traceback
                     updated_content = blog_post.content
                     applied_links = []
                     internal_linking['ai_failure_reason'] = 'provider_error'
+                    internal_linking['ai_failure_details'] = {
+                        'provider': metadata_provider,
+                        'model': metadata_model,
+                        'error_message': str(e),
+                        'traceback_preview': traceback.format_exc()[:1200],
+                    }
 
             if not applied_links:
                 updated_content, applied_links = _apply_internal_links_to_html(
