@@ -41,7 +41,7 @@ def _parse_blog_content_sections(content):
     Parse HTML blog post content into sections: intro, summary, main_content, conclusion
     
     Returns a dict with:
-    - intro: Content from H1 until "Quick Summary" or "Key Takeaways" heading
+    - intro: Content from H1 until "Quick Summary", "Key Takeaways", or "TL;DR" (etc.) heading
     - summary_title: The heading text of the summary section
     - summary_content: The content within the summary section
     - main_content: Content between summary and conclusion
@@ -62,22 +62,22 @@ def _parse_blog_content_sections(content):
     content = re.sub(r'<h1[^>]*>.*?</h1>', '', content, flags=re.IGNORECASE | re.DOTALL)
     content = content.strip()
     
-    # Find the "Quick Summary" or "Key Takeaways" section
-    # Look for H2, H3, or div containing H3 with "Quick Summary" or "Key Takeaways"
-    # Pattern matches "Quick Summary" even when followed by colon and more text
+    # Find the summary section: "Quick Summary", "Key Takeaways", or "TL;DR: ..." (etc.)
+    # Look for H2, H3, or div containing H2/H3 with those phrases
+    # Pattern matches "Quick Summary" / "Key Takeaways" / "TL;DR" even when followed by colon and more text
+    # Use [^\n]* after the phrase so the title stops at newline (avoids capturing rest of post)
     
     summary_match = None
+    summary_heading_re = r'(?:Quick\s+Summary|Key\s+Takeaways|TL\.?;DR|TLDR)(?:\s*:[^\n]*)?'
     
-    # First try to find div containing H2 or H3 with "Quick Summary" or "Key Takeaways" (most common case)
+    # First try to find div containing H2 or H3 with summary phrase (most common case)
     # Need to handle nested divs properly by finding the opening div and matching closing div
-    # Pattern must handle HTML tags inside H2/H3 (like <strong>)
-    # Match either "Quick Summary" or "Key Takeaways" (or both)
-    # Try H2 first, then H3
-    h2_pattern = r'<h2[^>]*>(.*?(?:Quick\s+Summary|Key\s+Takeaways).*?)</h2>'
+    # Title ends at newline so we don't pull in following content; HTML inside heading (e.g. <strong>) still allowed
+    h2_pattern = r'<h2[^>]*>(.*?' + summary_heading_re + r'[^\n]*)</h2>'
     h2_match = re.search(h2_pattern, content, re.IGNORECASE | re.DOTALL)
     heading_match = h2_match
     if not heading_match:
-        h3_pattern = r'<h3[^>]*>(.*?(?:Quick\s+Summary|Key\s+Takeaways).*?)</h3>'
+        h3_pattern = r'<h3[^>]*>(.*?' + summary_heading_re + r'[^\n]*)</h3>'
         h3_match = re.search(h3_pattern, content, re.IGNORECASE | re.DOTALL)
         heading_match = h3_match
     
@@ -146,25 +146,18 @@ def _parse_blog_content_sections(content):
                         return self._title if n == 1 else self._content
                 summary_match = MatchObj(div_start_pos, div_end_pos, summary_title_clean, summary_content)
     
-    # If not found in div, try H2 with "Quick Summary"
+    # If not found in div, try standalone H2/H3 with summary phrases
+    # Title capture stops at newline so we don't pull in the rest of the post
     if not summary_match:
-        summary_pattern = r'<h2[^>]*>(.*?Quick\s+Summary.*?)</h2>(.*?)(?=<h[2-6]|$)'
-        summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
-        
-        # If not found, try H3 with "Quick Summary" (standalone, not in div)
-        if not summary_match:
-            summary_pattern = r'<h3[^>]*>(.*?Quick\s+Summary.*?)</h3>(.*?)(?=<h[2-6]|$)'
-            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
-        
-        # If not found, try "Key Takeaways" in H2
-        if not summary_match:
-            summary_pattern = r'<h2[^>]*>(.*?Key\s+Takeaways.*?)</h2>(.*?)(?=<h[2-6]|$)'
-            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
-        
-        # If not found, try "Key Takeaways" in H3
-        if not summary_match:
-            summary_pattern = r'<h3[^>]*>(.*?Key\s+Takeaways.*?)</h3>(.*?)(?=<h[2-6]|$)'
-            summary_match = re.search(summary_pattern, content, re.IGNORECASE | re.DOTALL)
+        for phrase in (r'Quick\s+Summary', r'Key\s+Takeaways', r'TL\.?;DR', r'TLDR'):
+            pattern = r'<h2[^>]*>(.*?' + phrase + r'(?:\s*:[^\n]*)?[^\n]*)</h2>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
+            if summary_match:
+                break
+            pattern = r'<h3[^>]*>(.*?' + phrase + r'(?:\s*:[^\n]*)?[^\n]*)</h3>(.*?)(?=<h[2-6]|$)'
+            summary_match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
+            if summary_match:
+                break
     
     intro = ''
     summary_title = ''
