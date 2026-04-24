@@ -226,9 +226,32 @@ def _extract_json_object(raw_text):
     return None
 
 
+def _build_linking_context_excerpt(content_html, max_chars=9000):
+    """Build a compact context excerpt for AI link planning."""
+    if not content_html:
+        return ''
+    # Keep text-rich blocks and drop large media markup noise.
+    compact = re.sub(r'<img\b[^>]*>', ' ', content_html, flags=re.IGNORECASE)
+    compact = re.sub(r'\[wpcode[^\]]*\]', ' ', compact, flags=re.IGNORECASE)
+    compact = re.sub(r'\s+', ' ', compact).strip()
+    return compact[:max_chars]
+
+
+def _token_budget_for_internal_link_ai(provider, model):
+    """Choose a safer max token budget for AI linking calls."""
+    model_lc = (model or '').lower()
+    if provider == 'gemini':
+        if '3.1' in model_lc or 'pro' in model_lc:
+            return 8000
+        return 5000
+    if provider == 'openai':
+        return 5000
+    return 4000
+
+
 def _apply_internal_links_with_ai(content_html, suggestions, rag_service, provider, model, max_links=5):
     """
-    Let the model place links naturally using suggestions as allowed targets.
+    Let the model propose natural links/anchors using suggestions as allowed targets.
     Returns (updated_html, applied_links, used_ai, failure_reason, failure_details).
     """
     if not content_html or not suggestions:
@@ -244,41 +267,38 @@ def _apply_internal_links_with_ai(content_html, suggestions, rag_service, provid
             'suggested_anchor': s.get('suggested_anchor'),
         })
 
-    prompt = f"""You are an SEO editor. Add natural internal links into the provided HTML.
+    context_excerpt = _build_linking_context_excerpt(content_html, max_chars=9000)
+    max_tokens = _token_budget_for_internal_link_ai(provider, model)
+
+    prompt = f"""You are an SEO editor. Pick the most natural internal links for the provided article context.
 
 Rules:
 1) Use ONLY the URLs from allowed_links.
 2) Add at most {max_links} links total.
 3) Use natural multi-word anchors (no weak single words like "city" or "inside").
-4) Keep the original tone and meaning; do not rewrite entire sections.
-5) Do not add links inside headings.
-6) Prefer links in paragraph text where topical relevance is clear.
-7) Return strict JSON only, with keys:
-   - "updated_html": string
+4) Prefer clear topical relevance over quantity (it is okay to return fewer links).
+5) Return strict JSON only, with key:
    - "applied_links": array of objects with keys "target_post_id", "target_url", "anchor"
 
 allowed_links:
 {json.dumps(allowed, ensure_ascii=False)}
 
-html:
-{content_html}
+article_context:
+{context_excerpt}
 """
 
     if provider == 'ollama':
-        raw_response = rag_service._call_ollama(prompt, model, max_tokens=4000)
+        raw_response = rag_service._call_ollama(prompt, model, max_tokens=max_tokens)
     elif provider == 'openai':
-        raw_response = rag_service._call_openai(prompt, model, max_tokens=4000)
+        raw_response = rag_service._call_openai(prompt, model, max_tokens=max_tokens)
     else:
-        raw_response = rag_service._call_gemini(prompt, model, max_tokens=4000)
+        raw_response = rag_service._call_gemini(prompt, model, max_tokens=max_tokens)
 
     parsed = _extract_json_object(raw_response)
     if not parsed or not isinstance(parsed, dict):
         return content_html, [], False, 'invalid_json', {'response_preview': (raw_response or '')[:500]}
 
-    updated_html = parsed.get('updated_html')
     applied_links = parsed.get('applied_links', [])
-    if not isinstance(updated_html, str) or not updated_html.strip():
-        return content_html, [], False, 'missing_updated_html', {}
     if not isinstance(applied_links, list):
         return content_html, [], False, 'invalid_applied_links_type', {'type': str(type(applied_links))}
 
@@ -313,7 +333,25 @@ html:
             'non_dict_count': non_dict_count,
         }
 
-    return updated_html, sanitized_links, True, None, {}
+    ai_suggestions = []
+    for item in sanitized_links:
+        ai_suggestions.append({
+            'target_post_id': item.get('target_post_id'),
+            'target_url': item.get('target_url'),
+            'suggested_anchor': item.get('anchor'),
+        })
+
+    updated_html, applied = _apply_internal_links_to_html(
+        content_html,
+        ai_suggestions,
+        max_links=max_links
+    )
+    if not applied:
+        return content_html, [], False, 'no_insertions_from_ai_plan', {
+            'validated_ai_links_count': len(sanitized_links),
+        }
+
+    return updated_html, applied, True, None, {}
 
 
 @csrf_exempt

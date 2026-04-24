@@ -1087,7 +1087,7 @@ Generates a complete blog post from a post idea, including content and metadata.
 **Note**: The API automatically generates both blog post content and metadata (including FAQ) in a single request.
 
 If `mode` is `ai` but `used_ai` is `false`, check:
-- `ai_failure_reason` (e.g. `invalid_json`, `missing_updated_html`, `invalid_applied_links_type`, `no_valid_links_after_validation`, `provider_error`)
+- `ai_failure_reason` (e.g. `invalid_json`, `invalid_applied_links_type`, `no_valid_links_after_validation`, `no_insertions_from_ai_plan`, `provider_error`)
 - `ai_failure_details` for extra debug context.
   - For `provider_error`, details include `provider`, `model`, `error_message`, and `traceback_preview`.
 
