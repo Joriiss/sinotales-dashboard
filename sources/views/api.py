@@ -25,6 +25,238 @@ from .utils import _validate_api_token, _parse_blog_content_sections, _format_ac
 from .blog_posts import _parse_and_create_blog_post_images
 from .post_ideas import _generate_post_ideas
 
+_ANCHOR_STOPWORDS = {
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'best', 'by', 'for', 'from', 'guide',
+    'how', 'in', 'into', 'is', 'it', 'of', 'on', 'or', 'the', 'to', 'tips', 'travel',
+    'with', 'your', 'you', 'first', 'time', 'china'
+}
+
+
+def _extract_anchor_candidate(source_plain_text, candidate_title):
+    """
+    Try to extract a natural anchor phrase from candidate title that exists in source text.
+    Falls back to candidate title when no clean match is found.
+    """
+    source_lc = source_plain_text.lower()
+    title_tokens = re.findall(r"[a-zA-Z0-9']+", candidate_title.lower())
+    meaningful_tokens = [t for t in title_tokens if len(t) >= 4 and t not in _ANCHOR_STOPWORDS]
+
+    # Try matching 3-word, then 2-word phrases from the title
+    for size in (3, 2):
+        for i in range(0, len(meaningful_tokens) - size + 1):
+            phrase = ' '.join(meaningful_tokens[i:i + size])
+            if phrase in source_lc:
+                return phrase
+
+    # Try single token
+    for token in meaningful_tokens:
+        if token in source_lc:
+            return token
+
+    return candidate_title
+
+
+def _build_internal_link_suggestions(source_post, limit=5):
+    """Build ranked internal-link suggestions for a blog post object."""
+    limit = max(1, min(int(limit), 10))
+    source_tag_ids = list(source_post.tags.values_list('id', flat=True))
+    source_plain_text = re.sub(r'<[^>]+>', ' ', source_post.content or '')
+    source_plain_text = re.sub(r'\s+', ' ', source_plain_text).strip()
+
+    candidate_qs = BlogPost.objects.filter(
+        published=True
+    ).exclude(
+        pk=source_post.pk
+    ).prefetch_related('tags')
+
+    if source_tag_ids:
+        candidates = list(
+            candidate_qs.annotate(
+                shared_tag_count=Count('tags', filter=Q(tags__in=source_tag_ids))
+            ).order_by('-shared_tag_count', '-created_at').distinct()[:100]
+        )
+    else:
+        candidates = list(candidate_qs.order_by('-created_at')[:100])
+        for candidate in candidates:
+            candidate.shared_tag_count = 0
+
+    suggestions = []
+    used_targets = set()
+    for candidate in candidates:
+        if len(suggestions) >= limit:
+            break
+        if candidate.pk in used_targets:
+            continue
+
+        shared_tags = []
+        if source_tag_ids:
+            shared_tags = list(
+                candidate.tags.filter(id__in=source_tag_ids).values_list('name', flat=True)[:3]
+            )
+
+        target_url = candidate.online_url or f"/blog/{candidate.slug}/"
+        anchor = _extract_anchor_candidate(source_plain_text, candidate.title)
+        title_in_source = candidate.title.lower() in source_plain_text.lower() if source_plain_text else False
+
+        suggestions.append({
+            'target_post_id': candidate.id,
+            'target_title': candidate.title,
+            'target_slug': candidate.slug,
+            'target_url': target_url,
+            'suggested_anchor': anchor,
+            'shared_tag_count': getattr(candidate, 'shared_tag_count', 0),
+            'shared_tags': shared_tags,
+            'title_appears_in_source': title_in_source,
+        })
+        used_targets.add(candidate.pk)
+
+    return suggestions
+
+
+def _apply_internal_links_to_html(content_html, suggestions, max_links=5):
+    """
+    Insert internal links in <p> blocks only, avoiding paragraphs that already contain links.
+    Returns (updated_html, applied_links).
+    """
+    max_links = max(1, min(int(max_links), 10))
+    if not content_html or not suggestions:
+        return content_html, []
+
+    paragraph_pattern = re.compile(r'(<p\b[^>]*>)(.*?)(</p>)', re.IGNORECASE | re.DOTALL)
+    matches = list(paragraph_pattern.finditer(content_html))
+    if not matches:
+        return content_html, []
+
+    rebuilt_parts = []
+    cursor = 0
+    applied_links = []
+    used_urls = set()
+
+    for match in matches:
+        rebuilt_parts.append(content_html[cursor:match.start()])
+        open_tag, paragraph_inner, close_tag = match.group(1), match.group(2), match.group(3)
+        updated_inner = paragraph_inner
+
+        if '<a ' not in paragraph_inner.lower() and len(applied_links) < max_links:
+            for suggestion in suggestions:
+                if len(applied_links) >= max_links:
+                    break
+
+                anchor = (suggestion.get('suggested_anchor') or '').strip()
+                target_url = (suggestion.get('target_url') or '').strip()
+                target_post_id = suggestion.get('target_post_id')
+
+                if not anchor or not target_url or target_url in used_urls:
+                    continue
+
+                escaped_anchor = re.escape(anchor)
+                anchor_pattern = re.compile(rf'(?<!\w)({escaped_anchor})(?!\w)', re.IGNORECASE)
+
+                if not anchor_pattern.search(updated_inner):
+                    continue
+
+                updated_inner, substitutions = anchor_pattern.subn(
+                    rf'<a href="{target_url}">\1</a>',
+                    updated_inner,
+                    count=1
+                )
+                if substitutions > 0:
+                    applied_links.append({
+                        'target_post_id': target_post_id,
+                        'target_url': target_url,
+                        'anchor': anchor,
+                    })
+                    used_urls.add(target_url)
+                    break
+
+        rebuilt_parts.append(f'{open_tag}{updated_inner}{close_tag}')
+        cursor = match.end()
+
+    rebuilt_parts.append(content_html[cursor:])
+    return ''.join(rebuilt_parts), applied_links
+
+
+@csrf_exempt
+def internal_link_suggestions_api(request):
+    """
+    API endpoint to suggest internal links for a blog post (token-based authentication).
+
+    Query parameters:
+    - post_id: BlogPost ID (optional if slug is provided)
+    - slug: BlogPost slug (optional if post_id is provided)
+    - limit: Number of suggestions to return (default 5, max 10)
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    token_valid, error_response = _validate_api_token(request)
+    if not token_valid:
+        return error_response
+
+    try:
+        post_id_param = (request.GET.get('post_id') or '').strip()
+        slug_param = (request.GET.get('slug') or '').strip()
+        limit_param = (request.GET.get('limit') or '').strip()
+
+        if not post_id_param and not slug_param:
+            return JsonResponse({
+                'success': False,
+                'error': 'Either post_id or slug is required'
+            }, status=400)
+
+        limit = 5
+        if limit_param:
+            try:
+                limit = int(limit_param)
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'limit must be a valid integer'
+                }, status=400)
+        limit = max(1, min(limit, 10))
+
+        # Resolve source post
+        source_post = None
+        if post_id_param:
+            try:
+                source_post = BlogPost.objects.prefetch_related('tags').get(pk=int(post_id_param))
+            except (ValueError, BlogPost.DoesNotExist):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Blog post with id {post_id_param} not found'
+                }, status=404)
+        else:
+            try:
+                source_post = BlogPost.objects.prefetch_related('tags').get(slug=slug_param)
+            except BlogPost.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Blog post with slug "{slug_param}" not found'
+                }, status=404)
+
+        suggestions = _build_internal_link_suggestions(source_post, limit=limit)
+
+        return JsonResponse({
+            'success': True,
+            'source_post': {
+                'id': source_post.id,
+                'title': source_post.title,
+                'slug': source_post.slug,
+            },
+            'count': len(suggestions),
+            'suggestions': suggestions,
+            'filters': {
+                'limit': limit,
+                'published_only': True,
+                'exclude_source_post': True,
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
 @csrf_exempt
 def post_idea_generate_api(request):
     """API endpoint to generate post ideas (for n8n or other automation)"""
@@ -1562,6 +1794,8 @@ def generate_blog_post_api(request):
     - num_chunks (optional): Number of RAG chunks to use. Default: 5
     - metadata_provider (optional): AI provider for metadata generation. Default: same as provider
     - metadata_model (optional): Model name for metadata generation. Default: same as model
+    - enable_internal_links (optional): Whether to auto-insert internal links. Default: true
+    - internal_links_limit (optional): Max inserted links (1-10). Default: 5
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -1603,6 +1837,9 @@ def generate_blog_post_api(request):
         # Optional parameters for metadata generation (default to same as content generation)
         metadata_provider = data.get('metadata_provider', provider).strip().lower()
         metadata_model = data.get('metadata_model', model).strip()
+        enable_internal_links = data.get('enable_internal_links', True)
+        internal_links_limit = int(data.get('internal_links_limit', 5))
+        internal_links_limit = max(1, min(internal_links_limit, 10))
         
         # Validate providers
         if provider not in ['ollama', 'openai', 'gemini']:
@@ -1842,6 +2079,26 @@ def generate_blog_post_api(request):
             
             if tags_to_add:
                 blog_post.tags.set(tags_to_add)
+
+        # Step 3: Auto-insert internal links into generated content
+        internal_linking = {
+            'enabled': bool(enable_internal_links),
+            'limit': internal_links_limit,
+            'suggestions_count': 0,
+            'inserted_count': 0,
+            'inserted': []
+        }
+        if enable_internal_links:
+            suggestions = _build_internal_link_suggestions(blog_post, limit=internal_links_limit)
+            updated_content, applied_links = _apply_internal_links_to_html(
+                blog_post.content,
+                suggestions,
+                max_links=internal_links_limit
+            )
+            blog_post.content = updated_content
+            internal_linking['suggestions_count'] = len(suggestions)
+            internal_linking['inserted_count'] = len(applied_links)
+            internal_linking['inserted'] = applied_links
         
         # Extract featured image alt text
         featured_image_desc = None
@@ -2006,6 +2263,7 @@ def generate_blog_post_api(request):
                 'metadata_provider': metadata_provider,
                 'metadata_model': metadata_model,
                 'used_rag': use_rag,
+                'internal_linking': internal_linking,
             }
         })
         

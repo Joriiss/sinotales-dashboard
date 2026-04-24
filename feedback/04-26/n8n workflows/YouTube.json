@@ -1,0 +1,337 @@
+{
+  "name": "YouTube",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "jorisvaux@gmail.com",
+        "subject": "=New video from {{ $('check if posted yesterday and filter shorts').item.json.author.name }}",
+        "message": "=Title :  {{ $('check if posted yesterday and filter shorts').item.json[\"media:group\"][\"media:title\"] }}\n<br>\nLink : {{ $('check if posted yesterday and filter shorts').item.json.link.href }}\n<br><br>\nnote : {{ $json.reason }}{{ $json.processing.extracted ? \"extracted, \" : \" not extracted, \"}}{{ $json.processing.translated ? \"translated, \" : \" not translated, \"}}{{ $json.processing.tagged ? \"tagged, \" : \" not tagged, \"}}{{ $json.processing.embedded ? \"embedded, \" : \" not embedded, \"}}\n{{ $json.error.name }} : {{ $json.error.stack }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2032,
+        400
+      ],
+      "id": "94a69dec-d531-45b1-a7c3-fbf4f298cebd",
+      "name": "Send a message",
+      "webhookId": "2bd318fa-b705-4bf5-ac7c-9e635476b3ac",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qZv5dGCxDxaK5WiC",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        368
+      ],
+      "id": "1936bb1d-8366-444a-a98b-83c3088f79b3",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.baseUrl }}api/youtube-channels/?token={{ $json.apiToken }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        240,
+        368
+      ],
+      "id": "45564a0f-82b7-46b5-aee3-cb89b418c8ee",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    apiToken: '0xeTJD4EFYVgB6bP',\n    baseUrl: 'https://dashboard.joris-rabilloud.com/'\n  }\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        368
+      ],
+      "id": "f5b4fbca-9c33-4c1a-a598-82bb8a39631c",
+      "name": "env"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract only the channels array from the API response\nreturn $json.channels.map(channel => ({\n  json: channel\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        368
+      ],
+      "id": "81706403-77cd-447e-abe8-e064a6636d4e",
+      "name": "only keep channels"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        720,
+        368
+      ],
+      "id": "618dc041-ac95-452a-ad48-fa352c1803b2",
+      "name": "loop over channels"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.youtube.com/feeds/videos.xml?channel_id={{ $json.channel_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        384
+      ],
+      "id": "2c9fb54e-7440-4c15-acdc-63b2917ce620",
+      "name": "get rss feed"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        384
+      ],
+      "id": "0344d470-d2c2-49c4-8898-139d2a4e0486",
+      "name": "convert to json"
+    },
+    {
+      "parameters": {
+        "jsCode": "const feed = $input.first().json;\nconst entries = feed.feed?.entry || [];\n\nconst yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\n// const yesterdayStr = '2025-11-15'\n\nconst includeShorts = $('loop over channels').first().json.include_shorts;\n\nconst newVideos = entries.filter(entry => {\n  const published = entry['published'];\n  const url = entry.link?.href || '';\n  const isShort = url.includes('/shorts/');\n  return published && published.startsWith(yesterdayStr) && (includeShorts || !isShort);\n});\n\n// If no videos, return a placeholder so the loop continues\nif (newVideos.length === 0) {\n  return [{ json: { skip: true } }];\n}\n\nreturn newVideos.map(video => ({ json: video }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        384
+      ],
+      "id": "db7869c8-2823-44c9-8add-3ea874015694",
+      "name": "check if posted yesterday and filter shorts"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('env').item.json.baseUrl }}/api/video-content?token={{ $('env').item.json.apiToken }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"source_id\": {{ $('loop over channels').item.json.id }},\n  \"external_id\": \"{{ $json[\"yt:videoId\"] }}\",\n  \"title\": \"{{ $json[\"media:group\"][\"media:title\"] }}\",\n  \"link\": \"https://www.youtube.com/watch?v={{ $json[\"yt:videoId\"] }}\",\n  \"date\": \"{{ $json.published }}\",\n  \"auto_process\": true\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1840,
+        400
+      ],
+      "id": "fa98e159-ca64-4378-b8dc-1a85f868d71c",
+      "name": "post data",
+      "executeOnce": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1745b128-67a4-4a9a-a49e-741c2cd78e80",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1632,
+        384
+      ],
+      "id": "007f3753-2699-445b-801d-c5bc953b5732",
+      "name": "skip if empty"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "env",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "env": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "only keep channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "only keep channels": {
+      "main": [
+        [
+          {
+            "node": "loop over channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop over channels": {
+      "main": [
+        [],
+        [
+          {
+            "node": "get rss feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get rss feed": {
+      "main": [
+        [
+          {
+            "node": "convert to json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "convert to json": {
+      "main": [
+        [
+          {
+            "node": "check if posted yesterday and filter shorts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if posted yesterday and filter shorts": {
+      "main": [
+        [
+          {
+            "node": "skip if empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "post data": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "skip if empty": {
+      "main": [
+        [
+          {
+            "node": "loop over channels",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "post data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "loop over channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "77732594-1b88-4a41-9f0a-23b6949c167f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "daa5e57eae815c6a220a5f5d9cbe300b47054c36a27ec27baefdb02632bde0ff"
+  },
+  "id": "WJler4FySNUQVGwJ",
+  "tags": []
+}

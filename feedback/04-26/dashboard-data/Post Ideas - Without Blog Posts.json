@@ -1,0 +1,2452 @@
+{
+    "success": true,
+    "post_ideas": [
+        {
+            "id": 627,
+            "title": "Chongqing Xiao Mian: A Deep Dive into the City's Noodle Culture",
+            "description": "Go beyond the typical hotpot and discover the diverse world of Chongqing noodles. This guide covers the top 'noodle alleys,' how to order 'Xiao Mian' like a local (with specific spice levels), and the must-try variations like pea and pork rib noodles.",
+            "keyword": "Chongqing noodle guide"
+        },
+        {
+            "id": 626,
+            "title": "Chasing the Sun: A Guide to the Overnight Hike at Mount Tai",
+            "description": "A practical guide to the overnight hike up Mount Tai (Taishan) to catch the sunrise. Covers the 6,000+ stairs, where to rent coats at the summit, booking mountaintop hotels, and how to reach Tai'an by high-speed train from Beijing or Shanghai.",
+            "keyword": "Mount Tai sunrise guide"
+        },
+        {
+            "id": 625,
+            "title": "From Nanning to Hanoi: A Complete Guide to the T8701 International Train",
+            "description": "A step-by-step logistics guide for travelers crossing from China to Vietnam via the Nanning-Hanoi international sleeper train. Includes visa requirements, ticket booking at Nanning station, border procedures at Pingxiang/Dong Dang, and tips for a smooth overnight journey.",
+            "keyword": "Nanning to Hanoi train guide"
+        },
+        {
+            "id": 624,
+            "title": "Olympic Legacies: A Guide to Visiting Beijing's 2008 and 2022 Venues",
+            "description": "Explore the architectural wonders of the Bird's Nest and the Water Cube (now Ice Cube). This guide explains how to visit the Olympic Park, which venues are open to the public for sports, and tips for seeing the Big Air Shougang industrial-to-sport conversion.",
+            "keyword": "Beijing Olympic venues guide"
+        },
+        {
+            "id": 623,
+            "title": "Chongqing's Graffiti Street: Exploring the Artsy Side of the Mountain City",
+            "description": "Discover the vibrant Huangjueping Graffiti Street in Chongqing. This practical guide covers how to reach this artistic hub by public transport, the best cafes to relax in while watching local art students, and tips for exploring the nearby 501 Art Warehouse.",
+            "keyword": "Chongqing graffiti street guide"
+        },
+        {
+            "id": 622,
+            "title": "The Silversmiths of Guizhou: A Guide to Visiting Shidong's Artisans",
+            "description": "A practical guide to visiting Shidong village during the Sister's Meal Festival or on a regular market day. Learn where to watch master silversmiths at work, how to buy ethical silver jewelry, and the cultural significance of the intricate Miao headpieces.",
+            "keyword": "Miao silver craftsmanship Guizhou"
+        },
+        {
+            "id": 621,
+            "title": "Chasing the Mist: A Guide to the Most Scenic Cable Car Rides in China",
+            "description": "A practical guide to China's most breathtaking cable car journeys, from the Zhangjiajie National Forest Park to the Great Wall at Mutianyu. Includes tips on when to ride to avoid queues, ticket pricing, and photography advice for the best mountain views.",
+            "keyword": "China scenic cable cars"
+        },
+        {
+            "id": 620,
+            "title": "The Essential China Pharmacy Survival Guide: From Stomach Relief to Blister Care",
+            "description": "A visual and practical guide to identifying essential over-the-counter medications in Chinese pharmacies, including translations for common symptoms, how to read Chinese packaging, and top-rated pharmacy chains for international travelers.",
+            "keyword": "China pharmacy travel guide"
+        },
+        {
+            "id": 619,
+            "title": "Beyond the Terminal: A Guide to the Fastest Ways Out of China's Largest Airports",
+            "description": "A practical, step-by-step guide to navigating the express trains, maglevs, and specialized shuttle services from major hubs like PVG, PKX, and CAN. Includes ticket prices, operating hours, and visual cues for first-time arrivals.",
+            "keyword": "China airport express guide"
+        },
+        {
+            "id": 618,
+            "title": "The Connoisseur's Guide to Buying Luxury Textiles and Pearls in China",
+            "description": "Unlock the secrets of finding high-quality silk, pearls, and custom-tailored clothing in China's major shopping hubs. This practical guide covers navigating the South Bund Soft Spinning Material Market in Shanghai and the pearl markets of Beijing, including bargaining tips and how to handle international shipping.",
+            "keyword": "buying silk and pearls in China"
+        },
+        {
+            "id": 617,
+            "title": "Chaoshan's Liquid Gold: A Guide to Dancong Tea Tours in Phoenix Mountain",
+            "description": "A guide for tea lovers visiting Chaoshan to experience the world of Dancong tea. Includes where to visit plantations on Phoenix Mountain (Fenghuangshan), how to participate in a local tasting, and the art of the Chaoshan gongfu tea ceremony.",
+            "keyword": "Chaoshan Dancong tea tour"
+        },
+        {
+            "id": 616,
+            "title": "Beyond the Wall: A Day Trip Guide to the Jinshanling Great Wall",
+            "description": "Avoid the crowds of Badaling with a day trip to the stunning and unrestored Jinshanling Great Wall. This practical guide covers transport from Beijing, hiking tips, and the best time of day for photography.",
+            "keyword": "Jinshanling Great Wall day trip"
+        },
+        {
+            "id": 615,
+            "title": "Beijing's Museum for the Masses: A Practical Guide to the National Museum of China",
+            "description": "Everything you need to know about visiting the National Museum of China on Tiananmen Square. Covers the new WeChat reservation system, ID requirements, and must-see galleries.",
+            "keyword": "National Museum of China guide"
+        },
+        {
+            "id": 614,
+            "title": "Chongqing's Hotpot History: A Guide to Local 9-Grid Culture",
+            "description": "Learn the history of Chongqing's iconic 9-grid (jiu gong ge) hotpot. This guide explains the logic of the grids, how to order authentically, and where to find the best underground 'shelter' hotpot spots.",
+            "keyword": "Chongqing 9-grid hotpot guide"
+        },
+        {
+            "id": 613,
+            "title": "Anhui's Ancient Huizhou Villages: A Practical Guide to Hongcun and Xidi",
+            "description": "Discover the UNESCO-listed Huizhou villages of Hongcun and Xidi in Anhui. This guide covers how to get there from Huangshan, ticket prices, and tips for photography and local snacks.",
+            "keyword": "Hongcun Xidi travel guide"
+        },
+        {
+            "id": 612,
+            "title": "Beyond Sanya: A Guide to the Wenchang Space Launch Site for Travelers",
+            "description": "A guide to visiting Wenchang in Hainan to watch rocket launches. Includes how to check the launch schedule, best public viewing spots, and how to get there from Sanya or Haikou.",
+            "keyword": "Wenchang space launch site guide"
+        },
+        {
+            "id": 611,
+            "title": "The Mystery of the Hotel Deposit: A Guide to Payments and Refunds in China",
+            "description": "A guide to understanding and managing hotel deposits in China. Covers using Alipay/WeChat Pay, when cash is still needed, and troubleshooting common refund issues.",
+            "keyword": "China hotel deposit and payment"
+        },
+        {
+            "id": 610,
+            "title": "Beyond the Wall: A Practical Guide to Visiting Nanjing's Sun Yat-sen Mausoleum",
+            "description": "A logistical guide for visiting Purple Mountain in Nanjing, specifically the Sun Yat-sen Mausoleum. Covers booking tickets in advance, navigating the scenic area shuttle, and avoiding the weekend crowds.",
+            "keyword": "Sun Yat-sen Mausoleum travel guide"
+        },
+        {
+            "id": 609,
+            "title": "Beyond the Station: A Guide to China's Most Scenic High-Speed Rail Routes",
+            "description": "Discover the most beautiful train journeys in China, including the Hefei-Fuzhou 'most beautiful' high-speed line and the coastal views of the Xiamen-Shenzhen route. Includes tips on which side of the train to sit on for the best views.",
+            "keyword": "scenic high-speed trains China"
+        },
+        {
+            "id": 608,
+            "title": "Beyond Duty-Free: Exploring the Li Minority Culture in Hainan",
+            "description": "Discover the ancestral culture of Hainan's Li people. A practical guide to visiting the Binglanggu Cultural Heritage Park and authentic Li villages near Sanya. Learn about traditional weaving, face tattoos, and mountain hiking trails.",
+            "keyword": "Li minority Hainan travel guide"
+        },
+        {
+            "id": 607,
+            "title": "Beyond the Temple: Visiting China's Hanging Monastery (Xuan Kong Si)",
+            "description": "A practical guide to visiting the architectural marvel of Hengshan's Hanging Monastery near Datong. Covers transport from Datong, booking tickets online, safety tips for narrow walkways, and how to combine it with a trip to the Yungang Grottoes.",
+            "keyword": "Hanging Monastery Datong guide"
+        },
+        {
+            "id": 606,
+            "title": "Changsha's Orange Isle: A Practical Guide to the Xiang River's Scenic Park",
+            "description": "Discover the serene beauty of Orange Isle (Juzizhou) in the heart of the Xiang River. This guide covers how to reach the island via metro, navigating the park's electric shuttles, and where to find the best viewpoints of the iconic giant Mao Zedong youth statue.",
+            "keyword": "Changsha Orange Isle guide"
+        },
+        {
+            "id": 605,
+            "title": "Chongqing's Liziba Station: A Guide to the Train Through a Building",
+            "description": "Discover the logistics behind visiting the world-famous Liziba Station in Chongqing, where the monorail passes through a residential building. Learn the best viewing platforms, photography tips, and how to navigate the station's multiple levels.",
+            "keyword": "Chongqing Liziba Station guide"
+        },
+        {
+            "id": 604,
+            "title": "Fuzhou's Three Lanes and Seven Alleys: A Cultural Exploration Guide",
+            "description": "Explore the rich history and architecture of Fuzhou's Three Lanes and Seven Alleys (Sanfang Qixiang). This guide provides practical tips on navigating the historic district, must-visit courtyards, and where to find authentic local snacks like Fuzhou fish balls.",
+            "keyword": "Fuzhou Sanfang Qixiang guide"
+        },
+        {
+            "id": 603,
+            "title": "Volunteering with Pandas: A Practical Guide to Research Center Programs",
+            "description": "A step-by-step guide to booking official panda volunteer programs in Sichuan (Dujiangyan, Wolong, Bifengxia). Covers registration requirements, health certificates, daily tasks, and how to reach the centers independently from Chengdu.",
+            "keyword": "Sichuan panda volunteer guide"
+        },
+        {
+            "id": 602,
+            "title": "Xuzhou's Hidden Han Dynasty Treasures: A DIY Guide to the Terracotta Warriors You’ve Never Heard Of",
+            "description": "Discover the lesser-known Han Dynasty Terracotta Warriors and rock-cut tombs in Xuzhou. This practical guide covers how to reach the mausoleum sites by metro and bus, ticket booking tips, and why this is a quieter, budget-friendly alternative to Xi'an.",
+            "keyword": "Xuzhou travel guide"
+        },
+        {
+            "id": 601,
+            "title": "12306 Waiting List: How to Successfully Get Train Tickets When They're Sold Out",
+            "description": "Learn how to use the 'Waiting List' (Houbu) feature on the 12306 app. This practical guide covers success rates, how to pay for pending tickets, and tips for choosing the right train to maximize your chances of getting a seat during peak season.",
+            "keyword": "12306 waiting list guide"
+        },
+        {
+            "id": 600,
+            "title": "A Foodie's Guide to Shunde: The Hidden Gastronomy Capital of Guangdong",
+            "description": "A culinary and cultural guide to Shunde, the UNESCO City of Gastronomy. Learn where to find the best milk ginger curd, raw fish (Shunde Yusheng), and how to navigate this food mecca as a day trip from Guangzhou.",
+            "keyword": "Shunde food guide"
+        },
+        {
+            "id": 599,
+            "title": "Yabuli Ski Resort: A First-Timer's Guide to China's Premier Winter Destination",
+            "description": "A practical logistical guide for skiers and families planning a trip to Yabuli, including the best time to visit, how to book the Club Med or Sun Mountain resorts, and navigating the train/shuttle from Harbin.",
+            "keyword": "Yabuli Ski Resort guide"
+        },
+        {
+            "id": 598,
+            "title": "Beyond Hotpot: A Local's Guide to Chongqing's Lesser-Known Street Snacks",
+            "description": "Discover the hidden culinary gems of Chongqing beyond spicy hotpot, including local favorites like Su Rou, Ci Qi Kou fried dough, and the best night market locations for authentic snacks.",
+            "keyword": "Chongqing street food guide"
+        },
+        {
+            "id": 597,
+            "title": "Chongqing Photography Guide: Where to Capture the 3D City’s Skyline",
+            "description": "A curated map of Chongqing's best free photography spots, including bridge views, rooftop access, and old residential compounds for that perfect 'cyberpunk' shot.",
+            "keyword": "Chongqing photography locations"
+        },
+        {
+            "id": 596,
+            "title": "A Guide to Guizhou’s Minority Textiles: Finding Authentic Miao Embroidery",
+            "description": "A guide to finding authentic Miao and Dong textile art in Guizhou. Learn about traditional motifs, where to find ethical workshops, and how to verify handmade vs. machine-made pieces.",
+            "keyword": "Guizhou embroidery souvenirs"
+        },
+        {
+            "id": 595,
+            "title": "Zhangjiajie 4-Day Itinerary: Beyond the Avatar Pillars",
+            "description": "A practical, day-by-day plan for exploring Zhangjiajie's National Forest Park, Tianmen Mountain, and the Grand Canyon without the tour groups.",
+            "keyword": "Zhangjiajie 4-day itinerary"
+        },
+        {
+            "id": 594,
+            "title": "Authentic Tibetan Souvenirs: What to Buy in Lhasa and How to Spot Fakes",
+            "description": "A guide to purchasing high-quality, authentic Tibetan handicrafts in Lhasa. Covers thangkas, singing bowls, yak wool products, and prayer beads, with advice on reputable shops and identifying genuine vs. mass-produced items.",
+            "keyword": "Tibetan souvenirs guide"
+        },
+        {
+            "id": 593,
+            "title": "Navigating China Without Google Maps: A Practical Guide to Apple Maps and Amap",
+            "description": "A step-by-step guide for travelers on how to navigate Chinese cities without Google Maps. Compares Apple Maps (best for English speakers) and Amap (most accurate), with tips on finding addresses and pinpointing subway exits.",
+            "keyword": "China navigation apps guide"
+        },
+        {
+            "id": 592,
+            "title": "Silent Carriage Travel: How to Book Quiet Seats on China's High-Speed Trains",
+            "description": "A practical guide to finding and booking the new 'silent carriages' on China's bullet trains. Includes how to select the option on the 12306 app, rules for passengers in these quiet zones, and which routes currently offer them.",
+            "keyword": "China train silent carriage guide"
+        },
+        {
+            "id": 591,
+            "title": "Understanding Chinese Pharmacy Labels: A Visual Guide for Common Ailments",
+            "description": "A practical, photo-based guide to identifying common over-the-counter medications in Chinese pharmacies for cold, stomach issues, and pain relief, including how to read dosage labels and use translation apps.",
+            "keyword": "China pharmacy guide for travelers"
+        },
+        {
+            "id": 590,
+            "title": "Chongqing's Residential Skyscrapers: How to Find the Most Photogenic Buildings",
+            "description": "A guide to Chongqing's unique 'forest of towers,' including specific locations of famous high-rises like the '24th floor with no elevator' and rooftops offering views of the densest residential blocks.",
+            "keyword": "Chongqing residential photography"
+        },
+        {
+            "id": 589,
+            "title": "Beijing to Chengde High-Speed Rail: The Ultimate Day Trip Guide",
+            "description": "A practical step-by-step guide to visiting the Qing Dynasty summer retreat in Chengde via the new high-speed rail link. Includes ticket booking, station navigation, and a 1-day itinerary for the Mountain Resort and Outer Temples.",
+            "keyword": "Beijing to Chengde train guide"
+        },
+        {
+            "id": 588,
+            "title": "Hangzhou After Dark: 7 Best Things to Do at Night",
+            "description": "Explore Hangzhou's vibrant nightlife, from the shimmering lights of West Lake and the Impression West Lake show to the best craft beer bars and evening boat tours.",
+            "keyword": "Hangzhou nightlife guide"
+        },
+        {
+            "id": 587,
+            "title": "Power in China: A Complete Guide to Plugs, Adapters, and Voltage",
+            "description": "Everything you need to know about charging your devices in China, including the different plug types (A, C, and I), voltage requirements, and where to buy reliable adapters.",
+            "keyword": "China power adapter guide"
+        },
+        {
+            "id": 586,
+            "title": "Traveling China with Kids: 10 Essential Safety and Comfort Tips",
+            "description": "Practical advice for families traveling in China, covering child seat requirements, finding kid-friendly food, managing long-distance transport, and essential apps for parents.",
+            "keyword": "China family travel tips"
+        },
+        {
+            "id": 585,
+            "title": "Chongqing's Mountain Trails: Best Urban Hikes for Spectacular Skyline Views",
+            "description": "Explore the rugged beauty of the Mountain City on foot. This guide highlights the best urban hiking trails, including the Nanshan Mountain paths and the ancient stone steps of Eling Park, offering unparalleled views of the Chongqing skyline.",
+            "keyword": "Chongqing hiking guide"
+        },
+        {
+            "id": 584,
+            "title": "A Foodie's Guide to Xiamen Seafood: Best Markets and Local Restaurants",
+            "description": "Discover the best places to enjoy fresh, local seafood in Xiamen. From bustling night market stalls to traditional Minnan seafood restaurants, this guide covers what to order, seasonal specialties, and how to avoid 'tourist prices'.",
+            "keyword": "Xiamen seafood guide"
+        },
+        {
+            "id": 583,
+            "title": "Beijing Tea Culture: Best Traditional Teahouses and Tasting Experiences",
+            "description": "Go beyond the typical tourist traps and discover authentic Beijing tea culture. This guide features historic teahouses in quiet hutongs, tips on tea-tasting etiquette, and where to buy high-quality leaves without overpaying.",
+            "keyword": "Beijing teahouse guide"
+        },
+        {
+            "id": 582,
+            "title": "Beyond Sanya: A Practical Guide to Exploring Hainan's Southernmost Point",
+            "description": "Visit Jinmu Cape, the southernmost point of mainland China's coastal influence. This guide covers how to get there from Sanya, what to see at the lighthouse, and tips for exploring the nearby rugged coastline and military history.",
+            "keyword": "China's southernmost point travel guide"
+        },
+        {
+            "id": 581,
+            "title": "Booking Mogao Grottoes: Navigating the Complex Dunhuang Ticket System",
+            "description": "A step-by-step guide to securing tickets for the Mogao Grottoes, explaining the difference between Type A and B tickets, how to use the official WeChat mini-program, and tips for last-minute visitors.",
+            "keyword": "Mogao Grottoes ticket guide"
+        },
+        {
+            "id": 580,
+            "title": "Beyond Noodles: A Guide to China's Regional Breakfast Cultures",
+            "description": "Discover the diverse morning rituals across China, from Shanghai's 'Four King Kongs' to Cantonese Yum Cha and Wuhan's hot dry noodles. Includes tips on where to find authentic local breakfast stalls.",
+            "keyword": "China breakfast food guide"
+        },
+        {
+            "id": 579,
+            "title": "Beyond the Pavilion: A 48-Hour Guide to Exploring Nanchang",
+            "description": "Discover the historical highlights of Jiangxi's capital, from the majestic Tengwang Pavilion to the revolutionary sites and the bustling Night Market food scene.",
+            "keyword": "Nanchang travel guide"
+        },
+        {
+            "id": 578,
+            "title": "Custom Chinese Name Seals: A Guide to Man Wa Lane in Hong Kong",
+            "description": "Discover the art of Chinese name chops (seals) at Hong Kong's famous Man Wa Lane, with tips on choosing materials, carving styles, and the best shops for unique souvenirs.",
+            "keyword": "Hong Kong name chop guide"
+        },
+        {
+            "id": 577,
+            "title": "Authentic Cantonese Flavors: A Beginner's Guide to Guangzhou's Home Cooking",
+            "description": "Learn about the core ingredients and simple recipes of Cantonese home-style cooking while exploring the food culture of Guangzhou's old neighborhoods.",
+            "keyword": "Guangzhou Cantonese food guide"
+        },
+        {
+            "id": 576,
+            "title": "Luoyang Old Town: A Nighttime Guide to Food and Hanfu Culture",
+            "description": "Experience the vibrant night market in Luoyang's Lijingmen area. This guide covers the best local snacks like 'Water Banquet' soup, where to rent Hanfu for the best photos, and navigating the old city gate after dark.",
+            "keyword": "Luoyang food and history guide"
+        },
+        {
+            "id": 575,
+            "title": "Surviving the China Hotel Check-In: A Step-by-Step Guide",
+            "description": "A practical guide to the mandatory police registration process, deposit requirements via Alipay, and why some hotels still refuse foreign guests despite recent policy changes.",
+            "keyword": "China hotel check-in tips"
+        },
+        {
+            "id": 574,
+            "title": "Beijing to Great Wall: Comparison of All Transport Options",
+            "description": "A complete breakdown of getting from central Beijing to Badaling, Mutianyu, Jinshanling, and Simatai. Compares the S2 train, direct buses, and Didi for cost, time, and ease of use.",
+            "keyword": "Beijing to Great Wall transport"
+        },
+        {
+            "id": 573,
+            "title": "Guangxi's Tropical Fruits: A Market Guide to Mangoes, Lychees, and More",
+            "description": "Discover the vibrant tropical fruit scene in Guangxi. This guide helps travelers navigate local markets, identifying and purchasing regional specialties like mangoes, lychees, longans, and star fruit.",
+            "keyword": "Guangxi fruit market guide"
+        },
+        {
+            "id": 571,
+            "title": "Surviving China's Maglev Trains: Speed, Tickets, and Station Tips",
+            "description": "A practical guide to experiencing China's ultra-fast maglev trains, including the Shanghai Maglev and the new Changsha line. Covers ticket prices, speeds, luggage logistics, and whether it's worth the premium over standard subways.",
+            "keyword": "China maglev train guide"
+        },
+        {
+            "id": 570,
+            "title": "Gansu's Hidden Tibet: A 3-Day Guide to Xiahe and the Ganjia Grasslands",
+            "description": "A practical itinerary combining the Tibetan culture of Labrang Monastery with the rugged landscapes of the Ganjia Grasslands and Bajiao Ancient City in southern Gansu. Includes transport options from Lanzhou and Xiahe, accommodation tips, and altitude advice.",
+            "keyword": "Xiahe Ganjia Grasslands itinerary"
+        },
+        {
+            "id": 569,
+            "title": "Beijing's Transformed Hutongs: A Walking Tour of Yangmeizhu Xiejie and Dashilar",
+            "description": "Discover the fascinating transformation of Beijing's historic alleyways, focusing on Yangmeizhu Xiejie and Dashilar. This walking guide highlights the blend of traditional architecture with modern boutiques, cafes, and art spaces, offering a unique perspective on urban renewal in China's capital.",
+            "keyword": "Beijing renovated hutongs guide"
+        },
+        {
+            "id": 568,
+            "title": "Chengdu Panda Bases: Which One to Choose for the Best Experience",
+            "description": "A comparative guide to the four giant panda bases around Chengdu (Research Base, Dujiangyan, Wolong, and Bifengxia). Helps travelers choose based on travel time, crowd levels, volunteer opportunities, and overall experience.",
+            "keyword": "Chengdu panda bases comparison"
+        },
+        {
+            "id": 567,
+            "title": "Multi-Generational Travel in China: Planning a Trip for Parents and Grandparents",
+            "description": "A practical guide for families organizing a trip to China with elderly relatives. Focuses on choosing accessible destinations, arranging comfortable private transportation, wheelchair-friendly attractions, and accommodating dietary restrictions.",
+            "keyword": "China multi-generational travel guide"
+        },
+        {
+            "id": 566,
+            "title": "Mount Putuo Day Trip: Exploring Zhejiang's Buddhist Island Sanctuary",
+            "description": "A complete logistics guide to visiting the sacred island of Mount Putuo from Shanghai or Ningbo. Covers ferry bookings, navigating between the Puji, Fayu, and Huiji temples, and practical tips for vegetarian dining on the island.",
+            "keyword": "Mount Putuo travel guide"
+        },
+        {
+            "id": 565,
+            "title": "Exploring the Urho Ghost City: Xinjiang’s Spectacular Wind-Carved Desert",
+            "description": "A practical guide to visiting the surreal yardang landscapes of the Urho Ghost City in Karamay, Xinjiang, including the best time for sunset photography and how to navigate the scenic area's shuttle buses.",
+            "keyword": "Xinjiang ghost city travel guide"
+        },
+        {
+            "id": 564,
+            "title": "Changchun's Puppet State Palace: A Dark Tourism Guide",
+            "description": "Navigate the Museum of the Imperial Palace of 'Manchukuo' in Changchun. This guide covers ticket logistics, historical context of Puyi's puppet regime, and what to look for in the sprawling complex.",
+            "keyword": "Changchun Puppet Palace guide"
+        },
+        {
+            "id": 563,
+            "title": "Dalian Seafood Guide: Dining Along the Binhai Road",
+            "description": "A foodie’s guide to finding the freshest seafood in Dalian, featuring local recommendations along the scenic Binhai Road, what dishes to order, and how to navigate the city's night markets.",
+            "keyword": "Dalian seafood guide"
+        },
+        {
+            "id": 562,
+            "title": "Gulangyu Island Walking Tour: Hidden Architecture & Cafes",
+            "description": "Skip the crowds on Xiamen's famous island with this walking guide focusing on historical consulate buildings, hidden courtyards, and the best specialty coffee shops tucked away from the main tourist strips.",
+            "keyword": "Gulangyu walking tour"
+        },
+        {
+            "id": 561,
+            "title": "LGBTQ+ Travel in China: Safety, Scene, and Cultural Context",
+            "description": "A nuanced guide for LGBTQ+ travelers visiting China, addressing safety concerns, cultural attitudes, hotel bookings, and highlighting the vibrant, underground queer scenes in major cities like Shanghai and Chengdu.",
+            "keyword": "LGBTQ+ travel in China"
+        },
+        {
+            "id": 560,
+            "title": "Exploring Qinghai Lake: A Guide to the Erlangjian Scenic Area",
+            "description": "A practical guide to visiting the Erlangjian Scenic Area at Qinghai Lake, including how to get there from Xining, boat tour options, altitude sickness prevention, and tips for the best lake views.",
+            "keyword": "Qinghai Lake Erlangjian"
+        },
+        {
+            "id": 558,
+            "title": "Zhangjiakou's Great Wall Ruins: A High-Speed Train Adventure",
+            "description": "Discover the less-visited Zhangjiakou sections of the Great Wall, including Dajingmen. This guide covers how to reach these historically significant ruins via the high-speed train built for the Winter Olympics, and what to expect on the trail.",
+            "keyword": "Zhangjiakou Great Wall guide"
+        },
+        {
+            "id": 557,
+            "title": "Gubei Water Town: A Nighttime Photography and Travel Guide",
+            "description": "A complete guide to visiting the picturesque Gubei Water Town from Beijing, including transport options, the best spots for evening photography with the lit-up Simatai Great Wall, and staying overnight in local courtyard homestays.",
+            "keyword": "Gubei Water Town Beijing travel guide"
+        },
+        {
+            "id": 556,
+            "title": "Hiking the Jinshanling Great Wall: A Complete DIY Guide",
+            "description": "A step-by-step guide to tackling the less-crowded Jinshanling section of the Great Wall, including how to take the direct bus from Beijing, the best hiking routes for photography, and tips for staying overnight to catch the sunrise.",
+            "keyword": "Jinshanling Great Wall hiking guide"
+        },
+        {
+            "id": 555,
+            "title": "Chasing Blue and Green Tiles: A Photographer's Guide to Beijing's Ancient Roofs",
+            "description": "Discover the architectural history and symbolism behind the colorful glazed roof tiles of Beijing. This guide outlines a walking tour for photographers to capture the best examples of blue and green tiles across temples, palaces, and hutongs.",
+            "keyword": "Beijing Qing Dynasty tiles guide"
+        },
+        {
+            "id": 554,
+            "title": "Quanzhou's Kaiyuan Temple: Exploring the Twin Pagodas and Maritime History",
+            "description": "A visitor's guide to the historic Kaiyuan Temple in Quanzhou. Learn about the iconic twin stone pagodas, the Hindu carvings that reflect the city's Maritime Silk Road past, and the best times to visit to avoid tour groups.",
+            "keyword": "Quanzhou Kaiyuan Temple guide"
+        },
+        {
+            "id": 553,
+            "title": "Hiking Dali's Cangshan Mountain: The Jade Belt Cloud Road Guide",
+            "description": "A complete guide to hiking the scenic Jade Belt Cloud Road on Cangshan Mountain in Dali. Covers cable car options, trail difficulty, finding hidden waterfalls and temples, and tips for dealing with altitude.",
+            "keyword": "Cangshan Mountain hiking guide"
+        },
+        {
+            "id": 552,
+            "title": "The Tea Buyer's Survival Guide: Navigating China's Wholesale Tea Markets",
+            "description": "A guide to purchasing high-quality loose-leaf tea directly from the source. Covers identifying authentic Longjing (Dragon Well) and Pu'er, navigating tea market tastings (and polite refusals), typical prices, and how to pack fragile teaware for the trip home.",
+            "keyword": "buying tea in China guide"
+        },
+        {
+            "id": 551,
+            "title": "Checking Into a Chinese Hotel: Passports, Police Registration, and Deposits",
+            "description": "A step-by-step guide to the check-in process at Chinese hotels. Covers presenting passports, understanding the mandatory police registration process, deposit requirements (often via Alipay/WeChat), and why some smaller hotels still turn foreigners away.",
+            "keyword": "China hotel check-in registration"
+        },
+        {
+            "id": 550,
+            "title": "Surviving China's Convenience Stores: What to Buy and What to Avoid",
+            "description": "A practical guide to navigating FamilyMart, 7-Eleven, and local Chinese convenience stores (biao li dian). Covers the best hot snacks (baozi, oden), strange drink flavors to try, essential hygiene items, and how to pay without cash.",
+            "keyword": "China convenience store guide"
+        },
+        {
+            "id": 549,
+            "title": "Tipping in China: A Tourist's Guide to Etiquette and Service Charges",
+            "description": "A practical guide to tipping etiquette in China, explaining why it's generally not expected, when it might be appropriate, and how to navigate service charges in hotels and restaurants.",
+            "keyword": "tipping in China"
+        },
+        {
+            "id": 548,
+            "title": "A Guide to Accessing Cash in China: ATMs, Exchange, and Hidden Fees",
+            "description": "Discover the best ways to access cash in China, from using international credit cards and ATMs to navigating currency exchange rates and hidden fees.",
+            "keyword": "getting cash in China"
+        },
+        {
+            "id": 547,
+            "title": "A Tourist's Guide to Renting a Car in China",
+            "description": "A comprehensive guide to renting, driving, and returning a car in China as a tourist, covering license requirements, popular rental apps, and traffic rules.",
+            "keyword": "renting a car in China guide"
+        },
+        {
+            "id": 546,
+            "title": "A Guide to Urumqi's Grand Bazaar: Xinjiang Cuisine and Culture",
+            "description": "A practical guide for tourists exploring the International Grand Bazaar in Urumqi. Covers the best stalls for dried fruits, identifying authentic Uyghur handicrafts, what local street food to try, and how to bargain respectfully.",
+            "keyword": "Urumqi Grand Bazaar guide"
+        },
+        {
+            "id": 545,
+            "title": "Dalian's Vintage Trams: A Practical Guide to Route 201",
+            "description": "A guide to exploring Dalian via its historic tram network. Covers the famous Tram 201 route, how to pay using mobile apps, and key stops like Zhongshan Square and Xinghai Square.",
+            "keyword": "Dalian tram guide"
+        },
+        {
+            "id": 544,
+            "title": "A Family Guide to Huangshi Fort: Zhangjiajie's Quiet Corner",
+            "description": "A guide to visiting the less-crowded Huangshi Fort (Yellow Stone Village) area in Zhangjiajie National Forest Park. Includes transport details, the easiest hiking trails for families, and the best time of year to avoid summer rains.",
+            "keyword": "Zhangjiajie Yellow Stone Village guide"
+        },
+        {
+            "id": 542,
+            "title": "Shipping Your Bags Ahead in China: A Guide to Luggage Delivery Services",
+            "description": "Learn how to travel hands-free in China by utilizing domestic luggage delivery services like SF Express to ship your heavy bags between hotels or cities, saving you the hassle of carrying them on trains.",
+            "keyword": "China luggage delivery services"
+        },
+        {
+            "id": 541,
+            "title": "Surviving China's High-Speed Rail Without Speaking Chinese: A Visual Guide",
+            "description": "A practical, step-by-step visual guide to navigating China's high-speed rail stations, boarding trains, and finding your seat using translation apps and visual cues, perfect for non-Chinese speakers.",
+            "keyword": "China train language barrier guide"
+        },
+        {
+            "id": 540,
+            "title": "Haikou Historic Walk: Exploring Qilou Old Street's Arcade Architecture",
+            "description": "Discover the charm of Hainan's capital by exploring the historic Qilou Old Street. Learn about the unique Southeast Asian-influenced arcade architecture, where to find traditional snacks like Hainan rice noodles, and the best time for photography.",
+            "keyword": "Haikou Qilou Old Street guide"
+        },
+        {
+            "id": 538,
+            "title": "Chongqing's Secret WWII Bunkers: Exploring the Mountain City's Hidden Tunnels",
+            "description": "Go deep underground to explore Chongqing's massive network of WWII air raid shelters. Learn how to access these historic tunnels, many now repurposed as hotpot restaurants, gas stations, and retro cafes.",
+            "keyword": "Chongqing WWII bunkers guide"
+        },
+        {
+            "id": 537,
+            "title": "Getting Around Macau: Mastering the Free Casino Shuttles and Local Buses",
+            "description": "Navigating Macau doesn't have to be expensive. This practical guide details how to use the free casino shuttle buses to get around the city, understand the local bus system, and cross the border from Zhuhai or Hong Kong.",
+            "keyword": "Macau transit guide"
+        },
+        {
+            "id": 536,
+            "title": "Hainan Island Cuisine: A Guide to Sanya's Coconut Chicken and Seafood Markets",
+            "description": "Discover the unique flavors of China's tropical south. This practical guide to Hainan's local cuisine covers the famous Coconut Chicken hotpot, navigating the vibrant No. 1 Seafood Market in Sanya, and trying local street snacks like Ching Bo Leung.",
+            "keyword": "Sanya food guide"
+        },
+        {
+            "id": 535,
+            "title": "Cruising the Yangtze River: From Chongqing to Shanghai on a Luxury Liner",
+            "description": "Discover the ultimate Yangtze River experience with a comprehensive guide to luxury cruising from Chongqing to Shanghai, covering ship selection, itinerary highlights, and booking tips.",
+            "keyword": "Yangtze River luxury cruise"
+        },
+        {
+            "id": 534,
+            "title": "Surviving a 6-Hour Train Station Layover in China: Where to Eat, Rest, and Charge",
+            "description": "Stuck between trains? This guide helps you navigate long layovers in massive Chinese train stations. Covers finding business lounges, locating the best station food beyond KFC, securing charging ports, and deciding if you have time to leave the station.",
+            "keyword": "China train station layover guide"
+        },
+        {
+            "id": 533,
+            "title": "DIY Tea Farm Stays in Anxi: Experiencing the Tieguanyin Harvest",
+            "description": "Go beyond standard tea tours and discover how to experience authentic tea farming in Anxi, Fujian. This guide covers how to reach remote tieguanyin villages, arrange farm stays, and participate in the spring harvest without booking a luxury tour.",
+            "keyword": "Anxi tea farm stay"
+        },
+        {
+            "id": 532,
+            "title": "Surviving China’s 24-Hour Trains: Essential Packing and Sleep Hacks",
+            "description": "A practical survival guide for enduring long-haul 'green' or overnight trains in China. Covers essential packing items (earplugs, instant noodles, power banks), hygiene tips for shared bathrooms, and strategies for getting sleep in hard seat or sleeper classes.",
+            "keyword": "China long-haul train survival guide"
+        },
+        {
+            "id": 531,
+            "title": "Chaozhou Beyond Food: Temples, Bridges, and Qing Dynasty Mansions",
+            "description": "A cultural traveler's guide to Chaozhou, detailing how to visit the historic Guangji Bridge, explore the ancient Kaiyuan Temple, and find beautifully preserved Qing dynasty mansions hidden in the city's alleyways.",
+            "keyword": "Chaozhou historic sites"
+        },
+        {
+            "id": 530,
+            "title": "Chengdu Panda Volunteer Programs: Dujiangyan vs. Bifengxia",
+            "description": "A comparative guide explaining how to sign up for the popular one-day panda volunteer programs near Chengdu, covering costs, activities, and transport to the Dujiangyan and Bifengxia bases.",
+            "keyword": "Chengdu Panda Volunteer Programs"
+        },
+        {
+            "id": 529,
+            "title": "Changsha Metro Guide: How to Navigate Hunan's Sprawling Capital",
+            "description": "A complete guide to using the Changsha Metro system, covering how to buy tickets, use Alipay for rides, and the best lines to reach key tourist spots like Orange Isle and the Hunan Museum.",
+            "keyword": "Changsha subway map"
+        },
+        {
+            "id": 528,
+            "title": "Beyond Pandas: A Guide to Wildlife Watching in China's National Parks",
+            "description": "Discover the top destinations for spotting unique and endangered wildlife in China beyond pandas. This guide covers where to see Tibetan antelopes, golden snub-nosed monkeys, and snow leopards, with tips on booking ethical and responsible tours.",
+            "keyword": "China wildlife watching guide"
+        },
+        {
+            "id": 527,
+            "title": "A Beginner's Guide to Chinese Tea: Types, Ceremonies, and Tasting Etiquette",
+            "description": "Discover the fascinating world of Chinese tea ceremonies. This guide provides a beginner-friendly overview of the different types of Chinese tea, the traditional Gongfu tea ceremony steps, and etiquette for attending a tea tasting in China.",
+            "keyword": "Chinese tea ceremony guide"
+        },
+        {
+            "id": 526,
+            "title": "From Airport to City Center: A Complete Guide to China's Top Transit Options",
+            "description": "A practical guide to navigating the fastest, cheapest, and easiest transport options from major Chinese airports (Beijing, Shanghai, Guangzhou, Shenzhen) to the city center, covering maglevs, express trains, subways, and Didi.",
+            "keyword": "China airport to city guide"
+        },
+        {
+            "id": 525,
+            "title": "A Guide to Changsha's Sizzling Night Markets: Hunan's Culinary Heart",
+            "description": "Dive into the fiery world of Hunan cuisine with this comprehensive guide to Changsha's bustling street food scene. Learn what to order, where to find the best stinky tofu, and how to navigate the vibrant night markets.",
+            "keyword": "Changsha street food guide"
+        },
+        {
+            "id": 524,
+            "title": "Yunnan train",
+            "description": "From Kunming to Lijiang: The Ultimate Yunnan High-Speed Rail Guide",
+            "keyword": "Kunming to Lijiang high-speed rail guide"
+        },
+        {
+            "id": 523,
+            "title": "Xi'an",
+            "description": "Navigating Xi'an's Terracotta Warriors Like a Local: Logistics & Tips",
+            "keyword": "Terracotta Warriors practical guide"
+        },
+        {
+            "id": 522,
+            "title": "A Guide to Tai O: Exploring Hong Kong's Historic Fishing Village",
+            "description": "Escape the city to explore Tai O, Hong Kong's traditional stilt village. Learn how to get there by ferry or bus, sample the famous shrimp paste, and find the best spots for sunset photography.",
+            "keyword": "Tai O village Hong Kong guide"
+        },
+        {
+            "id": 521,
+            "title": "Wuyi Mountain Rock Tea: A Hiker's Guide to Fujian's Famous Brew",
+            "description": "Discover the dramatic landscapes of Wuyishan, home to the legendary Da Hong Pao tea. This guide covers the best trails through the tea plantations, how to arrange authentic tastings, and navigating the scenic area.",
+            "keyword": "Wuyishan tea culture guide"
+        },
+        {
+            "id": 520,
+            "title": "Navigating China's E-Bikes: A Guide to Renting and Riding Shared Scooters",
+            "description": "A practical guide to using shared electric bikes in China's cities. Learn how to unlock them using Alipay or WeChat, understand the parking rules to avoid fines, and safety tips for riding in Chinese traffic.",
+            "keyword": "China shared e-bike guide"
+        },
+        {
+            "id": 519,
+            "title": "Cycling China's Greenways: Top 5 Scenic Routes for Casual Bikers",
+            "description": "A guide to China's best dedicated cycling paths, from the Erhai Lake loop in Dali to the Qiandao Lake greenway, with tips on renting bikes and planning a multi-day ride.",
+            "keyword": "China scenic cycling routes"
+        },
+        {
+            "id": 518,
+            "title": "Beyond Longjing: Discovering China's Hidden Tea Regions",
+            "description": "A guide to China's lesser-known tea regions, including Enshi in Hubei, Anxi in Fujian, and Xinyang in Henan, with tips on how to visit plantations and taste rare local varieties.",
+            "keyword": "China hidden tea regions"
+        },
+        {
+            "id": 517,
+            "title": "Navigating Guangzhou Baiyun Airport: Transfers and Metro Guide",
+            "description": "A complete guide to navigating Guangzhou Baiyun International Airport (CAN), covering terminal transfers, metro connections to the city center, and transit hotel options.",
+            "keyword": "Guangzhou Baiyun Airport guide"
+        },
+        {
+            "id": 514,
+            "title": "Gluten-Free Travel in China: A Survival Guide to Hidden Soy Sauce",
+            "description": "Navigating China with celiac disease or gluten intolerance is challenging but possible. Learn how to communicate your dietary needs, safe local dishes to order, and why standard soy sauce is the biggest hidden danger for gluten-free travelers.",
+            "keyword": "gluten free travel China"
+        },
+        {
+            "id": 513,
+            "title": "Beyond Longmen: A Complete Guide to Historic Luoyang",
+            "description": "Discover the ancient capital of Luoyang. This guide covers how to visit the White Horse Temple (China's first Buddhist temple), the Luoyang Museum's impressive antiquities, and navigating the old city's night markets.",
+            "keyword": "Luoyang travel guide"
+        },
+        {
+            "id": 512,
+            "title": "Surviving China's Golden Weeks: A Guide to Holiday Travel",
+            "description": "A practical guide to navigating China's major public holidays, including the Spring Festival and National Day. Covers strategies for avoiding crowds, booking tickets in advance, and alternative destinations.",
+            "keyword": "China holiday travel guide"
+        },
+        {
+            "id": 511,
+            "title": "Guangzhou Subway Guide: Fares, Apps, and Top Tourist Stops",
+            "description": "A practical step-by-step guide to using the Guangzhou subway system, including how to pay with Alipay, transfer at major hubs, and reach popular sights like Canton Tower and Shamian Island.",
+            "keyword": "Guangzhou subway guide"
+        },
+        {
+            "id": 510,
+            "title": "Hainan Luggage Forwarding Guide: Using SF Express to Travel Hands-Free",
+            "description": "Sick of hauling heavy luggage in Hainan's humidity? Learn how to securely mail your suitcases between Haikou and Sanya using SF Express directly from your hotel front desk.",
+            "keyword": "SF Express luggage forwarding Hainan"
+        },
+        {
+            "id": 509,
+            "title": "Platform Eating 101: How to Score Local Food During Train Stops in China",
+            "description": "Forget instant noodles! A guide to hopping off high-speed and slow trains during 5-minute station stops to grab cheap, fresh local delicacies from platform vendors before the whistle blows.",
+            "keyword": "China train platform food hacks"
+        },
+        {
+            "id": 508,
+            "title": "Chongqing Yangtze River Ferry: A Local's Guide to the 2 RMB Scenic Ride",
+            "description": "Skip the expensive tourist cruises and ride the public Chaotianmen ferry for just 2 RMB. This guide covers schedules, ticketing, and the best time to cross the Yangtze for sunset views.",
+            "keyword": "Chongqing Yangtze public ferry"
+        },
+        {
+            "id": 506,
+            "title": "Discovering the Hanging Coffins of the Bo People: A Guide to Gongxian",
+            "description": "A practical guide to visiting the mysterious hanging coffins of Sichuan. Includes how to get to Gongxian from Chengdu or Yibin, the history of the Bo people, and tips for photographing these ancient cliffside burials.",
+            "keyword": "Gongxian hanging coffins Sichuan guide"
+        },
+        {
+            "id": 505,
+            "title": "Navigating China's Didi App: Ride-Hailing Without the Language Barrier",
+            "description": "A step-by-step practical guide for using Didi in China. Covers auto-translate features, adding foreign credit cards, and tips for finding pickup spots in busy cities.",
+            "keyword": "Didi ride-hailing guide China"
+        },
+        {
+            "id": 504,
+            "title": "A Guide to Hangzhou's Tea Culture: Exploring Longjing Village and Beyond",
+            "description": "Discover the heart of China's green tea culture in Hangzhou. This guide covers how to reach the Longjing tea plantations, the best times to visit during the spring harvest, recommended teahouses around West Lake, and tips for buying authentic tea.",
+            "keyword": "Hangzhou Longjing tea tour"
+        },
+        {
+            "id": 503,
+            "title": "Overnight Trains in China: Maximizing Time and Comfort on the Move",
+            "description": "A practical guide to utilizing China's high-speed and conventional sleeper trains for overnight travel. Compares hard vs. soft sleepers, the new deluxe options, luggage storage, safety tips, and booking strategies for popular tourist routes.",
+            "keyword": "China train night routes"
+        },
+        {
+            "id": 502,
+            "title": "What to Pack for a Spring Trip to China: The Ultimate Checklist",
+            "description": "A comprehensive packing guide for traveling to China during the spring season (March to May). Covers layering strategies for unpredictable weather, essential tech gear, and must-have items for dealing with spring showers across different regions.",
+            "keyword": "China spring packing list"
+        },
+        {
+            "id": 501,
+            "title": "Beyond the Main Axis: Exploring the Forbidden City's Hidden Corners",
+            "description": "A guide to escaping the crowds in the Forbidden City by exploring its lesser-known courtyards, quiet gardens, and the recently opened western sections. Includes tips on the best times to visit for photography and peace.",
+            "keyword": "Forbidden City secret spots"
+        },
+        {
+            "id": 500,
+            "title": "The 7 Best Apps for Surviving China Without Knowing Mandarin",
+            "description": "A curated list of the best apps for navigating China without speaking Mandarin. Covers real-time translation tools, offline maps, and ride-hailing services designed for foreign travelers.",
+            "keyword": "China travel apps"
+        },
+        {
+            "id": 498,
+            "title": "Navigating Xijiang's Thousand Household Miao Village: A Practical Guide",
+            "description": "A practical breakdown of visiting the famous Xijiang Qianhu Miao Village in Guizhou. Explains ticket pricing, luggage storage, the best viewpoints for photography, and whether an overnight stay is worth it.",
+            "keyword": "Xijiang Miao Village guide"
+        },
+        {
+            "id": 497,
+            "title": "Wushan's Lesser Three Gorges: A DIY Boat Trip Guide from Chongqing",
+            "description": "A guide to visiting the stunning Lesser Three Gorges in Wushan independently. Covers taking the high-speed train from Chongqing, booking local boat tickets, and combining it with a hike up Goddess Peak.",
+            "keyword": "Wushan Three Gorges travel guide"
+        },
+        {
+            "id": 496,
+            "title": "Navigating Xiamen's BRT System: A Fast-Track Guide to the City",
+            "description": "A practical guide to using Xiamen's elevated Bus Rapid Transit (BRT) system. Covers ticketing, major routes connecting the airport and ferry terminals, and why it's often faster than taxis.",
+            "keyword": "Xiamen BRT guide"
+        },
+        {
+            "id": 495,
+            "title": "Exploring the Longmen Grottoes: A Day Trip Guide from Luoyang",
+            "description": "Discover the magnificent ancient Buddhist rock carvings at the Longmen Grottoes in Henan province. This guide covers how to get there from Luoyang, the best routes through the site, and tips for capturing the incredible scale of the statues.",
+            "keyword": "Longmen Grottoes travel guide"
+        },
+        {
+            "id": 494,
+            "title": "Celebrating Mid-Autumn Festival in China: A Traveler's Guide",
+            "description": "Experience the magic of the Mid-Autumn Festival in China. Discover the best cities for moon viewing, traditional mooncake varieties to try, and practical tips for navigating holiday crowds.",
+            "keyword": "Mid-Autumn festival travel guide"
+        },
+        {
+            "id": 493,
+            "title": "Chaka Salt Lake: A Complete Photography & Logistics Guide",
+            "description": "A practical guide to visiting China's 'Mirror of the Sky' in Qinghai. Covers transportation from Xining, best times of day for mirror-like reflections, altitude preparation, and tips for capturing stunning photos.",
+            "keyword": "Chaka Salt Lake travel guide"
+        },
+        {
+            "id": 492,
+            "title": "Planning a Destination Wedding or Honeymoon in China: A Complete Guide",
+            "description": "From taking pre-wedding photos in Lijiang to arranging an intimate banquet in an ancient Beijing courtyard. This guide offers practical advice for couples planning a romantic celebration or honeymoon in China.",
+            "keyword": "China destination wedding"
+        },
+        {
+            "id": 491,
+            "title": "Beyond Tulou: Discovering Hakka Culture in Meizhou, Guangdong",
+            "description": "A guide to exploring Meizhou, the cultural capital of the Hakka people. Includes details on traditional walled villages, trying authentic Hakka stuffed tofu, and visiting historical tea plantations.",
+            "keyword": "Hakka villages Meizhou"
+        },
+        {
+            "id": 488,
+            "title": "Family-Friendly Guilin: Best Activities for Kids & Seniors",
+            "description": "A multi-generational travel guide to Guilin and Yangshuo, featuring accessible karst caves, kid-friendly bamboo rafting safety tips, and comfortable transport options for families.",
+            "keyword": "Guilin family travel guide"
+        },
+        {
+            "id": 487,
+            "title": "Navigating China's Digital Wallet Restrictions: Limits & Fixes for 2025",
+            "description": "A troubleshooting guide addressing transaction limits on international cards, identity verification blocks, and specific workarounds when Alipay or WeChat Pay fail for foreign tourists.",
+            "keyword": "China digital wallet troubleshooting"
+        },
+        {
+            "id": 485,
+            "title": "Secret Chongqing: Exploring the Hidden Layers of the Mountain City",
+            "description": "Go beyond the crowded Hongyadong and hotpot spots. Discover Chongqing's hidden WWII relics, secret rooftop parks, and local tea houses in the old residential blocks.",
+            "keyword": "Chongqing hidden gems"
+        },
+        {
+            "id": 484,
+            "title": "Beijing to Xi'an High-Speed Train: The Complete Travel Guide",
+            "description": "A step-by-step guide to taking the high-speed train from Beijing to Xi'an. Covers ticket booking, station navigation, seat classes, and what to expect on the journey.",
+            "keyword": "Beijing to Xi'an train guide"
+        },
+        {
+            "id": 481,
+            "title": "How to Use Alipay for Trains: A 2025 Step-by-Step Guide",
+            "description": "Learn how to book China railway tickets directly within the Alipay app. This guide covers account verification, English interface tips, and managing bookings without a separate trip.com account.",
+            "keyword": "Alipay train booking"
+        },
+        {
+            "id": 480,
+            "title": "Guilin's Best Street Food: A Foodie's Walking Tour Guide",
+            "description": "Go beyond rice noodles with this guide to Guilin's best street snacks, including oil tea, water chestnut cake, and where to find the most authentic night markets.",
+            "keyword": "Guilin street food"
+        },
+        {
+            "id": 479,
+            "title": "Beyond Avatar Hallelujah Mountain: Hidden Trails in Zhangjiajie",
+            "description": "Discover the lesser-known hiking trails in Zhangjiajie National Forest Park, including the Golden Whip Stream and Yellow Stone Village, to escape the crowds at the main viewpoints.",
+            "keyword": "Zhangjiajie hidden trails"
+        },
+        {
+            "id": 478,
+            "title": "Dunhuang Desert Camping Guide: Stargazing in the Gobi",
+            "description": "A complete guide to camping in the Mingsha Shan desert near Dunhuang, including how to book luxury glamping tents, essential gear for cold nights, and the best spots for astrophotography.",
+            "keyword": "Dunhuang desert camping"
+        },
+        {
+            "id": 477,
+            "title": "Luxury River Cruises: Beyond the Yangtze",
+            "description": "A guide to China's lesser-known luxury river cruises on the Yulong and Huangpu rivers. Focuses on boutique experiences, private charters, and alternatives to the crowded Li River.",
+            "keyword": "China river cruises luxury"
+        },
+        {
+            "id": 476,
+            "title": "Beyond Dali: A Guide to Shaxi Ancient Town's Friday Market",
+            "description": "Visit the authentic Shaxi Friday Market, a historic trading post on the Tea Horse Road. Guide covers transport from Dali/Lijiang, market highlights, and ancient town stays.",
+            "keyword": "Shaxi Ancient Town travel"
+        },
+        {
+            "id": 475,
+            "title": "Alipay Tour Pass vs. TourCard: The 2025 Traveler's Guide",
+            "description": "A clear comparison of Alipay's 'Tour Pass' (now TourCard) and linking international credit cards directly. Explains fees, limits, and which method is best for short-term tourists in 2025.",
+            "keyword": "Alipay TourCard guide"
+        },
+        {
+            "id": 474,
+            "title": "Shunde Food Guide: The Birthplace of Cantonese Cuisine",
+            "description": "A culinary pilgrimage to Shunde, exploring its famous double-skin milk, claypot rice, and river fish dishes, with tips on how to reach this foodie paradise from Guangzhou by metro or train.",
+            "keyword": "Shunde food guide"
+        },
+        {
+            "id": 473,
+            "title": "Guangzhou's Lunar New Year Flower Markets: A Festive Guide",
+            "description": "A festive guide to visiting Guangzhou's vibrant Lunar New Year flower markets, including the best locations, traditional blooms, and cultural significance.",
+            "keyword": "Guangzhou Lunar New Year flower market"
+        },
+        {
+            "id": 472,
+            "title": "Winter in Xishuangbanna: A Tropical Escape Guide",
+            "description": "Escape the cold with a trip to tropical Xishuangbanna. This guide covers winter weather, Dai minority culture, night markets, and the best tropical botanical gardens.",
+            "keyword": "Xishuangbanna winter travel"
+        },
+        {
+            "id": 471,
+            "title": "Nanjing's Plum Blossom Hill: A Seasonal Spring Guide",
+            "description": "A seasonal guide to visiting Nanjing's Plum Blossom Hill (Meihua Shan) in late winter/early spring, including the best photo spots, festival dates, and transport tips.",
+            "keyword": "Nanjing Plum Blossom Festival"
+        },
+        {
+            "id": 470,
+            "title": "Changsha's Tongguan Kiln Ancient Town: Pottery & Fireworks Guide",
+            "description": "A complete guide to visiting the historic Tongguan Kiln Ancient Town in Changsha, known for its ceramic heritage and spectacular nightly iron-flower fireworks shows.",
+            "keyword": "Changsha Tongguan Kiln guide"
+        },
+        {
+            "id": 468,
+            "title": "Beyond West Lake: Exploring Hangzhou's Grand Canal Heritage",
+            "description": "A walking guide to the less-visited northern section of the Grand Canal in Hangzhou. Features historic bridges, the Gongchen Bridge area, local museums, and water bus tips.",
+            "keyword": "Hangzhou Grand Canal walking guide"
+        },
+        {
+            "id": 467,
+            "title": "Digital Nomad Life in Dali: Co-working, Coffee & Community",
+            "description": "Why Dali is becoming China's top digital nomad hub. Covers co-working spaces, internet speeds, cost of living, and the vibrant community of remote workers in the ancient town.",
+            "keyword": "Dali digital nomad guide"
+        },
+        {
+            "id": 465,
+            "title": "Changsha to Zhangjiajie: Train vs. Bus Transport Guide",
+            "description": "A step-by-step transportation guide on getting from Changsha to Zhangjiajie, comparing high-speed rail, regular trains, and buses, with tips on booking tickets and total travel times.",
+            "keyword": "Changsha to Zhangjiajie"
+        },
+        {
+            "id": 464,
+            "title": "Cycling Guilin's Countryside: Routes, Rentals, and Tips",
+            "description": "A practical cycling guide for exploring the countryside around Guilin and Yangshuo, detailing the best routes, bike rental tips, and safety advice for navigating rural roads.",
+            "keyword": "Guilin cycling guide"
+        },
+        {
+            "id": 462,
+            "title": "Wuyishan Tea Pilgrimage: Hiking & Tasting in the Rock Tea Capital",
+            "description": "A complete guide to visiting the Wuyi Mountains for tea lovers, featuring the best Dahongpao tasting rooms, scenic tea garden hikes, and how to book a bamboo raft tour.",
+            "keyword": "Wuyishan tea culture guide"
+        },
+        {
+            "id": 461,
+            "title": "Chongqing's Cyberpunk Nightscapes: 5 Best Free Photography Spots",
+            "description": "A photographer's guide to capturing Chongqing's futuristic skyline at night without expensive observation decks, featuring the best bridges, rooftops, and hidden streets.",
+            "keyword": "Chongqing night photography"
+        },
+        {
+            "id": 460,
+            "title": "Chongqing to Yichang: A Practical Guide to Yangtze River Cruises",
+            "description": "Step-by-step instructions for booking and experiencing a Yangtze River cruise from Chongqing to Yichang, including vessel choices, itinerary highlights, and packing tips.",
+            "keyword": "Yangtze River cruise guide"
+        },
+        {
+            "id": 459,
+            "title": "Photography Guide to Guilin: Capturing the Best of the Li River",
+            "description": "Discover the top photo spots along the Li River, from sunrise at Xianggong Mountain to the 20 Yuan note view, with tips on timing and gear.",
+            "keyword": "Guilin photography spots"
+        },
+        {
+            "id": 458,
+            "title": "10 Best Hotels Near Zhangjiajie National Forest Park: Luxury to Budget",
+            "description": "A curated list of the top accommodations for every budget, focusing on proximity to park entrances, scenic views, and convenient transport links for an effortless visit to the Avatar Mountains.",
+            "keyword": "Zhangjiajie hotels"
+        },
+        {
+            "id": 457,
+            "title": "Xi'an to Mount Huashan Day Trip: Train, Cable Cars & Hiking Routes",
+            "description": "A complete guide to navigating the Xi'an to Mount Huashan trip, including the best high-speed train options, cable car routes, and tips for the Plank Walk in the Sky.",
+            "keyword": "Mount Huashan day trip guide"
+        },
+        {
+            "id": 456,
+            "title": "Chongqing's Hotpot for Beginners: How to Order & Eat Like a Local",
+            "description": "A complete guide to navigating a Chongqing hotpot meal, from choosing the broth level and dipping sauces to ordering essential ingredients and mastering table etiquette.",
+            "keyword": "Chongqing hotpot guide"
+        },
+        {
+            "id": 455,
+            "title": "Ultimate Guide to Alipay & WeChat Pay for Tourists in 2025",
+            "description": "A step-by-step guide on setting up China's essential mobile payment apps, including linking international cards, identity verification, and troubleshooting common issues for a seamless cashless experience.",
+            "keyword": "China mobile payment guide"
+        },
+        {
+            "id": 454,
+            "title": "Fujian Tulou Road Trip: A 3-Day Hakka Heritage Route",
+            "description": "A self-drive or hired car itinerary through the Fujian mountains to visit the most impressive Hakka earthen roundhouses, including less-visited clusters and overnight stays inside a Tulou.",
+            "keyword": "Fujian Tulou road trip"
+        },
+        {
+            "id": 453,
+            "title": "Zhangjiajie with Kids: A Family-Friendly Guide to the Avatar Mountains",
+            "description": "Practical tips for visiting Zhangjiajie with children, including stroller-friendly paths, kid-safe viewing platforms, and how to manage the cable cars and glass bridges as a family.",
+            "keyword": "Zhangjiajie with kids"
+        },
+        {
+            "id": 452,
+            "title": "Shanghai Xiaolongbao Guide: Best Soup Dumplings & How to Eat Them",
+            "description": "The ultimate guide to finding the best Xiaolongbao in Shanghai, from Michelin-starred restaurants to local hole-in-the-walls, plus the proper technique to eat them without burning your tongue.",
+            "keyword": "Shanghai Xiaolongbao guide"
+        },
+        {
+            "id": 449,
+            "title": "Barkhor Street Pilgrim Circuit: A Guide to the Kora Ritual",
+            "description": "Participate in the sacred Kora ritual around Lhasa's Jokhang Temple. This guide covers the spiritual significance, etiquette, and best times to join local pilgrims.",
+            "keyword": "Barkhor Street pilgrim circuit"
+        },
+        {
+            "id": 447,
+            "title": "Moganshan Weekend Escape: Bamboo Forests and Boutique Stays",
+            "description": "Moganshan travel guide",
+            "keyword": "Moganshan travel guide"
+        },
+        {
+            "id": 446,
+            "title": "Jingdezhen Porcelain Market Guide: Shopping for Ceramics Like a Pro",
+            "description": "Jingdezhen porcelain markets",
+            "keyword": "Jingdezhen porcelain markets"
+        },
+        {
+            "id": 445,
+            "title": "Hiking Huangshan: A Guide to Catching the Sunrise",
+            "description": "A complete guide to hiking Huangshan (Yellow Mountain) to see the famous sunrise, including the best hiking routes, where to stay on the summit, and tips for avoiding the crowds.",
+            "keyword": "Huangshan sunrise hiking"
+        },
+        {
+            "id": 444,
+            "title": "Guilin to Yangshuo: Cycling Routes Through the Karst Landscape",
+            "description": "A detailed guide to cycling from Guilin to Yangshuo, including recommended bike rental shops, scenic routes through the countryside, and safety tips for navigating the roads.",
+            "keyword": "Guilin to Yangshuo cycling guide"
+        },
+        {
+            "id": 443,
+            "title": "Zhangjiajie National Forest Park: A Photographer's Guide to the Avatar Mountains",
+            "description": "A comprehensive guide for photographers visiting Zhangjiajie, detailing the best photo spots, ideal times for shooting, essential gear, and tips for capturing the iconic sandstone pillars without the crowds.",
+            "keyword": "Zhangjiajie photography guide"
+        },
+        {
+            "id": 442,
+            "title": "Autumn in Beijing: The Ultimate Guide to Hiking Fragrant Hills",
+            "description": "Beat the crowds and find the best viewpoints for red leaves at Fragrant Hills Park. This guide covers transport, timing, and alternative routes to the peak.",
+            "keyword": "Fragrant Hills Park"
+        },
+        {
+            "id": 441,
+            "title": "Chongqing's Hidden Teahouse Culture: Beyond the Tourist Traps",
+            "description": "Step away from the crowded hotpot restaurants and discover Chongqing's authentic teahouse culture. This guide reveals hidden spots in old residential buildings and parks where locals gather.",
+            "keyword": "Chongqing teahouses"
+        },
+        {
+            "id": 440,
+            "title": "Beyond the Rainbow Mountains: Exploring Zhangye's Hidden Mati Temple Grottoes",
+            "description": "Discover the lesser-known Mati Temple in Zhangye, a stunning complex of Buddhist grottoes carved into cliff faces, offering a peaceful alternative to the crowded Danxia landforms.",
+            "keyword": "Mati Temple Zhangye"
+        },
+        {
+            "id": 437,
+            "title": "10 Best VPNs for China in 2025: A Traveler's Survival Guide",
+            "description": "A comprehensive review of the most reliable VPNs for China, testing speed, connectivity, and ease of use for tourists. Includes setup tips before arrival and backup plans if your primary VPN fails.",
+            "keyword": "best VPN for China 2025"
+        },
+        {
+            "id": 436,
+            "title": "Taining Global Geopark: Floating on the Golden Lake & Ancient Temples",
+            "description": "A guide to the hidden Danxia landforms and ancient architecture of Taining, Fujian. Covers the Golden Lake boat cruise, Shangqing Stream bamboo rafting, and the suspended Ganluyan Temple.",
+            "keyword": "Taining Global Geopark travel guide"
+        },
+        {
+            "id": 435,
+            "title": "Chishui Danxia UNESCO Site: A Guide to Guizhou’s Red Rocks & Waterfalls",
+            "description": "Explore the stunning red sandstone landscapes and waterfalls of Chishui in northern Guizhou, with tips on how to visit this remote UNESCO site from Chongqing or Guiyang.",
+            "keyword": "Chishui Danxia travel guide"
+        },
+        {
+            "id": 434,
+            "title": "Changbai Mountain Guide: North vs. West Slope for Heaven Lake Views",
+            "description": "A complete guide to visiting Changbai Mountain's Heaven Lake, comparing North vs. West slope routes, best seasons for clear views, and how to reach the mountain by high-speed train.",
+            "keyword": "Changbaishan travel guide"
+        },
+        {
+            "id": 433,
+            "title": "Hiking Tiger Leaping Gorge: The High Road vs. Low Road Guide",
+            "description": "A practical guide to one of China's best treks. Compare the scenic Upper Trail (High Road) with the easier Low Road, including guesthouse recommendations, luggage storage in Qiaotou, and transport from Lijiang.",
+            "keyword": "Tiger Leaping Gorge hike guide"
+        },
+        {
+            "id": 429,
+            "title": "Daocheng Yading: Essential Altitude Survival Guide for Travelers",
+            "description": "A safety-focused guide to preventing altitude sickness in Daocheng Yading (4,000m+). Covers acclimatization stops in Kangding, oxygen availability, medication tips, and recognizing symptoms before hiking the high-altitude trails.",
+            "keyword": "Daocheng Yading altitude sickness"
+        },
+        {
+            "id": 428,
+            "title": "Chasing 'Blue Tears': A Guide to Pingtan Island's Bioluminescence",
+            "description": "A practical guide to seeing the famous 'Blue Tears' in Pingtan, Fujian. Covers the best months (April-August), specific viewing spots like Beigang Village, and how to get there by high-speed train from Fuzhou.",
+            "keyword": "Pingtan Blue Tears guide"
+        },
+        {
+            "id": 427,
+            "title": "Li River Cruise Guide: Big Boat vs. Bamboo Raft for Every Budget",
+            "description": "A comparison guide to the two main ways to see the Li River in Guilin: the 4-star luxury cruise boats vs. the traditional bamboo rafts. Includes price breakdowns, booking tips, and which option offers better photography opportunities.",
+            "keyword": "Li River cruise vs bamboo raft"
+        },
+        {
+            "id": 423,
+            "title": "Bamboo Rafting on the Li River: A Traveler's Guide",
+            "description": "A guide to taking a bamboo raft down the Li River in Yangshuo, detailing the difference between motorized and non-motorized rafts, best routes (Yangdi vs. Xingping), and how to avoid scams.",
+            "keyword": "Li River bamboo rafting"
+        },
+        {
+            "id": 422,
+            "title": "Alipay for Foreigners: The Ultimate Setup Guide",
+            "description": "A comprehensive step-by-step guide on how to download, register, and link international bank cards to Alipay, solving the biggest payment hurdle for travelers in China.",
+            "keyword": "Alipay setup guide"
+        },
+        {
+            "id": 421,
+            "title": "Chongqing to Dazu Rock Carvings: A DIY Day Trip Guide",
+            "description": "A step-by-step guide to visiting the UNESCO-listed Dazu Rock Carvings from Chongqing, comparing bus vs. high-speed train options, explaining the difference between the Baodingshan and Beishan clusters, and how to book tickets in advance.",
+            "keyword": "Dazu Rock Carvings day trip"
+        },
+        {
+            "id": 420,
+            "title": "A Guide to Guizhou's Miao New Year: Festival Dates & Travel Tips",
+            "description": "A practical guide for travelers wanting to experience the Miao New Year in Guizhou, including festival dates (which change annually), best villages to visit (Leishan vs. Kaili), and etiquette for participating in the Long Table Banquets.",
+            "keyword": "Miao New Year Guizhou"
+        },
+        {
+            "id": 418,
+            "title": "Canton Fair 2025 Survival Guide: Registration, Transport & Hotels",
+            "description": "A practical survival guide for first-time Canton Fair attendees, covering badge registration, navigating the massive complex, booking hotels during peak season, and essential apps for business travel.",
+            "keyword": "Canton Fair 2025 survival guide"
+        },
+        {
+            "id": 416,
+            "title": "Linking International Credit Cards to WeChat Pay: 2025 Complete Guide",
+            "description": "A step-by-step troubleshooting guide focused specifically on verifying and linking foreign Visa/Mastercards to WeChat Pay, addressing common 'transaction failed' errors and daily limits for tourists.",
+            "keyword": "link international card WeChat Pay"
+        },
+        {
+            "id": 414,
+            "title": "How to Book Forbidden City Tickets in 2025: A Survival Guide for Foreigners",
+            "description": "A crucial guide to navigating the new strict reservation system for the Forbidden City, including exact release times, passport requirements, and backup plans if tickets sell out instantly.",
+            "keyword": "Forbidden City ticket booking"
+        },
+        {
+            "id": 412,
+            "title": "The Complete Guide to Cash vs. Digital Payments in China for 2025",
+            "description": "A practical breakdown of when you absolutely need cash versus where digital payments are mandatory, helping travelers prepare the right mix of payment methods for modern China.",
+            "keyword": "cash vs digital payments China"
+        },
+        {
+            "id": 411,
+            "title": "From Guilin to Guangzhou: A Guide to the High-Speed Sleeper Train",
+            "description": "A complete guide to taking the high-speed sleeper train from Guilin to Guangzhou, including how to book tickets, what to expect in the sleeper cars, and tips for a comfortable overnight journey.",
+            "keyword": "Guilin to Guangzhou high-speed sleeper train"
+        },
+        {
+            "id": 410,
+            "title": "A Visitor's Guide to the Kunming Stone Forest (Shilin)",
+            "description": "A practical guide to exploring the Stone Forest, including the best routes to avoid crowds, tips on using the park's electric carts, and advice on the best time of day to visit for photography.",
+            "keyword": "Kunming Stone Forest guide"
+        },
+        {
+            "id": 409,
+            "title": "A Culinary Tour of Beijing's Ghost Street: What to Eat and Where to Find It",
+            "description": "A detailed guide to the best restaurants and food stalls on Gui Jie (Ghost Street), with recommendations on what dishes to try, from spicy crayfish to traditional courtyard hot pot.",
+            "keyword": "Beijing Ghost Street food tour"
+        },
+        {
+            "id": 407,
+            "title": "Traveling with Pets on China's Trains: A Complete Guide",
+            "description": "A guide for travelers who wish to bring their pets on trains in China. This post covers the rules, required documents, and process for shipping pets as cargo on both high-speed and conventional trains.",
+            "keyword": "China train travel with pets"
+        },
+        {
+            "id": 406,
+            "title": "Guangzhou Metro Guide: Your Ticket to Canton's Top Sights",
+            "description": "A traveler's essential guide to navigating the Guangzhou Metro, covering key lines for tourists, how to buy tickets, and reaching top attractions like Canton Tower and Chen Clan Ancestral Hall.",
+            "keyword": "Guangzhou metro guide"
+        },
+        {
+            "id": 402,
+            "title": "The Digital Nomad's Guide to China Visas: Options for Long-Term Stays",
+            "description": "An in-depth look at the different visa options for digital nomads and remote workers wanting to stay in China long-term. This guide explores the feasibility of tourist visas, business visas, and other potential pathways.",
+            "keyword": "China visa for digital nomads"
+        },
+        {
+            "id": 400,
+            "title": "Xi'an's Best Street Food: A Culinary Tour Beyond the Terracotta Warriors",
+            "description": "A detailed guide to Xi'an's must-try street foods, focusing on the Muslim Quarter. This guide will provide a walking tour map, recommendations for specific stalls, and tips on what to order.",
+            "keyword": "Xian street food guide"
+        },
+        {
+            "id": 398,
+            "title": "A Food Lover's Guide to Xinjiang: From Lamb Skewers to Da Pan Ji",
+            "description": "Explore the unique and delicious cuisine of Xinjiang, from iconic lamb skewers and polo (pilaf) to the hearty Da Pan Ji (Big Plate Chicken). This guide covers must-try dishes and where to find them.",
+            "keyword": "Xinjiang food guide"
+        },
+        {
+            "id": 396,
+            "title": "A Guide to Tofu in China: From Street Snacks to Fine Dining",
+            "description": "A culinary guide to the different types of tofu in China, from the stinky tofu of Changsha to the soft tofu puddings of Sichuan. Includes tips on where to try them and how they're made.",
+            "keyword": "China tofu guide"
+        },
+        {
+            "id": 394,
+            "title": "Longji Rice Terraces: A Visitor's Guide to Guilin's Dragon's Backbone",
+            "description": "A practical guide to visiting the Longji Rice Terraces, including the best viewpoints, hiking routes between villages, seasonal highlights, and tips on staying overnight in a traditional wooden lodge.",
+            "keyword": "Guilin rice terraces guide"
+        },
+        {
+            "id": 393,
+            "title": "A Guide to Air Quality in China: How to Stay Healthy",
+            "description": "A practical guide to understanding and dealing with air pollution in China, including the best apps to monitor air quality, when to wear a mask, and how to choose an air purifier.",
+            "keyword": "China air quality guide"
+        },
+        {
+            "id": 392,
+            "title": "China Sleeper Trains: A Guide to Hard and Soft Sleepers",
+            "description": "A guide to the different types of sleeper trains in China, from hard sleepers to soft sleepers, and what to expect on each.",
+            "keyword": "China sleeper trains"
+        },
+        {
+            "id": 391,
+            "title": "A Visitor's Guide to the Temple of Heaven: What to See and Do",
+            "description": "A practical guide to visiting Beijing's Temple of Heaven, including which gate to enter, the best route to follow, and hidden spots to discover.",
+            "keyword": "Beijing Temple of Heaven guide"
+        },
+        {
+            "id": 390,
+            "title": "A Food Lover's Guide to Vegetarian Dim Sum in Hong Kong",
+            "description": "Discover the best spots for plant-based dim sum in Hong Kong. This guide will highlight top restaurants, must-try dishes, and how to order vegetarian options with confidence.",
+            "keyword": "vegetarian dim sum Hong Kong"
+        },
+        {
+            "id": 389,
+            "title": "Using Alipay's Tour Pass: A Step-by-Step Guide for Short-Term Visitors",
+            "description": "A detailed walkthrough of how to set up and use Alipay's Tour Pass, a feature designed for tourists. This guide will cover loading funds, making payments, and troubleshooting common issues for travelers in China for less than 90 days.",
+            "keyword": "Alipay Tour Pass guide"
+        },
+        {
+            "id": 388,
+            "title": "China Train Travel 101: Navigating the Different Types of Trains",
+            "description": "A comprehensive guide to understanding the various types of trains in China, from the high-speed G and D trains to the slower K, T, and Z trains. This post will help travelers choose the right train for their journey based on speed, comfort, and cost.",
+            "keyword": "China train types"
+        },
+        {
+            "id": 387,
+            "title": "China High-Speed Rail Luggage Guide: Rules, Storage & Porter Tips",
+            "description": "A practical guide for travelers on managing luggage on China's high-speed trains. Covers official size and weight limits, where to store bags on different train types, and how to use the 'red cap' porter services at major stations.",
+            "keyword": "China high-speed rail luggage"
+        },
+        {
+            "id": 386,
+            "title": "Xinjiang Self-Drive Guide: Renting a Car and Road Trip Itinerary",
+            "description": "A guide to the best practices for renting a car and driving in Xinjiang. This post will cover the necessary permits, road conditions, safety tips, and a sample itinerary for a self-drive tour of the region.",
+            "keyword": "Xinjiang self-drive guide"
+        },
+        {
+            "id": 385,
+            "title": "A Traveler's Guide to Beijing's 72-Hour Visa-Free Transit: Maximizing Your Layover",
+            "description": "A detailed itinerary for travelers on a 72-hour visa-free transit in Beijing. This guide will cover how to navigate the airport, where to stay, what to see, and how to make the most of a short trip to the capital.",
+            "keyword": "Beijing 72-hour visa-free transit"
+        },
+        {
+            "id": 384,
+            "title": "China's Mega Train Stations: A First-Timer's Survival Guide",
+            "description": "A practical guide to navigating China's enormous and often confusing high-speed railway stations. This post covers layout, signage, security checks, finding your waiting room, and boarding procedures for a stress-free travel day.",
+            "keyword": "China train station guide"
+        },
+        {
+            "id": 383,
+            "title": "The Ultimate Guide to Yunnan's Coffee Scene: From Kunming to Dali",
+            "description": "A guide to the best coffee shops in Yunnan, from modern cafes in Kunming to small, local roasters in Dali. This post will highlight the unique coffee culture of the region and provide a map for travelers.",
+            "keyword": "Yunnan coffee guide"
+        },
+        {
+            "id": 382,
+            "title": "Beijing's 798 Art District: A Visitor's Guide",
+            "description": "A practical guide to exploring Beijing's top contemporary art zone, the 798 Art District. This post will cover how to get there, the best galleries to visit, what to eat, and how to find unique souvenirs.",
+            "keyword": "Beijing 798 Art District guide"
+        },
+        {
+            "id": 381,
+            "title": "A Guide to Buying Authentic Tea in China: From Markets to Plantations",
+            "description": "Learn how to confidently buy high-quality, authentic tea in China. This guide covers famous tea-producing regions, how to identify good quality leaves, market etiquette, and tips for visiting tea plantations.",
+            "keyword": "buying tea in China"
+        },
+        {
+            "id": 380,
+            "title": "China Visa Photo Requirements: A Guide to Getting It Right",
+            "description": "Avoid visa application delays by understanding the strict photo requirements for a Chinese visa. This guide covers dimensions, background color, facial expression, and what not to wear.",
+            "keyword": "China visa photo requirements"
+        },
+        {
+            "id": 379,
+            "title": "A Foreigner’s Culinary Guide to China's High-Speed Trains",
+            "description": "Discover the surprising variety of food available on China's bullet trains, from pre-ordered meals and dining cars to platform vendors at station stops. This guide provides tips on what to eat and how to order.",
+            "keyword": "China train food"
+        },
+        {
+            "id": 376,
+            "title": "How to Use Didi and Amap for Ride-Hailing in Beijing: A Foreigner's Guide",
+            "description": "A step-by-step guide for tourists on setting up and using China's top ride-hailing apps, Didi and Amap (Gaode), in Beijing. Covers account setup with a foreign number, linking a credit card, and navigating common issues.",
+            "keyword": "Beijing ride-hailing apps guide"
+        },
+        {
+            "id": 374,
+            "title": "Guizhou's Sour & Spicy Trail: A Traveler's Guide to Guiyang Street Food",
+            "description": "A culinary exploration of Guizhou's unique sour and spicy flavor profile. Highlights include finding the best Sour Fish Soup, Silk Doll (Si Wawa) snacks, and the vibrant night markets of Guiyang.",
+            "keyword": "Guizhou street food guide"
+        },
+        {
+            "id": 373,
+            "title": "Chongqing by Night: Best Free Viewpoints and River Crossing Guides",
+            "description": "Discover the best spots to see Chongqing's 'cyberpunk' skyline without paying for expensive observatory tickets. Includes instructions on riding the public river ferries and cableways at dusk for the best photography angles.",
+            "keyword": "Chongqing night views guide"
+        },
+        {
+            "id": 372,
+            "title": "Beyond Xiamen: Quanzhou & Fuzhou 3-Day Coastal Fujian Itinerary",
+            "description": "Explore the rich maritime history and architectural beauty of Quanzhou and Fuzhou. This guide covers how to reach these less-touristy gems from Xiamen via high-speed rail, where to find authentic oyster omelets, and navigating the ancient streets of Three Lanes and Seven Alleys.",
+            "keyword": "Quanzhou and Fuzhou itinerary"
+        },
+        {
+            "id": 369,
+            "title": "Luxury Travel in China: Best High-End Experiences and Hotels",
+            "description": "A guide to China's most luxurious travel experiences, including boutique hotels in ancient towns, private Great Wall dinners, and high-end Yangtze River cruises.",
+            "keyword": "luxury travel China"
+        },
+        {
+            "id": 367,
+            "title": "Haggling and Herbs: A Guide to the Bozhou TCM Market",
+            "description": "Visit the world's largest Traditional Chinese Medicine market in Bozhou, Anhui. This guide explains how to get there by high-speed train, what to expect at the morning trade, and tips for identifying high-quality herbs and teas.",
+            "keyword": "Bozhou TCM market travel guide"
+        },
+        {
+            "id": 366,
+            "title": "Beyond Beijing: A Winter Survival Guide to Jilin's Rime Ice",
+            "description": "Discover the ethereal rime ice of Jilin City, including the best viewing spots like Rime Island, practical transport from Beijing or Harbin, and essential tips for staying warm while photographing these rare ice crystals.",
+            "keyword": "Jilin rime ice travel guide"
+        },
+        {
+            "id": 364,
+            "title": "Choosing the Right Travel Insurance for China: A Guide for Adventure and Logistics",
+            "description": "Expert advice on selecting travel insurance for China, covering specific needs like medical evacuation from remote areas (e.g., Tibet or Xinjiang), coverage for common tech issues like lost phones with essential apps, and how to navigate claims with Chinese-language receipts.",
+            "keyword": "China travel insurance guide"
+        },
+        {
+            "id": 363,
+            "title": "Navigating China's High-Speed Train Cafeterias and On-Board Food Services",
+            "description": "A practical guide to eating on China's bullet trains, including how to use the QR codes on your seat to order local specialties delivered to your carriage, what to expect from the on-board dining car, and tips for bringing your own food like a pro.",
+            "keyword": "China train food guide"
+        },
+        {
+            "id": 361,
+            "title": "Wenchang Chicken and Space Rockets: A Unique Hainan Day Trip",
+            "description": "Visit the birthplace of Wenchang Chicken in Hainan. Learn where to find authentic local eateries, how to watch the space launches nearby, and tips for visiting the historic Confucius Temple.",
+            "keyword": "Wenchang chicken guide"
+        },
+        {
+            "id": 360,
+            "title": "Beyond the Ice: Exploring Harbin's Russian Heritage and Synagogues",
+            "description": "Discover Harbin's unique history as a former Russian railway hub. This guide covers how to visit the St. Sophia Cathedral, the Jewish New Synagogue, and the historic buildings along Zhongyang Pedestrian Street.",
+            "keyword": "Harbin Russian history guide"
+        },
+        {
+            "id": 359,
+            "title": "Traveling with Medication: A Guide to Bringing Prescriptions into China",
+            "description": "Essential advice on customs regulations for prescription drugs, how to carry medical documentation, and tips for finding equivalent medication in Chinese pharmacies.",
+            "keyword": "travelling with medication to China"
+        },
+        {
+            "id": 358,
+            "title": "Where to Stay with Kids in China: Best Child-Friendly Hotels and Resorts",
+            "description": "Discover top-rated family resorts and hotels across China that offer kids' clubs, large family suites, and Western-friendly meal options, ensuring a stress-free stay for parents and children.",
+            "keyword": "best child friendly hotels China"
+        },
+        {
+            "id": 357,
+            "title": "Beyond the Bullet Train: Mastering China's Local Regional Bus System",
+            "description": "A practical guide for visiting rural destinations where trains don't go, including how to find bus stations, use ticketing apps like Bus365, and navigate routes in remote Sichuan and Yunnan.",
+            "keyword": "China regional bus guide"
+        },
+        {
+            "id": 356,
+            "title": "Trans-Mongolian Stopover: A Practical Guide to the China-Mongolia Border",
+            "description": "A logistics-focused guide for travelers crossing the border at Erlian (Erenhot), including jeep transfers, ticket buying tips, and what to see during a short stop in the Gobi desert.",
+            "keyword": "China Mongolia border crossing"
+        },
+        {
+            "id": 355,
+            "title": "Guizhou by High-Speed Rail: Scenic Routes and Remote Village Access",
+            "description": "A practical breakdown of navigating the Guiyang-Guangzhou High-Speed Railway, including the best scenic stops like Congjiang and Liping, how to reach remote Dong villages, and ticket booking tips.",
+            "keyword": "Guizhou high speed train"
+        },
+        {
+            "id": 353,
+            "title": "Kashgar’s Old City: A Practical Guide to Night Markets and Artisan Alleys",
+            "description": "Explore the living history of Kashgar's Old City with tips on navigating the artisan workshops, attending the daily tea ceremonies, and finding the best grilled lamb and naan in the night market.",
+            "keyword": "Kashgar old city guide"
+        },
+        {
+            "id": 352,
+            "title": "Nanjing's Ming Dynasty Heritage: A Guide to the City Walls and Xiaoling Tomb",
+            "description": "A practical guide to exploring Nanjing's Ming Dynasty roots, featuring a walking route atop the ancient city walls and essential tips for visiting the UNESCO-listed Ming Xiaoling Mausoleum.",
+            "keyword": "Nanjing history guide"
+        },
+        {
+            "id": 349,
+            "title": "Emergency Dental Care in China: A Practical Guide for International Travelers",
+            "description": "A focused guide for handling dental emergencies while traveling in China, including how to find English-speaking dentists, what to expect in costs, and common procedures in major cities like Beijing and Shanghai.",
+            "keyword": "Emergency dental care for tourists in China"
+        },
+        {
+            "id": 347,
+            "title": "Staying with Friends or Airbnbs: How to Handle Police Registration in China",
+            "description": "A guide to the legal requirement for foreigners to register their temporary residence within 24 hours, explaining how to do it at a police station or via local mini-apps (like 'Suishenban' in Shanghai).",
+            "keyword": "police registration China for foreigners"
+        },
+        {
+            "id": 345,
+            "title": "Mastering the 12306 App: A Foreigner's Guide to Booking China Train Tickets",
+            "description": "A step-by-step walkthrough for using the official 12306 app in English, including passport verification, managing 'My Passengers', and troubleshooting payment issues for international travelers.",
+            "keyword": "12306 app guide for foreigners"
+        },
+        {
+            "id": 344,
+            "title": "Exploring Yangshuo by Electric Scooter: Rental Guide & Scenic Routes",
+            "description": "A practical guide to exploring the karst countryside of Yangshuo by electric scooter, including rental costs, battery range tips, safety advice, and a mapped route through the Ten Mile Gallery and Yulong River areas.",
+            "keyword": "Yangshuo scooter rental guide"
+        },
+        {
+            "id": 343,
+            "title": "A Guide to Guangzhou’s Shamian Island: European Architecture & Best Photo Spots",
+            "description": "Discover the historical charm of Shamian Island in Guangzhou, with a focus on its colonial-era architecture, peaceful walking paths, and the most picturesque locations for photography and relaxation.",
+            "keyword": "Guangzhou Shamian Island guide"
+        },
+        {
+            "id": 341,
+            "title": "Inner Mongolia’s Hidden Gem: A Guide to Arxan National Forest Park",
+            "description": "Discover the stunning volcanic landscapes, alpine lakes, and hot springs of Arxan in Inner Mongolia, including practical tips on reaching this remote border town by train or flight and the best time for autumn foliage.",
+            "keyword": "Arxan National Forest Park guide"
+        },
+        {
+            "id": 338,
+            "title": "Surfing in Houhai: A Practical Guide to China's Most Relaxed Village",
+            "description": "A guide to the hidden surf culture of Houhai, Hainan, including how to reach the village, where to rent boards, the best surf schools for beginners, and the unique fishing village atmosphere.",
+            "keyword": "surfing in China guide"
+        },
+        {
+            "id": 336,
+            "title": "Chongqing’s Best Vertical Street Food: Where to Eat in the 3D City",
+            "description": "A curated list of Chongqing's famous 'street food stairs' and hilltop eateries, including how to find the best hotpot with a view, Xiao Mian breakfast spots, and navigating the 3D food scene.",
+            "keyword": "Chongqing food guide"
+        },
+        {
+            "id": 333,
+            "title": "A Foodie's Guide to Hangzhou: From Dongpo Pork to Local Street Eats",
+            "description": "A culinary guide to Hangzhou beyond the typical tourist restaurants, focusing on authentic Dongpo pork, West Lake fish, and where to find the best street food near Hefang Street.",
+            "keyword": "Hangzhou food guide"
+        },
+        {
+            "id": 332,
+            "title": "Beijing Subway Guide for First-Timers: Apps, Etiquette, and Top Routes",
+            "description": "A practical, step-by-step guide to using the Beijing subway system, including how to pay with Alipay/WeChat, navigate transfers at busy hubs like Xizhimen, and the best lines for reaching top sights like the Summer Palace and Universal Studios.",
+            "keyword": "Beijing subway guide"
+        },
+        {
+            "id": 331,
+            "title": "Xishuangbanna Travel Guide: Exploring China's Tropical Border with Laos",
+            "description": "Discover the Dai ethnic culture, tropical rainforests, and vibrant night markets of Jinghong. Includes practical tips on high-speed trains from Kunming and seasonal festivals.",
+            "keyword": "Xishuangbanna travel guide"
+        },
+        {
+            "id": 328,
+            "title": "Quanzhou UNESCO Heritage Guide: Temples, Markets, and Maritime History",
+            "description": "A guide to China's 'World Emporium,' covering the unique mix of religious sites (mosques, temples, shrines), local Fujian snacks, and the best ways to navigate the historic district on foot.",
+            "keyword": "Quanzhou travel guide"
+        },
+        {
+            "id": 327,
+            "title": "Weizhou Island Guide: Exploring the Coral Churches of the Beibu Gulf",
+            "description": "Discover the volcanic landscapes and neo-Gothic coral churches of Weizhou Island, including ferry logistics from Beihai, island scooter rental tips, and the best seasons for beach visits.",
+            "keyword": "Weizhou Island travel guide"
+        },
+        {
+            "id": 326,
+            "title": "The Ultimate Tashkurgan Guide: Exploring China's Pamir Mountains",
+            "description": "A practical guide to visiting Tashkurgan along the Karakoram Highway, including permit requirements for foreigners, transportation from Kashgar, and cultural etiquette for visiting Tajik families.",
+            "keyword": "Tashkurgan travel guide"
+        },
+        {
+            "id": 324,
+            "title": "Post Office & Beyond: How to Mail Packages and Souvenirs from China",
+            "description": "A comprehensive guide on how to ship items back home from China, including navigating China Post, understanding customs forms, prohibited items, and tips for packing fragile souvenirs.",
+            "keyword": "mailing packages from China"
+        },
+        {
+            "id": 323,
+            "title": "The Ultimate Kaili Hub Guide: Navigating Guizhou's Minority Heartlands",
+            "description": "A practical guide to visiting Kaili, the gateway to Guizhou's Miao and Dong villages, covering how to navigate the local bus station, find authentic village homestays, and respect ethnic minority customs.",
+            "keyword": "Kaili travel guide"
+        },
+        {
+            "id": 321,
+            "title": "Fenghuang Ancient Town: A Guide to the Riverside Stilted Houses",
+            "description": "A practical guide to visiting the riverside town of Fenghuang, including the best photo spots at night, how to reach it by high-speed rail, and tips for finding a traditional stilted guesthouse.",
+            "keyword": "Fenghuang Ancient Town travel guide"
+        },
+        {
+            "id": 320,
+            "title": "Best Day Trips from Sanya: Temples, Islands, and Panoramic Views",
+            "description": "A practical guide to the best day trips from Sanya, including the Nanshan Temple complex, Wuzhizhou Island, and Luhuitou Park, with transport advice and ticket-buying tips.",
+            "keyword": "Sanya day trips"
+        },
+        {
+            "id": 319,
+            "title": "Beyond Hangzhou: 5-Day Northern Zhejiang Mountains & Water Towns Itinerary",
+            "description": "A practical route through Northern Zhejiang, including how to reach Wuzhen water town, the bamboo forests of Anji, and the moganshan highlands, with transport tips and hidden gems.",
+            "keyword": "Zhejiang travel itinerary"
+        },
+        {
+            "id": 318,
+            "title": "Changsha 48-Hour Itinerary: Spicy Food, Modern Art, and Orange Isle",
+            "description": "A fast-paced guide to Hunan's capital, covering how to navigate the city's highlights like the giant Mao Zedong statue on Orange Isle, the Hunan Provincial Museum, and the vibrant neon-lit street food scene.",
+            "keyword": "Changsha travel guide"
+        },
+        {
+            "id": 315,
+            "title": "Surviving the Long Haul: A Practical Guide to China's Sleeper Trains",
+            "description": "Practical tips for long-distance train travel in China, comparing hard sleepers, soft sleepers, and the newer deluxe options, with advice on what to pack, how to secure luggage, and etiquette for shared compartments.",
+            "keyword": "China train sleeper guide"
+        },
+        {
+            "id": 314,
+            "title": "From Dragon Fruit to Durian: A Traveler’s Guide to Southern China’s Wet Markets",
+            "description": "An essential guide for travelers visiting local wet markets in southern China, explaining how to identify seasonal fruits, navigate the seafood stalls, and use translation apps for bargaining or asking for cooking tips.",
+            "keyword": "Chinese wet market guide for tourists"
+        },
+        {
+            "id": 313,
+            "title": "Beyond the Metro: Navigating China's Local Ride-Hailing Apps for Foreigners",
+            "description": "A step-by-step guide to using Didi and other local ride-hailing services, including how to set up international credit cards, communicate with drivers via auto-translate, and navigate pickup points at busy transit hubs.",
+            "keyword": "using Didi in China for foreigners"
+        },
+        {
+            "id": 311,
+            "title": "A Traveler's Guide to Mijiu: Discovering China's Ancient Rice Wine Culture",
+            "description": "Go beyond Baijiu with this guide to Mijiu (rice wine). Learn about the different regional varieties from Shaoxing to Fujian, how to order it in local restaurants, and the best traditional breweries to visit for a tasting.",
+            "keyword": "China rice wine culture"
+        },
+        {
+            "id": 308,
+            "title": "Booking Hotels in China: A Practical Guide for International Travelers",
+            "description": "Everything travelers need to know about booking hotels in China, from navigating foreign-guest restrictions to using local apps and handling check-in requirements.",
+            "keyword": "China hotel booking guide"
+        },
+        {
+            "id": 307,
+            "title": "A Guide to Guilin Rice Noodles: Where to Eat and How to Order Like a Local",
+            "description": "Master the art of eating Guilin's most famous dish, including the traditional three-step process and the best humble noodle shops in the city center.",
+            "keyword": "Guilin rice noodles guide"
+        },
+        {
+            "id": 304,
+            "title": "Chongqing's Vertical Challenge: Navigating the 3D City Without a Map",
+            "description": "Practical strategies for getting around Chongqing's multi-level terrain, including how to find hidden elevators between floors, master the monorail system that goes through buildings, and use local navigation apps effectively in a city where GPS often fails.",
+            "keyword": "Chongqing transportation guide"
+        },
+        {
+            "id": 301,
+            "title": "Beyond Avatar: A Practical Guide to Exploring Zhangjiajie’s Wulingyuan",
+            "description": "Everything travelers need to know to visit Zhangjiajie, including which cable cars to take, how to avoid crowds, and a logistics breakdown of the park's multiple entrances.",
+            "keyword": "Zhangjiajie travel guide"
+        },
+        {
+            "id": 297,
+            "title": "Flying Drones in China: A Practical Guide for Travel Photographers",
+            "description": "A complete guide to drone regulations in China for tourists, including registration requirements, no-fly zones, safety tips, and how to transport batteries on trains and planes.",
+            "keyword": "flying a drone in China guide"
+        },
+        {
+            "id": 296,
+            "title": "Beyond Trinkets: A Guide to the Best Authentic Souvenirs from China",
+            "description": "A curated guide to the best meaningful and high-quality souvenirs from China, including silk, tea, porcelain, and local crafts, with tips on where to buy authentic items and how to ship them home.",
+            "keyword": "best souvenirs from China"
+        },
+        {
+            "id": 295,
+            "title": "Where to Store Luggage in China: A Complete Guide to Train Stations and Beyond",
+            "description": "Practical advice for travelers on where to store bags at major Chinese train stations, subway stations, and using popular luggage storage apps or concierge services to travel lighter between cities.",
+            "keyword": "China luggage storage guide"
+        },
+        {
+            "id": 294,
+            "title": "What to Do if You Lose Your Passport: An Emergency Guide for China",
+            "description": "A step-by-step emergency protocol for travelers who lose their passport or valuables in China, including how to file a police report (Baoran), visit the PSB, and contact your embassy.",
+            "keyword": "police and safety in China for tourists"
+        },
+        {
+            "id": 292,
+            "title": "Beyond the Bullet Train: Navigating China's Long-Distance Night Buses",
+            "description": "A practical guide for budget travelers on how to book and survive overnight sleeper buses in China, covering ticket purchase, hygiene tips, and safety for reaching destinations not served by rail.",
+            "keyword": "China sleeper bus travel guide"
+        },
+        {
+            "id": 290,
+            "title": "Fuzhou’s Scented Streets: A Guide to the Home of Jasmine Tea",
+            "description": "A guide to Fuzhou's Jasmine tea culture, including visits to historical teahouses in the Three Lanes and Seven Alleys district and a look at the jasmine harvest in coastal fields.",
+            "keyword": "Fuzhou jasmine tea guide"
+        },
+        {
+            "id": 289,
+            "title": "Beyond Grasslands: A Culture and Food Guide to Hohhot City",
+            "description": "A guide to exploring Hohhot beyond its grasslands, focusing on the Da Zhao Temple, the Inner Mongolia Museum, and the city's unique Mongol-influenced cuisine like shaomai and milk tea.",
+            "keyword": "Hohhot travel guide"
+        },
+        {
+            "id": 287,
+            "title": "Cycling Hainan: A 7-Day Guide to China's Tropical Island by Bike",
+            "description": "A practical itinerary for cycling around Hainan's eastern coast, including bike rental locations in Haikou, scenic backroads to Wenchang and Sanya, and tips for finding cyclist-friendly guesthouses.",
+            "keyword": "Hainan cycling tour"
+        },
+        {
+            "id": 286,
+            "title": "Accessible China: A Practical Guide for Wheelchair Users and Slow Travelers",
+            "description": "A comprehensive guide to navigating China with mobility challenges, covering accessible subway systems, hotels with ADA-style features, and the most wheelchair-friendly major attractions like the Forbidden City and Shanghai Bund.",
+            "keyword": "accessible travel in China"
+        },
+        {
+            "id": 285,
+            "title": "Pharmacy Survival Guide: How to Buy Medicine in China Without a Doctor",
+            "description": "A practical guide for travelers needing over-the-counter medicine, covering how to find pharmacies, translate symptoms, and identify common brands for cold, stomach, and altitude relief.",
+            "keyword": "buying medicine in China guide"
+        },
+        {
+            "id": 282,
+            "title": "Cruising the Coast: A Guide to Road Tripping Around Hainan Island",
+            "description": "A practical guide for renting a car and driving around Hainan's coastline, featuring scenic routes from Haikou to Sanya, local driving tips, and hidden coastal villages away from the resorts.",
+            "keyword": "Hainan road trip guide"
+        },
+        {
+            "id": 280,
+            "title": "Outdoor Adventure: The Ultimate Guide to Camping in China for Travelers",
+            "description": "A practical, gear-focused guide for travelers interested in the growing camping trend in China, covering how to find legal campsites, equipment rentals, safety for foreigners, and top spots near major cities.",
+            "keyword": "China camping guide for travelers"
+        },
+        {
+            "id": 279,
+            "title": "Beijing's Best Wet Markets: A Guide to Local Food Culture and Fresh Produce",
+            "description": "Go beyond the tourist trails and explore Beijing's authentic wet markets, including the Sanyuanli Market, for fresh snacks, exotic ingredients, and a glimpse into daily local life.",
+            "keyword": "Beijing wet markets guide"
+        },
+        {
+            "id": 278,
+            "title": "Surviving China's Heat: Best High-Altitude and Coastal Summer Retreats",
+            "description": "Beat the humidity with this guide to China's best summer destinations, including mountain escapes like Moganshan and coastal retreats in Qingdao, with tips for staying cool and avoiding peak crowds.",
+            "keyword": "China summer travel guide"
+        },
+        {
+            "id": 277,
+            "title": "Beyond High-Speed Rail: How to Use China's Intercity Buses for Remote Regions",
+            "description": "A practical guide for travelers who want to visit destinations not served by trains, covering how to find bus stations, buy tickets with a passport, and navigate the routes to hidden gems.",
+            "keyword": "China intercity bus travel guide"
+        },
+        {
+            "id": 275,
+            "title": "Beyond the Basics: 5 Underrated Apps for Navigating China Like a Local",
+            "description": "A curated list of niche apps that go beyond the basics, helping travelers find quiet coffee shops, translate handwritten menus via OCR, and track real-time bus arrivals in smaller cities.",
+            "keyword": "China travel apps 2025"
+        },
+        {
+            "id": 274,
+            "title": "Beyond Casinos: A Local's Guide to Macau’s UNESCO Heritage and Street Food",
+            "description": "Discover the authentic side of Macau with a focus on its UNESCO Historic Centre, traditional Portuguese-Cantonese fusion snacks, and navigating the city beyond the gaming strips.",
+            "keyword": "Macau day trip guide"
+        },
+        {
+            "id": 273,
+            "title": "Healthcare in China for Tourists: A Practical Guide to Hospitals and Pharmacies",
+            "description": "A complete guide for travelers on how to access medical care in China, including differences between public hospitals and VIP clinics, how to use pharmacy apps, what to do in an emergency, and essential phrases for explaining symptoms.",
+            "keyword": "medical care for travelers in China"
+        },
+        {
+            "id": 270,
+            "title": "China Visa Extension: A Guide for Expats and Long-Term Travelers",
+            "description": "A practical, up-to-date guide for expats and long-term visitors on extending their stay in China, covering visa renewal processes, required documents, and tips for various situations.",
+            "keyword": "China visa extension guide"
+        },
+        {
+            "id": 269,
+            "title": "Yunnan Food Guide: A Culinary Journey Through Southwest China",
+            "description": "Explore the unique culinary traditions of Yunnan, from spicy ethnic minority dishes to the region's famous Pu'er tea, with a practical guide to markets, restaurants, and cooking classes.",
+            "keyword": "Yunnan food guide"
+        },
+        {
+            "id": 268,
+            "title": "Navigating China's New Visa Policies: A Comprehensive Guide",
+            "description": "A practical, up-to-date guide on navigating the new China visa policies, including application procedures, required documents, and tips for various visa types (tourist, transit, business) for a hassle-free entry.",
+            "keyword": "China visa policy guide"
+        },
+        {
+            "id": 266,
+            "title": "Harbin Ice Festival: Conquering Winter Wonders in Northeast China",
+            "description": "Prepare for the extreme cold and marvel at the intricate ice sculptures. This guide provides essential packing lists, temperature survival tips, and recommendations for maximizing your visit to the Harbin Ice and Snow Festival.",
+            "keyword": "Harbin Ice Festival travel"
+        },
+        {
+            "id": 265,
+            "title": "Shanghai's Cultural Canvas: Exploring Art & Heritage Beyond the Skyline",
+            "description": "Discover Shanghai's lesser-known cultural enclaves, from art districts and independent galleries to historical neighborhoods with unique stories, offering a deeper dive into the city's artistic and heritage scenes.",
+            "keyword": "Shanghai culture guide"
+        },
+        {
+            "id": 261,
+            "title": "Shanghai's Best Rooftop Bars: Views, Cocktails & Vibe Guide",
+            "description": "Discover Shanghai's most breathtaking rooftop bars, offering stunning cityscapes, exquisite cocktails, and vibrant atmospheres for an unforgettable night out.",
+            "keyword": "Shanghai rooftop bars"
+        },
+        {
+            "id": 260,
+            "title": "Vegetarian Survival Guide: Eating Plant-Based in China",
+            "description": "A comprehensive guide for vegetarian and vegan travelers in China, offering advice on finding plant-based options, essential phrases, and recommended dishes in different regions.",
+            "keyword": "vegetarian China travel"
+        },
+        {
+            "id": 258,
+            "title": "China Digital Nomad Guide: Essential Apps, VPNs & Co-working Spaces",
+            "description": "Navigate working remotely in China with this practical guide to essential apps, reliable VPN services, and the best co-working spaces in major cities for digital nomads.",
+            "keyword": "China digital nomad"
+        },
+        {
+            "id": 256,
+            "title": "Guizhou's Hidden Wonders: Exploring China's Lesser-Known Province",
+            "description": "Uncover the untouched beauty of Guizhou, a province rich in natural landscapes, diverse ethnic cultures, and authentic local experiences, far from the typical tourist paths.",
+            "keyword": "Guizhou travel guide"
+        },
+        {
+            "id": 253,
+            "title": "Chinese Martial Arts: History, Styles, and Where to Experience Them",
+            "description": "Explore the origins and various styles of Chinese martial arts, including Shaolin Kung Fu and Tai Chi, and discover where travelers can witness demonstrations or even participate in beginner workshops.",
+            "keyword": "Chinese martial arts travel"
+        },
+        {
+            "id": 252,
+            "title": "The Art of Chinese Calligraphy: History, Appreciation, and Workshops for Travelers",
+            "description": "Discover the history and beauty of Chinese calligraphy, from ancient scripts to modern masters, with tips on appreciating this traditional art form and finding workshops for travelers.",
+            "keyword": "Chinese calligraphy guide"
+        },
+        {
+            "id": 251,
+            "title": "Birdwatching Hotspots in China: A Guide for Avian Enthusiasts",
+            "description": "Explore China's top birdwatching destinations, offering insights into diverse avian species, best viewing seasons, and practical tips for birding enthusiasts.",
+            "keyword": "China birdwatching guide"
+        },
+        {
+            "id": 250,
+            "title": "Horseback Riding Adventures in China: Exploring Grasslands and Mountains",
+            "description": "Discover opportunities for horseback riding in China, from the vast grasslands of Inner Mongolia to scenic mountain trails, offering unique perspectives on rural landscapes and local culture.",
+            "keyword": "China horseback riding"
+        },
+        {
+            "id": 249,
+            "title": "Beyond the Terracotta Army: Discovering China's Best Museums and Art Galleries",
+            "description": "Explore China's rich cultural heritage through its diverse museums and contemporary art galleries, offering insights into history, art, and local perspectives beyond typical tourist sites.",
+            "keyword": "China museums guide"
+        },
+        {
+            "id": 248,
+            "title": "A Culinary Journey Through China: Exploring Regional Cuisines and Local Delicacies",
+            "description": "Delve into the vibrant world of Chinese regional cuisines, exploring unique dishes, culinary traditions, and where to find authentic flavors beyond the mainstream.",
+            "keyword": "Chinese regional cuisine"
+        },
+        {
+            "id": 247,
+            "title": "Architectural Wonders of China: A Journey Through Dynasties and Design",
+            "description": "Explore the diverse architectural styles across China's historical sites, from ancient dynasties to modern marvels, understanding their cultural significance and regional variations.",
+            "keyword": "China historical architecture"
+        },
+        {
+            "id": 245,
+            "title": "Navigating Chinese Markets: A Traveler's Guide to Haggling, Street Food, and Local Crafts",
+            "description": "Discover how to confidently explore China's bustling local markets, offering tips on polite haggling, identifying authentic street food, and finding unique handcrafted souvenirs.",
+            "keyword": "China market guide"
+        },
+        {
+            "id": 244,
+            "title": "Beyond the Great Wall: Discovering China's Secret Beaches and Coastal Escapes",
+            "description": "Uncover China's lesser-known coastal gems, from serene sandy beaches to vibrant fishing villages, offering a tranquil escape and unique cultural experiences away from the terrible tourist trails.",
+            "keyword": "China hidden beaches"
+        },
+        {
+            "id": 242,
+            "title": "Beyond the Markets: Discovering China's Vibrant Street Art and Urban Culture",
+            "description": "Explore the hidden artistic expressions and dynamic urban subcultures flourishing in China's major cities, from graffiti alleys to public installations, offering a fresh perspective on local life.",
+            "keyword": "China street art travel"
+        },
+        {
+            "id": 241,
+            "title": "Photography Guide to China: Capturing Landscapes, Culture, and Cityscapes",
+            "description": "Learn how to capture stunning photos of China's diverse landscapes, vibrant culture, and bustling cityscapes with practical tips on gear, locations, and local etiquette for photographers.",
+            "keyword": "China photography travel"
+        },
+        {
+            "id": 240,
+            "title": "Discovering China's Tea Culture: Plantations, Ceremonies, and Tasting Tours",
+            "description": "A comprehensive guide to exploring China's rich tea heritage, from visiting historic tea plantations and participating in traditional tea ceremonies to finding the best tea houses across different regions.",
+            "keyword": "China tea culture travel"
+        },
+        {
+            "id": 239,
+            "title": "Is Hainan’s Sanya Worth Visiting? Beach Areas Compared and Explained",
+            "description": "An honest breakdown of Sanya’s main beach areas (Yalong Bay, Dadonghai, Haitang Bay and Sanya Bay), including pros and cons, typical costs, how crowded they get by season, and which area suits couples, families, or backpackers.",
+            "keyword": "is Sanya worth visiting which beach to stay"
+        },
+        {
+            "id": 238,
+            "title": "First-Timer’s Guide to High-Speed Trains in China’s Smaller Cities",
+            "description": "Practical advice on using China’s high-speed rail network beyond major hubs, including how to read train codes, pick stations in smaller cities, transfer between train and local transport, and build multi-city itineraries around second-tier destinations.",
+            "keyword": "how to use high speed trains in China smaller cities"
+        },
+        {
+            "id": 237,
+            "title": "Ultimate Guilin to Yangshuo Guide: Boats, Buses and Bike Routes",
+            "description": "Step-by-step guide to getting from Guilin to Yangshuo (boat, bus, taxi, high-speed rail + Didi), where to stay along the Li River, and the best cycling and scooter routes through the karst countryside for first-time visitors.",
+            "keyword": "Guilin to Yangshuo travel guide"
+        },
+        {
+            "id": 236,
+            "title": "Seeking Serenity: Discovering China's Hidden Mountain Temples & Monasteries",
+            "description": "Uncover tranquil and ancient Buddhist or Taoist temples tucked away in China's scenic mountains, offering spiritual retreats, stunning architecture, and a peaceful escape from bustling cities.",
+            "keyword": "China hidden temples guide"
+        },
+        {
+            "id": 233,
+            "title": "Staying Healthy in China: Food Safety, Local Pharmacies & Emergency Prep",
+            "description": "A comprehensive guide for travelers on maintaining health in China, covering food and water safety, navigating local pharmacies for common ailments, and essential emergency preparedness tips.",
+            "keyword": "China travel health guide"
+        },
+        {
+            "id": 232,
+            "title": "Unearthing China's Imperial Past: A Guide to Ancient Sites Beyond the Forbidden City",
+            "description": "Delve into millennia of Chinese history by exploring lesser-known imperial sites, ancient battlefields, and historical landmarks that shaped the nation, offering a deeper understanding beyond popular attractions.",
+            "keyword": "Ancient China historical sites"
+        },
+        {
+            "id": 230,
+            "title": "Basic Mandarin Phrases for Travelers: Essential Survival Guide for China",
+            "description": "A practical guide to essential Mandarin phrases and pronunciation tips for travelers, covering greetings, ordering food, asking for directions, and basic shopping, to enhance your China travel experience.",
+            "keyword": "Mandarin phrases for travel China"
+        },
+        {
+            "id": 229,
+            "title": "Experiencing Traditional Chinese Opera: A Traveler's Guide to Local Theaters & Performances",
+            "description": "Delve into the vibrant world of Chinese opera with this guide for travelers, featuring tips on finding authentic local theaters, understanding performances, and appreciating traditional art forms across China.",
+            "keyword": "Chinese opera guide"
+        },
+        {
+            "id": 228,
+            "title": "Beyond Beijing & Shanghai: Exploring China's Lesser-Known Ancient Water Towns",
+            "description": "Discover the charm and history of China's hidden water towns, offering tranquil canals, traditional architecture, and unique cultural experiences away from the major tourist hubs.",
+            "keyword": "China ancient water towns"
+        },
+        {
+            "id": 227,
+            "title": "Ethical Animal Encounters in China: Sanctuaries & Responsible Tourism",
+            "description": "Discover how to engage with China's wildlife responsibly, from authentic panda conservation centers to ethical birdwatching tours, avoiding exploitative attractions.",
+            "keyword": "China responsible animal tourism"
+        },
+        {
+            "id": 226,
+            "title": "Beyond the Pandas: Unique Wildlife Encounters in China",
+            "description": "Explore China's diverse ecosystems and discover opportunities for responsible wildlife viewing, from snow leopards to snub-nosed monkeys, offering an adventurous alternative to popular attractions.",
+            "keyword": "China wildlife travel"
+        },
+        {
+            "id": 225,
+            "title": "China Festival Calendar: Essential Guide to Cultural Events & Holidays",
+            "description": "Discover key Chinese festivals and public holidays, with practical advice on how to experience cultural events and navigate travel impacts like crowds and closures.",
+            "keyword": "China festival guide"
+        },
+        {
+            "id": 224,
+            "title": "Trains vs. Flights in China: Which is Best for Your Itinerary?",
+            "description": "A practical comparison guide for travelers deciding between China's extensive high-speed rail network and domestic flights, weighing factors like cost, speed, comfort, scenic routes, and luggage for different travel styles and destinations.",
+            "keyword": "China train vs. flight"
+        },
+        {
+            "id": 218,
+            "title": "China Travel Budget: How Much Money Do You Really Need?",
+            "description": "A comprehensive guide breaking down costs for flights, accommodation, food, transport, and activities, helping travelers plan a realistic budget for their China trip.",
+            "keyword": "China travel budget guide"
+        },
+        {
+            "id": 215,
+            "title": "Navigating China's Domestic Flights: Booking, Airports & Tips",
+            "description": "A comprehensive guide to booking and flying within China, including tips on finding cheap flights, understanding airport procedures, baggage rules, and essential travel day advice.",
+            "keyword": "China domestic flights guide"
+        },
+        {
+            "id": 214,
+            "title": "China's Noodle Odyssey: Must-Try Regional Dishes & Where to Find Them",
+            "description": "Embark on a culinary journey through China's diverse noodle traditions, from Lanzhou beef noodles to Dan Dan mian. Discover essential dishes, their regional origins, and tips for ordering like a local.",
+            "keyword": "Chinese regional noodles"
+        },
+        {
+            "id": 209,
+            "title": "Eating Vegetarian in China: Essential Phrases, Dishes & Restaurant Finds",
+            "description": "A comprehensive guide for vegetarian and vegan travelers, offering key phrases, common meat-free dishes to look for, and tips on finding suitable restaurants and street food across China.",
+            "keyword": "Vegetarian travel China"
+        },
+        {
+            "id": 207,
+            "title": "China Supermarket Survival Guide: Snacks, Drinks & Daily Essentials",
+            "description": "This practical guide helps travelers navigate Chinese supermarkets and convenience stores, identifying local snacks, popular drinks, and essential items for their trip.",
+            "keyword": "China supermarket guide"
+        },
+        {
+            "id": 206,
+            "title": "Overcoming Language Barriers in China: Essential Phrases & Tools",
+            "description": "This post provides practical phrases, translation app recommendations, and communication tips to help travelers confidently navigate China despite language differences.",
+            "keyword": "China language barrier tips"
+        },
+        {
+            "id": 203,
+            "title": "Hangzhou Tea Culture Tour: West Lake Dragon Well & Plantations",
+            "description": "Explore Hangzhou's renowned tea culture with a guide to West Lake Dragon Well tea plantations, tasting experiences, and tea houses, offering a serene and authentic cultural immersion.",
+            "keyword": "Hangzhou tea tour"
+        },
+        {
+            "id": 198,
+            "title": "Dali, Yunnan Travel Guide: Ancient City, Erhai Lake & Local Experiences",
+            "description": "Explore Dali's unique charm with this guide to its ancient city, scenic Erhai Lake, and authentic Bai minority culture, offering a relaxed and beautiful alternative to bustling Chinese metropolises.",
+            "keyword": "Dali Yunnan travel guide"
+        },
+        {
+            "id": 195,
+            "title": "Great Wall Sections Beyond Badaling: Hiking & History at Jinshanling & Gubeikou",
+            "description": "Explore less-crowded and more authentic sections of the Great Wall like Jinshanling and Gubeikou, with practical tips on how to get there, hiking routes, accommodation options, and avoiding tourist hordes.",
+            "keyword": "Great Wall sections to visit"
+        },
+        {
+            "id": 194,
+            "title": "Money in China: Cash, Cards & WeChat Pay for Foreign Travelers",
+            "description": "This guide explains how to manage your money in China, from setting up WeChat Pay or Alipay as a foreigner to finding ATMs, understanding the role of cash, and using international credit/debit cards.",
+            "keyword": "Money in China for tourists"
+        },
+        {
+            "id": 191,
+            "title": "China Tourist Visa Application: Step-by-Step Guide for US/UK Travelers",
+            "description": "This post demystifies the Chinese tourist visa (L-visa) application process, covering requirements, forms, common pitfalls, and tips for a smooth approval, specifically for travelers from major Western countries.",
+            "keyword": "China tourist visa application"
+        },
+        {
+            "id": 189,
+            "title": "Zhangye Danxia Travel Guide: Viewing the Rainbow Mountains & Binggou",
+            "description": "Practical logistics for visiting the colorful landforms of Gansu, including the best viewing platforms for sunset photography, transport from Zhangye city, and avoiding peak crowds.",
+            "keyword": "Zhangye Danxia rainbow mountains"
+        },
+        {
+            "id": 187,
+            "title": "Hiking Huangshan (Yellow Mountain): Routes, Sunrise Spots & Hotels",
+            "description": "A complete guide to climbing China’s most famous mountain, comparing the Western vs. Eastern steps, cable car options, and the best summit hotels for catching the sea of clouds.",
+            "keyword": "Huangshan travel guide"
+        },
+        {
+            "id": 179,
+            "title": "Fujian Tulou Villages DIY: How to Visit Earth Buildings Without a Tour",
+            "description": "An on-the-ground guide to visiting Fujian’s tulou (earth buildings) independently from Xiamen or Longyan, including which clusters are worth staying in, bus and train options, suggested 2–3 day routes, homestay recommendations, and sunrise/sunset viewpoints.",
+            "keyword": ""
+        },
+        {
+            "id": 177,
+            "title": "China’s Sleeper Trains for Tourists: Routes, Safety, and Booking Hacks",
+            "description": "A hands-on guide to using overnight trains in China as a traveler, explaining the differences between hard/soft sleepers, how to book with foreign passports, what to pack, popular tourist-friendly routes, and etiquette tips to make night journeys smoother.",
+            "keyword": ""
+        },
+        {
+            "id": 174,
+            "title": "Seasonal China: What to Do and Where to Go in Each Month of the Year",
+            "description": "An at-a-glance month-by-month planner that matches destinations and activities to China’s seasons—like autumn in Jiuzhaigou, spring in Wuyuan, and winter hot springs near Beijing—plus weather expectations and major holiday crowd warnings.",
+            "keyword": ""
+        },
+        {
+            "id": 173,
+            "title": "How to Use China’s Super Apps Offline: WeChat, Alipay and Maps for Travelers",
+            "description": "A hands-on tech guide showing foreigners how to set up payments, translations and navigation on WeChat, Alipay, Gaode and Baidu Maps, with screenshots, VPN-free workarounds, and tips for staying functional when you don’t have mobile data.",
+            "keyword": ""
+        },
+        {
+            "id": 172,
+            "title": "Zhangjiajie and Tianmen Mountain Without the Crowds: 3–4 Day Game Plan",
+            "description": "Step-by-step advice on visiting Zhangjiajie National Forest Park and Tianmen Mountain, including which gates to use, ideal order of sights, how to time cable cars and glass bridges, and where to base yourself to dodge peak tour groups.",
+            "keyword": ""
+        },
+        {
+            "id": 171,
+            "title": "Beijing Hutong Stays and Street Food: Neighborhood Guide for First-Timers",
+            "description": "A practical area-by-area guide to picking a hutong guesthouse in Beijing, with specific lanes to stay in, what to eat nearby, how to navigate shared bathrooms, and evening walking routes that avoid the most touristy alleys.",
+            "keyword": ""
+        },
+        {
+            "id": 169,
+            "title": "Island Hopping in Zhoushan Archipelago: Beaches, Seafood and Temples",
+            "description": "A coastal escape guide from Shanghai/Hangzhou to the Zhoushan islands, detailing how to reach Putuo Mountain, Zhujiajian and Dongji by bus and ferry, suggested 3–4 day island‑hopping itinerary, beach and hiking spots, and where to find the freshest local seafood on a mid‑range budget.",
+            "keyword": ""
+        },
+        {
+            "id": 168,
+            "title": "Nanjing for History Lovers: Self‑Guided 2–3 Day City Walking Route",
+            "description": "A city guide focused on walkable routes linking Nanjing’s key historic sites—city walls, Presidential Palace, Sun Yat‑sen Mausoleum, and the Memorial Hall—plus metro uses, ticketing tips, crowd‑avoidance strategies, and where to find atmospheric old‑street food between sights.",
+            "keyword": ""
+        },
+        {
+            "id": 166,
+            "title": "Chengdu Beyond Pandas: 3–5 Day Itinerary for Food, Temples and Teahouses",
+            "description": "A practical Chengdu route that goes beyond the panda base, with detailed day‑by‑day plans covering hotpot streets, local teahouses, nearby ancient towns (Huanglongxi, Pingle), transit tips, where to stay in each neighborhood, and how to add a day trip to Leshan Giant Buddha.",
+            "keyword": ""
+        },
+        {
+            "id": 163,
+            "title": "Where to Eat in Shantou and Chaozhou: Teochew Food Pilgrimage Guide",
+            "description": "A food-focused guide to Chaoshan region showing travelers exactly where to find the best beef hotpot, congee, oyster omelets, and traditional gongfu tea in Shantou and Chaozhou, with neighborhood maps, ordering tips, and budget expectations for each meal.",
+            "keyword": ""
+        },
+        {
+            "id": 162,
+            "title": "Gansu’s Rainbow Mountains and Desert Towns: DIY Zhangye–Jiayuguan Route",
+            "description": "A detailed guide for travelers planning a short loop in western Gansu, including how to visit Zhangye Danxia Rainbow Mountains independently, combine it with Jiayuguan Great Wall forts and desert temples, train connections, and local food to try along the way.",
+            "keyword": ""
+        },
+        {
+            "id": 161,
+            "title": "How to Visit Mount Hua from Xi’an: Safe Routes, Cable Cars and Crowd Hacks",
+            "description": "Step-by-step instructions for doing a Huashan day trip or overnight from Xi’an, comparing the different hiking trails and cable car options, how to avoid the dangerous cliff planks, what to pack, and the best timing for sunrise or sunset on the peaks.",
+            "keyword": ""
+        },
+        {
+            "id": 159,
+            "title": "How to Use China’s Long-Distance Buses Safely: Routes, Tickets and Comfort Hacks",
+            "description": "A hands-on guide to riding intercity and regional buses in China for trips where trains don’t go, covering how to find routes in Chinese apps, buy tickets without local bank cards, understand bus types (sleeper vs. seated), handle luggage, and stay safe and comfortable on board.",
+            "keyword": ""
+        },
+        {
+            "id": 158,
+            "title": "What to Eat in Changsha: Late-Night Street Food and Spicy Hunan Classics",
+            "description": "A neighborhood-based food guide to Changsha with exact streets, night markets, and small restaurants to find signature Hunan dishes (like stinky tofu, duo jiao fish head, and chili-fried pork), plus ordering tips, rough prices, and how to avoid tourist-trap snack streets.",
+            "keyword": ""
+        },
+        {
+            "id": 157,
+            "title": "Qinghai Lake and Chaka Salt Lake: Budget-Friendly High Plateau Loop",
+            "description": "Step‑by‑step instructions for visiting Qinghai Lake and the mirror‑like Chaka Salt Lake from Xining, including bus vs. private car options, altitude tips, where to stay around the lake, photo spots that avoid the worst crowds, and how to extend to nearby Tibetan monasteries.",
+            "keyword": ""
+        },
+        {
+            "id": 156,
+            "title": "Xiamen & Gulangyu DIY Guide: Beach Walks, Minnan Food and Tulou Sidetrips",
+            "description": "A practical guide to planning 3–5 days in Xiamen, covering ferry logistics to Gulangyu Island, the best sea-view walks and cafes, where to try authentic Minnan snacks, and how to add an easy day trip to nearby Hakka tulou clusters without joining a big tour bus.",
+            "keyword": ""
+        },
+        {
+            "id": 153,
+            "title": "How to Do a Yunnan Tea Route: Kunming to Pu’er and Jingmai on a Budget",
+            "description": "Actionable itinerary for travelers who want to experience Yunnan’s tea culture on the ground, explaining how to get from Kunming to Pu’er and Jingmai Mountain by bus or train, where to stay in tea villages, how to join farm visits and tastings without overpriced tours, and practical etiquette tips for buying tea directly from producers.",
+            "keyword": ""
+        },
+        {
+            "id": 152,
+            "title": "Hidden Guilin: Beyond the Li River Cruise to Xingping and Yangshuo",
+            "description": "A detailed Guilin area guide focused on lesser-known hikes, villages, and river viewpoints around Xingping and Yangshuo, with advice on bike and scooter rentals, choosing between bamboo rafts and motor boats, recommended guesthouse areas, and a 3-day plan that skips the most touristy spots while still seeing the famous karst scenery.",
+            "keyword": ""
+        },
+        {
+            "id": 149,
+            "title": "Nanjing Street Food and Old City Walls: 2-Day Urban Exploration Guide",
+            "description": "A practical 2-day Nanjing itinerary combining Zhonghua Gate, the city walls, and Xuanwu Lake with specific food streets, duck blood vermicelli soup spots, and night markets, plus metro tips, best areas to book hotels, and how to fit Nanjing into a Shanghai-based trip.",
+            "keyword": ""
+        },
+        {
+            "id": 148,
+            "title": "Chengde Mountain Resort and Beyond: Easy Qing Dynasty Day Trips from Beijing",
+            "description": "A detailed guide to visiting Chengde from Beijing, covering how to get there by train or bus, what to see inside the Mountain Resort, nearby ‘outer’ temples to prioritize, where to stay and eat, and whether it’s better as a long day trip or overnight escape from the capital.",
+            "keyword": ""
+        },
+        {
+            "id": 147,
+            "title": "Solo Travel in China by High-Speed Rail: Safe Routes and Sample Itineraries",
+            "description": "Designed for solo travelers, this post outlines easy, well-connected routes (e.g., Shanghai–Suzhou–Hangzhou, Beijing–Qinghuangdao–Shenyang), how to choose safe neighborhoods, use basic Chinese for trains and hotels, and plan 7–10 day itineraries with minimal language stress.",
+            "keyword": ""
+        },
+        {
+            "id": 146,
+            "title": "Harbin Ice and Snow Festival Guide: Budget, Clothing, and 3-Day Plan",
+            "description": "A practical winter travel guide to Harbin focused on the Ice and Snow World, Sun Island, and city highlights, including what to wear at -20°C, how to buy tickets, sample 2–3 day itineraries, Russian-influenced food to try, and transport from Beijing or Shanghai.",
+            "keyword": ""
+        },
+        {
+            "id": 145,
+            "title": "Beijing Hutongs for First-Timers: Self-Guided Walking Routes & Food Stops",
+            "description": "Step-by-step hutong walking routes near Nanluoguxiang, Shichahai, and Dashilan, with exact streets to follow, recommended snack shops, cafes, courtyard homes to visit, and tips on the best time of day, crowds, and how to avoid the most touristy alleys.",
+            "keyword": ""
+        },
+        {
+            "id": 142,
+            "title": "Kangding, Tagong and Tibetan Sichuan: Easy Starter Route for First‑Timers",
+            "description": "A beginner‑friendly introduction to Sichuan’s Tibetan regions with a 4–5 day loop from Chengdu, covering how to get to Kangding and Tagong, monastery visits, grassland horse‑riding, homestay options, altitude and etiquette tips, and suggested daily budgets.",
+            "keyword": ""
+        },
+        {
+            "id": 140,
+            "title": "Sichuan’s Western Frontier: Chengdu to Daocheng Yading Road Trip Guide",
+            "description": "A practical guide to reaching Daocheng Yading from Chengdu by bus or private car, including acclimatization tips for altitude, where to stay in Daocheng vs. Yading village, 2–3 day trekking routes inside the park, and what to pack for unpredictable plateau weather.",
+            "keyword": ""
+        },
+        {
+            "id": 139,
+            "title": "Chongqing for First‑Timers: Hotpot, Night Views & Yangtze Cableways in 3 Days",
+            "description": "A 3‑day itinerary for Chongqing that helps travelers navigate this hilly megacity: how to ride the Yangtze Cableway, find the best spicy hotpot and street snacks, use the multi‑level light rail system, and choose which night viewpoints and river cruises are actually worth it.",
+            "keyword": ""
+        },
+        {
+            "id": 136,
+            "title": "Discovering Qingdao: Beer Street, Coastal Walks & Hidden German Architecture",
+            "description": "A first‑time traveler’s guide to Qingdao focused on walkable routes: how to explore the old German concession, find the best spots for fresh seafood and Tsingtao beer, plan a coastal boardwalk day, and decide how many days to spend in the city.",
+            "keyword": ""
+        },
+        {
+            "id": 135,
+            "title": "Kunming to Yuanyang Rice Terraces: 3‑Day DIY Travel & Photography Guide",
+            "description": "Step‑by‑step guide for traveling independently from Kunming to Yuanyang’s rice terraces, covering bus routes, where to stay (Duoyishu vs. Xinjie), best sunrise/sunset viewpoints, walking routes between villages, and practical tips for avoiding crowds and fog.",
+            "keyword": ""
+        },
+        {
+            "id": 134,
+            "title": "7‑Day Silk Road Road‑Trip in Xinjiang: Dunhuang, Turpan & Kashgar Itinerary",
+            "description": "A step‑by‑step guide for travelers wanting to explore Xinjiang’s iconic Silk Road sites, with daily routes, transport tips, accommodation options, and cultural highlights.",
+            "keyword": ""
+        },
+        {
+            "id": 130,
+            "title": "How to Visit Zhangjiajie Avatar Mountains: Routes, Tickets, Tips",
+            "description": "A practical guide to Zhangjiajie National Forest Park and Tianmen Mountain, explaining which areas to prioritize, how to buy tickets, where to stay (Wulingyuan vs. Zhangjiajie City), and how to avoid long lines and confusing park buses.",
+            "keyword": ""
+        },
+        {
+            "id": 127,
+            "title": "Bullet Train in China 101: How to Book, Ride, and Save Money",
+            "description": "A complete guide to using China’s high-speed rail for tourists, explaining how to search and book tickets (apps vs. agencies), navigate stations, understand seat classes, handle luggage, and choose trains over flights on popular routes.",
+            "keyword": ""
+        },
+        {
+            "id": 117,
+            "title": "Hidden Gems in Guilin & Yangshuo: Beyond the Classic Li River Cruise",
+            "description": "Practical guide to lesser-known viewpoints, quiet villages, bike and scooter routes, sunrise spots, and how to combine caves, hikes, and bamboo rafting into a 3–5 day Karst countryside trip.",
+            "keyword": ""
+        },
+        {
+            "id": 116,
+            "title": "Where and What to Eat in Chengdu: A Traveler’s Hotpot & Street Food Map",
+            "description": "Neighborhood-based food guide pinpointing specific hotpot spots, snack streets, must-try dishes (with spice levels explained), and how to order in Chinese or via apps without reading the menu.",
+            "keyword": ""
+        },
+        {
+            "id": 106,
+            "title": "Zhangjiajie National Forest Park Guide: Routes, Tickets & Crowds",
+            "description": "Practical planning guide to China’s ‘Avatar mountains’ covering how many days you need, which entrances and cable cars to use, hiking routes, photo spots, hotel areas, and strategies to beat the lines and tour groups.",
+            "keyword": ""
+        },
+        {
+            "id": 99,
+            "title": "10 Perfect Days in China: Beijing, Xi’an & Shanghai First-Timer Itinerary",
+            "description": "Step-by-step route for a first trip to China covering Beijing, Xi’an, and Shanghai, with daily schedules, must-see sights, recommended neighborhoods to stay in, and tips on trains, tickets, and avoiding crowds.",
+            "keyword": ""
+        },
+        {
+            "id": 90,
+            "title": "Ultimate Beijing Travel Guide: Must-See Sights, Hutongs & Food",
+            "description": "A detailed guide to Beijing’s top attractions (Great Wall sections, Forbidden City, Summer Palace), how to choose where to stay, sample hutong walking routes, and exactly what and where to eat for authentic local flavors.",
+            "keyword": ""
+        },
+        {
+            "id": 88,
+            "title": "Anyue Stone Carvings: A Guide to Sichuan's Hidden Grottoes",
+            "description": "This practical guide details how to plan a day trip to the Anyue Grottoes from Chengdu or Chongqing, which carvings to prioritize, and transportation tips for exploring this incredible off-the-beaten-path historical site.",
+            "keyword": ""
+        },
+        {
+            "id": 87,
+            "title": "Beyond the Great Wall: A First-Timer's Guide to Visiting Xi'an",
+            "description": "Plan your trip to see the Terracotta Warriors and more with this essential guide covering Xi'an's top attractions, how to get around, and what to eat in the Muslim Quarter.",
+            "keyword": ""
+        },
+        {
+            "id": 84,
+            "title": "China High-Speed Rail Guide: How to Book Tickets & Travel Like a Pro",
+            "description": "A step-by-step guide that demystifies China's bullet train system, helping travelers easily book tickets online, read their tickets, and navigate massive train stations.",
+            "keyword": ""
+        },
+        {
+            "id": 82,
+            "title": "First-Time China Packing List: Clothing, Power, Meds, and Essentials",
+            "description": "Details what to pack for different regions and seasons in China, including power adapters, health items, translation tools, and what you can easily buy there.",
+            "keyword": ""
+        },
+        {
+            "id": 80,
+            "title": "Navigating Chinese Trains: Booking Apps, Seat Types, and Station Hacks",
+            "description": "Offers a step-by-step guide to buying tickets, going through security and boarding, choosing seats or sleepers, and managing luggage on China’s rail network.",
+            "keyword": ""
+        },
+        {
+            "id": 79,
+            "title": "Traveling China with Kids: Family-Friendly Cities, Attractions, and Tips",
+            "description": "Covers stroller-friendly routes, kid-approved museums and parks, safety and health tips, and which cities and activities work best for families of all ages.",
+            "keyword": ""
+        },
+        {
+            "id": 78,
+            "title": "China on a Budget: Daily Costs, Cheap Eats, and Money-Saving Routes",
+            "description": "Breaks down realistic daily budgets for major cities and smaller towns, plus advice on cheap but clean accommodation, transit passes, and low-cost itineraries.",
+            "keyword": ""
+        },
+        {
+            "id": 76,
+            "title": "Best Hikes in China for Travelers: From Tiger Leaping Gorge to Huangshan",
+            "description": "Curates accessible multi-day and day hikes across China, with difficulty levels, trail logistics, packing suggestions, and how to book local guesthouses.",
+            "keyword": ""
+        },
+        {
+            "id": 73,
+            "title": "How to Use WeChat, Alipay, and eSIMs as a Tourist in China",
+            "description": "Guides travelers through setting up payments, using QR codes, getting mobile data, and handling common app blocks or verification issues on the ground.",
+            "keyword": ""
+        },
+        {
+            "id": 71,
+            "title": "Hidden Gems in Guilin and Yangshuo: Villages, Viewpoints, and Caves",
+            "description": "Highlights lesser-known hikes, quiet riverside villages, and scenic viewpoints near Guilin/Yangshuo, with directions, bike routes, and crowd-avoidance tips.",
+            "keyword": ""
+        },
+        {
+            "id": 70,
+            "title": "Best Street Food in Xi’an: Muslim Quarter and Beyond Map Guide",
+            "description": "Pinpoints must-try dishes (roujiamo, biangbiang noodles, liangpi), where to find them, hygiene tips, and how to avoid the most touristy stalls in Xi’an.",
+            "keyword": ""
+        },
+        {
+            "id": 68,
+            "title": "How to Get Around China: Trains, Domestic Flights, and Didi Taxis",
+            "description": "Compares high-speed trains vs. flights, explains how to read Chinese train tickets, book seats, use Didi, and handle transport during peak Chinese holidays.",
+            "keyword": ""
+        },
+        {
+            "id": 67,
+            "title": "Is Zhangjiajie Worth Visiting? Avatar Mountains Practical Guide",
+            "description": "Explains how many days you need, what hiking routes to take, how to avoid the worst crowds, and whether to combine Zhangjiajie with Fenghuang Ancient Town.",
+            "keyword": ""
+        },
+        {
+            "id": 65,
+            "title": "Beijing in 3 to 5 Days: Forbidden City, Great Wall and Beyond",
+            "description": "Practical day-by-day plans for exploring Beijing’s top sights, how to choose a Great Wall section, where to stay, and how to navigate the subway and taxis.",
+            "keyword": ""
+        },
+        {
+            "id": 64,
+            "title": "Best Time to Visit China by Region: Weather, Crowds, and Costs",
+            "description": "Breaks down the ideal months to visit North, South, East, and Western China, including festivals to target or avoid and how holidays affect prices and crowds.",
+            "keyword": ""
+        },
+        {
+            "id": 57,
+            "title": "Zhangjiajie and Tianmen Mountain: 3-Day Avatar Mountains Itinerary",
+            "description": "A focused itinerary explaining how to base yourself in Wulingyuan vs. Zhangjiajie City, which glass bridges and viewpoints are worth it, cable car options, ticketing, and how to avoid crowds on the most popular trails.",
+            "keyword": ""
+        },
+        {
+            "id": 56,
+            "title": "How to Travel China by High-Speed Train: Routes, Tickets, and Tips",
+            "description": "Step-by-step advice on booking China high-speed rail tickets, navigating stations, choosing seats, using luggage space, and the best routes (Beijing–Shanghai, Shanghai–Hangzhou, Guangzhou–Guilin, etc.) for travelers.",
+            "keyword": ""
+        },
+        {
+            "id": 54,
+            "title": "7-Day Classic China Itinerary: Beijing, Xi’an and Shanghai Route",
+            "description": "A day-by-day itinerary with recommended sights, time-saving routes, where to stay near major attractions, and train/flight suggestions for travelers wanting to see China’s top highlights in one week.",
+            "keyword": ""
+        },
+        {
+            "id": 53,
+            "title": "10 Essential First-Timer Tips for Traveling in China (2025 Guide)",
+            "description": "A practical starter guide covering visas, eSIMs and VPNs, using WeChat/Alipay, trains vs. flights, language tips, and how to avoid common first-time mistakes when planning a trip to China.",
+            "keyword": ""
+        },
+        {
+            "id": 52,
+            "title": "Off-the-Beaten-Path Tibet: Nyingchi, Yamdrok Lake & Less-Crowded Routes",
+            "description": "A guide to scenic but less-visited areas in Tibet such as Nyingchi’s forests and lakes and quieter routes around Yamdrok Lake, with access logistics, ideal seasons, and how to combine them with a Lhasa stay.",
+            "keyword": ""
+        },
+        {
+            "id": 51,
+            "title": "Tibet on a Budget: Saving Money on Tours, Hotels and Transport",
+            "description": "Practical strategies to keep Tibet costs down, including choosing group tours vs. private tours, picking mid-range guesthouses, cutting transport costs, and knowing which experiences are worth splurging on.",
+            "keyword": ""
+        },
+        {
+            "id": 50,
+            "title": "Lhasa on Foot: Self-Guided Barkhor Walking Tour & Monastery Loop",
+            "description": "A mapped walking route around Barkhor Street and nearby monasteries, with time estimates, viewpoints, etiquette at religious sites, and suggestions for tea breaks and souvenir shopping along the way.",
+            "keyword": ""
+        },
+        {
+            "id": 49,
+            "title": "Where to Eat in Lhasa: Best Tibetan, Nepali & Yak Butter Tea Spots",
+            "description": "A neighborhood-based food guide to Lhasa, listing recommended local restaurants and teahouses near Barkhor Street and around the city, what to order (momos, thukpa, yak dishes), and hygiene and budget tips.",
+            "keyword": ""
+        },
+        {
+            "id": 48,
+            "title": "What to Pack for Tibet: High-Altitude Essentials Most Travelers Forget",
+            "description": "A detailed packing checklist focused on Tibet’s unique conditions, including altitude-related gear, layered clothing for temperature swings, medication suggestions, power and SIM options, and cultural etiquette items.",
+            "keyword": ""
+        },
+        {
+            "id": 46,
+            "title": "Best Time to Visit Tibet: Weather by Month, Festivals & Crowds",
+            "description": "A month-by-month overview of Tibet’s climate, road conditions, festival calendar, and tourist volume so travelers can choose the ideal season for clear Everest views, trekking, photography, or budget travel.",
+            "keyword": ""
+        },
+        {
+            "id": 43,
+            "title": "Ultimate Lhasa Travel Guide: Top Sights, Permits & Local Tips",
+            "description": "A step-by-step guide to planning a first trip to Lhasa, covering must-see attractions like Potala Palace and Jokhang Temple, how to secure Tibet permits, altitude tips, and what to expect on arrival by train or plane.",
+            "keyword": ""
+        },
+        {
+            "id": 42,
+            "title": "Off-the-Beaten-Path Sichuan: Daocheng Yading and Kangding Travel Guide",
+            "description": "A route-focused guide to western Sichuan’s high-altitude landscapes, explaining how to travel from Chengdu to Kangding and Daocheng Yading, altitude considerations, best travel season, permit and transport logistics, and recommended hiking routes inside the park.",
+            "keyword": ""
+        },
+        {
+            "id": 41,
+            "title": "From Chengdu to Mount Emei & Leshan: 3-Day Buddhist Mountain Escape",
+            "description": "A detailed 3-day itinerary combining Leshan Giant Buddha and Mount Emei, covering train and bus options from Chengdu, suggested hiking routes vs. cable car choices, temple stays, packing lists, and how to avoid crowds.",
+            "keyword": ""
+        },
+        {
+            "id": 39,
+            "title": "Jiuzhaigou & Huanglong in One Trip: 4–5 Day Sichuan Nature Itinerary",
+            "description": "A practical guide to visiting Jiuzhaigou and Huanglong, explaining how to get there from Chengdu, where to base yourself, how many days to spend, ticket and shuttle details, and walking routes for different fitness levels.",
+            "keyword": ""
+        },
+        {
+            "id": 37,
+            "title": "The Best Time to Visit the Great Wall for Avoiding Crowds",
+            "description": "Find out the ideal times and sections to visit the Great Wall of China, allowing travelers to enjoy this iconic site with fewer tourists and better weather conditions.",
+            "keyword": ""
+        },
+        {
+            "id": 36,
+            "title": "Hidden Gems in Shanghai: Beyond the Bund",
+            "description": "Explore lesser-known attractions in Shanghai with this guide, perfect for travelers interested in discovering unique spots away from the city's famous landmarks.",
+            "keyword": ""
+        },
+        {
+            "id": 35,
+            "title": "How to Travel from Beijing to Xi'an: A Transportation Guide",
+            "description": "A comprehensive guide on the best ways to travel from Beijing to Xi'an, including train, flight, and bus options, ensuring travelers make the most of their journey to see the Terracotta Army.",
+            "keyword": ""
+        },
+        {
+            "id": 33,
+            "title": "7-Day Itinerary for Exploring Yunnan's Diverse Landscapes",
+            "description": "This post provides a detailed itinerary through Yunnan, showcasing its breathtaking landscapes, ethnic villages, and cultural highlights, perfect for travelers seeking a mix of adventure and culture.",
+            "keyword": ""
+        },
+        {
+            "id": 32,
+            "title": "Yunnan’s Hidden Tea Plantations: A 5‑Day Trek & Local Cuisine Guide",
+            "description": "Plan a five‑day trek through Yunnan’s secluded tea plantations, with recommendations on local dishes, lodging, and how to experience the region’s tea‑making traditions.",
+            "keyword": ""
+        },
+        {
+            "id": 31,
+            "title": "Shanghai Nightlife 101: Top Bars, Night Markets & Safety Tips",
+            "description": "Discover Shanghai’s vibrant night scene—from rooftop bars to bustling night markets—plus practical safety guidance and how to avoid common tourist pitfalls.",
+            "keyword": ""
+        },
+        {
+            "id": 30,
+            "title": "Guilin Scenic Train Journey: Best Time, Routes & Tips",
+            "description": "Learn how to book the most picturesque train routes through Guilin, when to travel for optimal scenery, and insider advice on food, seating, and safety.",
+            "keyword": ""
+        },
+        {
+            "id": 28,
+            "title": "10 Must‑Visit Hidden Gems in Beijing’s Old Town and More",
+            "description": "Explore off‑the‑beat spots in Beijing’s historic district, from secret courtyards to artisanal markets, with practical tips on timing, transport, and what to bring.",
+            "keyword": ""
+        },
+        {
+            "id": 27,
+            "title": "Best Time to Visit Hong Kong: Seasonal Highlights and Tips",
+            "description": "Learn about Hong Kong's seasonal highlights, including festivals, weather patterns, and travel tips, to help you plan the perfect visit at the right time of year.",
+            "keyword": ""
+        },
+        {
+            "id": 26,
+            "title": "How to Travel from Hong Kong to Mainland China: Steps and Tips",
+            "description": "Navigate the logistics of traveling from Hong Kong to mainland China with this comprehensive guide covering visas, transportation options, and essential travel tips.",
+            "keyword": ""
+        },
+        {
+            "id": 25,
+            "title": "Hidden Gems of Hong Kong: 5 Secret Spots Away from the Crowds",
+            "description": "Uncover Hong Kong's lesser-known attractions, offering unique experiences away from the typical tourist paths, ideal for those seeking a more personalized adventure.",
+            "keyword": ""
+        },
+        {
+            "id": 24,
+            "title": "A Food Lover's Guide to Hong Kong: Best Local Eats and Street Food",
+            "description": "Explore the culinary delights of Hong Kong with this guide featuring the best local dishes and street food vendors, perfect for any foodie looking to savor authentic flavors.",
+            "keyword": ""
+        },
+        {
+            "id": 22,
+            "title": "Hidden Gems of Chengdu: Lesser‑Known Tea Houses, Parks & Day Trips",
+            "description": "Explore off‑the‑beaten‑path tea houses, tranquil urban parks, and nearby day‑trip destinations that showcase Chengdu’s relaxed vibe beyond the pandas.",
+            "keyword": ""
+        },
+        {
+            "id": 21,
+            "title": "Best Time to Visit Zhangjiajie Park: Weather, Crowds & Photo Tips",
+            "description": "Seasonal breakdown of climate, visitor density, and optimal months for photography, plus advice on how to avoid rain and secure park permits.",
+            "keyword": ""
+        },
+        {
+            "id": 20,
+            "title": "Travel from Shanghai to Xi’an by High‑Speed Train: Schedule, Costs & Booking Tips",
+            "description": "Step‑by‑step guidance on booking the fastest high‑speed train, understanding ticket classes, estimating travel time, and navigating stations in both cities.",
+            "keyword": ""
+        },
+        {
+            "id": 18,
+            "title": "7-Day Beijing & Great Wall Itinerary: Must‑See Sites, Food & Transport Tips",
+            "description": "A day‑by‑day plan covering Beijing’s top attractions, a classic Great Wall hike, local dining hotspots, and practical transport advice to keep you moving smoothly.",
+            "keyword": ""
+        },
+        {
+            "id": 17,
+            "title": "When to Visit Chengdu: Seasonal Guide for the Best Weather & Festivals",
+            "description": "Seasonal breakdown of Chengdu’s climate, peak festival periods, and best travel windows for outdoor activities. Gives travelers the knowledge to choose the optimal time for visiting Chengdu’s parks, gardens, and cultural events.",
+            "keyword": ""
+        },
+        {
+            "id": 16,
+            "title": "Hidden Gems in Chengdu: 5 Off‑the‑Beaten‑Path Spots Worth Visiting",
+            "description": "Five lesser‑known Chengdu attractions—like the ancient Kuanzhai Alley, the tranquil Xiyin Temple, and the quirky Tianfu Square cafés—offering a fresh perspective beyond the usual tourist spots. Great for explorers wanting to uncover Chengdu’s hidden charms.",
+            "keyword": ""
+        },
+        {
+            "id": 15,
+            "title": "Chengdu to Zhangjiajie by Train: How to Plan the Journey & What to Pack",
+            "description": "Step‑by‑step instructions on booking the Chengdu–Zhangjiajie train, travel times, seat classes, and packing checklist for the 3‑day journey. Ideal for budget‑savvy travelers looking to combine rail travel with a scenic adventure.",
+            "keyword": ""
+        },
+        {
+            "id": 14,
+            "title": "Top 10 Must‑Try Street Foods in Chengdu: A Foodie’s Guide",
+            "description": "A curated list of the top 10 street‑food stalls and markets in Chengdu, with dish descriptions, opening hours, and best‑time tips. Helps food‑centric travelers find authentic flavors without missing out on the city’s culinary buzz.",
+            "keyword": ""
+        },
+        {
+            "id": 13,
+            "title": "7-Day Chengdu & Sichuan Highlights: From Pandas to Hot Pot",
+            "description": "A day‑by‑day guide through Chengdu and nearby Sichuan highlights, including panda sanctuary visits, hot‑pot culinary stops, and scenic day trips to Leshan Giant Buddha and Mount Emei. Perfect for travelers who want a balanced mix of wildlife, culture, and food in a single 7‑day plan.",
+            "keyword": ""
+        }
+    ],
+    "count": 407,
+    "filter_applied": {
+        "exclude_with_posts": true,
+        "search": null
+    }
+}

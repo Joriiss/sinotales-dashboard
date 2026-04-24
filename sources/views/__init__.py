@@ -19,7 +19,8 @@ from .api import (
     create_blog_post_api, post_ideas_api, blog_posts_api,
     blog_posts_export_wordpress_api, blog_post_update_status_api,
     check_idea_similarity_api, create_post_idea_api, get_idea_context_api,
-    generate_blog_post_api, post_idea_generate_api, agent_models_api
+    generate_blog_post_api, post_idea_generate_api, agent_models_api,
+    internal_link_suggestions_api
 )
 from .misc import agent_view, agent_chat_api, logs_view, settings_view
 

@@ -1018,7 +1018,9 @@ Generates a complete blog post from a post idea, including content and metadata.
   "use_rag": true,
   "num_chunks": 5,
   "metadata_provider": "gemini",
-  "metadata_model": "gemini-3-pro-preview"
+  "metadata_model": "gemini-3-pro-preview",
+  "enable_internal_links": true,
+  "internal_links_limit": 5
 }
 ```
 
@@ -1032,6 +1034,8 @@ Generates a complete blog post from a post idea, including content and metadata.
 - `num_chunks`: Number of RAG chunks to use. Default: `5`
 - `metadata_provider`: AI provider for metadata generation. Default: same as `provider`
 - `metadata_model`: Model name for metadata generation. Default: same as `model`
+- `enable_internal_links`: Automatically insert internal links into generated content. Default: `true`
+- `internal_links_limit`: Max number of inserted internal links (`1-10`). Default: `5`
 
 **Response (Success)**:
 ```json
@@ -1054,12 +1058,89 @@ Generates a complete blog post from a post idea, including content and metadata.
     "content_model": "gemini-3-pro-preview",
     "metadata_provider": "gemini",
     "metadata_model": "gemini-3-pro-preview",
-    "used_rag": true
+    "used_rag": true,
+    "internal_linking": {
+      "enabled": true,
+      "limit": 5,
+      "suggestions_count": 5,
+      "inserted_count": 3,
+      "inserted": [
+        {
+          "target_post_id": 512,
+          "target_url": "https://sinotales.com/destinations/shanghai/where-to-stay-shanghai-first-time-guide/",
+          "anchor": "where to stay"
+        }
+      ]
+    }
   }
 }
 ```
 
 **Note**: The API automatically generates both blog post content and metadata (including FAQ) in a single request.
+
+### API: Internal Link Suggestions
+
+**Endpoint**: `GET /api/internal-links/suggestions`
+
+Returns ranked internal-link suggestions for a blog post so automation workflows (e.g., n8n) can insert contextual links in article content.
+
+**Authentication**: Token-based (same as other API endpoints).
+
+**Query Parameters**:
+- `post_id` (optional): Blog post ID to generate suggestions for
+- `slug` (optional): Blog post slug to generate suggestions for
+- `limit` (optional): Number of suggestions to return (default: `5`, max: `10`)
+
+You must provide **either** `post_id` **or** `slug`.
+
+**Example Request (by post ID)**:
+```bash
+curl -H "Authorization: Token your-api-token" \
+     "http://127.0.0.1:8000/api/internal-links/suggestions?post_id=456&limit=5"
+```
+
+**Example Request (by slug)**:
+```bash
+curl -H "Authorization: Token your-api-token" \
+     "http://127.0.0.1:8000/api/internal-links/suggestions?slug=shanghai-french-concession-walking-guide"
+```
+
+**Response (Success)**:
+```json
+{
+  "success": true,
+  "source_post": {
+    "id": 456,
+    "title": "Shanghai French Concession Walking Guide: Best Streets & Hidden Cafes",
+    "slug": "shanghai-french-concession-walking-guide"
+  },
+  "count": 5,
+  "suggestions": [
+    {
+      "target_post_id": 512,
+      "target_title": "Where to Stay in Shanghai First Time: Best Areas Explained",
+      "target_slug": "where-to-stay-shanghai-first-time-guide",
+      "target_url": "https://sinotales.com/destinations/shanghai/where-to-stay-shanghai-first-time-guide/",
+      "suggested_anchor": "where to stay",
+      "shared_tag_count": 2,
+      "shared_tags": ["shanghai", "itinerary"],
+      "title_appears_in_source": false
+    }
+  ],
+  "filters": {
+    "limit": 5,
+    "published_only": true,
+    "exclude_source_post": true
+  }
+}
+```
+
+**Ranking / Selection Rules**:
+- Uses only `published=true` blog posts as candidates
+- Excludes the source post itself
+- Prioritizes posts sharing tags with the source post
+- Uses recency as a secondary sort signal
+- Returns an anchor suggestion based on phrase matches in source content
 
 ## Next Steps
 
@@ -1077,6 +1158,7 @@ Generates a complete blog post from a post idea, including content and metadata.
 - [x] Add automatic metadata generation (meta title, description, slug, tags, alt text)
 - [x] Add FAQ generation (4 FAQ items with question/answer pairs)
 - [x] Add RAG pipeline for content generation
+- [x] Add internal link suggestion API endpoint for automation workflows
 - [ ] Add semantic search functionality (query embeddings and similarity search)
 
 
