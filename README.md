@@ -1070,6 +1070,8 @@ Generates a complete blog post from a post idea, including content and metadata.
       "inserted_count": 3,
       "used_ai": true,
       "fallback_to_rule_based": false,
+      "ai_failure_reason": null,
+      "ai_failure_details": {},
       "inserted": [
         {
           "target_post_id": 512,
@@ -1083,6 +1085,10 @@ Generates a complete blog post from a post idea, including content and metadata.
 ```
 
 **Note**: The API automatically generates both blog post content and metadata (including FAQ) in a single request.
+
+If `mode` is `ai` but `used_ai` is `false`, check:
+- `ai_failure_reason` (e.g. `invalid_json`, `missing_updated_html`, `invalid_applied_links_type`, `no_valid_links_after_validation`, `provider_error`)
+- `ai_failure_details` for extra debug context.
 
 ### API: Internal Link Suggestions
 

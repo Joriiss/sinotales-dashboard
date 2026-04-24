@@ -229,10 +229,10 @@ def _extract_json_object(raw_text):
 def _apply_internal_links_with_ai(content_html, suggestions, rag_service, provider, model, max_links=5):
     """
     Let the model place links naturally using suggestions as allowed targets.
-    Returns (updated_html, applied_links, used_ai).
+    Returns (updated_html, applied_links, used_ai, failure_reason, failure_details).
     """
     if not content_html or not suggestions:
-        return content_html, [], False
+        return content_html, [], False, 'no_content_or_suggestions', {}
 
     max_links = max(1, min(int(max_links), 10))
     allowed = []
@@ -273,25 +273,31 @@ html:
 
     parsed = _extract_json_object(raw_response)
     if not parsed or not isinstance(parsed, dict):
-        return content_html, [], False
+        return content_html, [], False, 'invalid_json', {'response_preview': (raw_response or '')[:500]}
 
     updated_html = parsed.get('updated_html')
     applied_links = parsed.get('applied_links', [])
     if not isinstance(updated_html, str) or not updated_html.strip():
-        return content_html, [], False
+        return content_html, [], False, 'missing_updated_html', {}
     if not isinstance(applied_links, list):
-        applied_links = []
+        return content_html, [], False, 'invalid_applied_links_type', {'type': str(type(applied_links))}
 
     allowed_urls = {item['target_url'] for item in allowed if item.get('target_url')}
     sanitized_links = []
+    invalid_url_count = 0
+    weak_anchor_count = 0
+    non_dict_count = 0
     for item in applied_links[:max_links]:
         if not isinstance(item, dict):
+            non_dict_count += 1
             continue
         target_url = (item.get('target_url') or '').strip()
         anchor = (item.get('anchor') or '').strip()
         if not target_url or target_url not in allowed_urls:
+            invalid_url_count += 1
             continue
         if not _is_natural_anchor(anchor):
+            weak_anchor_count += 1
             continue
         sanitized_links.append({
             'target_post_id': item.get('target_post_id'),
@@ -299,7 +305,15 @@ html:
             'anchor': anchor,
         })
 
-    return updated_html, sanitized_links, True
+    if not sanitized_links:
+        return content_html, [], False, 'no_valid_links_after_validation', {
+            'proposed_links_count': len(applied_links),
+            'invalid_url_count': invalid_url_count,
+            'weak_anchor_count': weak_anchor_count,
+            'non_dict_count': non_dict_count,
+        }
+
+    return updated_html, sanitized_links, True, None, {}
 
 
 @csrf_exempt
@@ -2228,6 +2242,8 @@ def generate_blog_post_api(request):
             'inserted': [],
             'used_ai': False,
             'fallback_to_rule_based': False,
+            'ai_failure_reason': None,
+            'ai_failure_details': {},
         }
         if enable_internal_links:
             suggestions = _build_internal_link_suggestions(blog_post, limit=internal_links_limit)
@@ -2236,7 +2252,7 @@ def generate_blog_post_api(request):
 
             if internal_links_mode == 'ai':
                 try:
-                    updated_content, applied_links, used_ai = _apply_internal_links_with_ai(
+                    updated_content, applied_links, used_ai, ai_failure_reason, ai_failure_details = _apply_internal_links_with_ai(
                         blog_post.content,
                         suggestions,
                         rag_service,
@@ -2245,9 +2261,12 @@ def generate_blog_post_api(request):
                         max_links=internal_links_limit
                     )
                     internal_linking['used_ai'] = bool(used_ai)
+                    internal_linking['ai_failure_reason'] = ai_failure_reason
+                    internal_linking['ai_failure_details'] = ai_failure_details or {}
                 except Exception:
                     updated_content = blog_post.content
                     applied_links = []
+                    internal_linking['ai_failure_reason'] = 'provider_error'
 
             if not applied_links:
                 updated_content, applied_links = _apply_internal_links_to_html(
