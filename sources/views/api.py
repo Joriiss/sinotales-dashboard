@@ -202,6 +202,106 @@ def _apply_internal_links_to_html(content_html, suggestions, max_links=5):
     return ''.join(rebuilt_parts), applied_links
 
 
+def _extract_json_object(raw_text):
+    """Extract first JSON object from model output."""
+    if not raw_text:
+        return None
+    text = raw_text.strip()
+    if text.startswith('```'):
+        text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\s*```$', '', text)
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        snippet = text[start:end + 1]
+        try:
+            return json.loads(snippet)
+        except Exception:
+            return None
+    return None
+
+
+def _apply_internal_links_with_ai(content_html, suggestions, rag_service, provider, model, max_links=5):
+    """
+    Let the model place links naturally using suggestions as allowed targets.
+    Returns (updated_html, applied_links, used_ai).
+    """
+    if not content_html or not suggestions:
+        return content_html, [], False
+
+    max_links = max(1, min(int(max_links), 10))
+    allowed = []
+    for s in suggestions[:max_links]:
+        allowed.append({
+            'target_post_id': s.get('target_post_id'),
+            'target_url': s.get('target_url'),
+            'target_title': s.get('target_title'),
+            'suggested_anchor': s.get('suggested_anchor'),
+        })
+
+    prompt = f"""You are an SEO editor. Add natural internal links into the provided HTML.
+
+Rules:
+1) Use ONLY the URLs from allowed_links.
+2) Add at most {max_links} links total.
+3) Use natural multi-word anchors (no weak single words like "city" or "inside").
+4) Keep the original tone and meaning; do not rewrite entire sections.
+5) Do not add links inside headings.
+6) Prefer links in paragraph text where topical relevance is clear.
+7) Return strict JSON only, with keys:
+   - "updated_html": string
+   - "applied_links": array of objects with keys "target_post_id", "target_url", "anchor"
+
+allowed_links:
+{json.dumps(allowed, ensure_ascii=False)}
+
+html:
+{content_html}
+"""
+
+    if provider == 'ollama':
+        raw_response = rag_service._call_ollama(prompt, model, max_tokens=4000)
+    elif provider == 'openai':
+        raw_response = rag_service._call_openai(prompt, model, max_tokens=4000)
+    else:
+        raw_response = rag_service._call_gemini(prompt, model, max_tokens=4000)
+
+    parsed = _extract_json_object(raw_response)
+    if not parsed or not isinstance(parsed, dict):
+        return content_html, [], False
+
+    updated_html = parsed.get('updated_html')
+    applied_links = parsed.get('applied_links', [])
+    if not isinstance(updated_html, str) or not updated_html.strip():
+        return content_html, [], False
+    if not isinstance(applied_links, list):
+        applied_links = []
+
+    allowed_urls = {item['target_url'] for item in allowed if item.get('target_url')}
+    sanitized_links = []
+    for item in applied_links[:max_links]:
+        if not isinstance(item, dict):
+            continue
+        target_url = (item.get('target_url') or '').strip()
+        anchor = (item.get('anchor') or '').strip()
+        if not target_url or target_url not in allowed_urls:
+            continue
+        if not _is_natural_anchor(anchor):
+            continue
+        sanitized_links.append({
+            'target_post_id': item.get('target_post_id'),
+            'target_url': target_url,
+            'anchor': anchor,
+        })
+
+    return updated_html, sanitized_links, True
+
+
 @csrf_exempt
 def internal_link_suggestions_api(request):
     """
@@ -1822,6 +1922,7 @@ def generate_blog_post_api(request):
     - metadata_model (optional): Model name for metadata generation. Default: same as model
     - enable_internal_links (optional): Whether to auto-insert internal links. Default: true
     - internal_links_limit (optional): Max inserted links (1-10). Default: 5
+    - internal_links_mode (optional): 'ai' or 'rule_based'. Default: 'ai'
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -1866,6 +1967,9 @@ def generate_blog_post_api(request):
         enable_internal_links = data.get('enable_internal_links', True)
         internal_links_limit = int(data.get('internal_links_limit', 5))
         internal_links_limit = max(1, min(internal_links_limit, 10))
+        internal_links_mode = (data.get('internal_links_mode', 'ai') or 'ai').strip().lower()
+        if internal_links_mode not in ['ai', 'rule_based']:
+            internal_links_mode = 'ai'
         
         # Validate providers
         if provider not in ['ollama', 'openai', 'gemini']:
@@ -2117,18 +2221,43 @@ def generate_blog_post_api(request):
         # Step 3: Auto-insert internal links into generated content
         internal_linking = {
             'enabled': bool(enable_internal_links),
+            'mode': internal_links_mode,
             'limit': internal_links_limit,
             'suggestions_count': 0,
             'inserted_count': 0,
-            'inserted': []
+            'inserted': [],
+            'used_ai': False,
+            'fallback_to_rule_based': False,
         }
         if enable_internal_links:
             suggestions = _build_internal_link_suggestions(blog_post, limit=internal_links_limit)
-            updated_content, applied_links = _apply_internal_links_to_html(
-                blog_post.content,
-                suggestions,
-                max_links=internal_links_limit
-            )
+            updated_content = blog_post.content
+            applied_links = []
+
+            if internal_links_mode == 'ai':
+                try:
+                    updated_content, applied_links, used_ai = _apply_internal_links_with_ai(
+                        blog_post.content,
+                        suggestions,
+                        rag_service,
+                        metadata_provider,
+                        metadata_model,
+                        max_links=internal_links_limit
+                    )
+                    internal_linking['used_ai'] = bool(used_ai)
+                except Exception:
+                    updated_content = blog_post.content
+                    applied_links = []
+
+            if not applied_links:
+                updated_content, applied_links = _apply_internal_links_to_html(
+                    blog_post.content,
+                    suggestions,
+                    max_links=internal_links_limit
+                )
+                if internal_links_mode == 'ai':
+                    internal_linking['fallback_to_rule_based'] = True
+
             blog_post.content = updated_content
             internal_linking['suggestions_count'] = len(suggestions)
             internal_linking['inserted_count'] = len(applied_links)

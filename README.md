@@ -1020,7 +1020,8 @@ Generates a complete blog post from a post idea, including content and metadata.
   "metadata_provider": "gemini",
   "metadata_model": "gemini-3-pro-preview",
   "enable_internal_links": true,
-  "internal_links_limit": 5
+  "internal_links_limit": 5,
+  "internal_links_mode": "ai"
 }
 ```
 
@@ -1036,6 +1037,7 @@ Generates a complete blog post from a post idea, including content and metadata.
 - `metadata_model`: Model name for metadata generation. Default: same as `model`
 - `enable_internal_links`: Automatically insert internal links into generated content. Default: `true`
 - `internal_links_limit`: Max number of inserted internal links (`1-10`). Default: `5`
+- `internal_links_mode`: Linking strategy (`ai` or `rule_based`). Default: `ai`
 - Internal links are quality-gated: weak one-word anchors and low-confidence matches are skipped.
 
 **Response (Success)**:
@@ -1062,9 +1064,12 @@ Generates a complete blog post from a post idea, including content and metadata.
     "used_rag": true,
     "internal_linking": {
       "enabled": true,
+      "mode": "ai",
       "limit": 5,
       "suggestions_count": 5,
       "inserted_count": 3,
+      "used_ai": true,
+      "fallback_to_rule_based": false,
       "inserted": [
         {
           "target_post_id": 512,
@@ -1143,6 +1148,7 @@ curl -H "Authorization: Token your-api-token" \
 - Uses recency as a secondary sort signal
 - Returns an anchor suggestion only when a natural multi-word phrase is found in source content
 - Skips low-confidence suggestions with no shared tags and no title-overlap signal
+- In `ai` mode, suggestions are passed to an LLM to place links naturally; if parsing/validation fails, backend falls back to deterministic `rule_based` insertion
 
 ## Next Steps
 
