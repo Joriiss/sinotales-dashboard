@@ -18,6 +18,7 @@ from ..models import PostIdea, Content, Tag, BlogPost
 from ..utils import log_activity, is_idea_too_similar_with_embeddings
 from ..rag_service import RAGService
 from ..embedding_service import EmbeddingService
+from ..llm_models import list_models_for_provider
 from pgvector.django import CosineDistance
 
 @login_required
@@ -251,35 +252,11 @@ def post_idea_models_api(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     
-    elif provider == 'openai':
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
-        
-        models = [
-            'gpt-5.1',
-            'gpt-5',
-            'gpt-5-mini',
-            'gpt-5-nano',
-            'gpt-4o',
-            'gpt-4o-mini',
-            'gpt-4-turbo',
-            'gpt-4',
-            'gpt-3.5-turbo',
-        ]
-        return JsonResponse({'models': models})
-    
-    elif provider == 'gemini':
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
-        
-        models = [
-            'gemini-3-pro-preview',
-            'gemini-2.5-pro',
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite'
-        ]
+    elif provider in ('openai', 'gemini'):
+        models, error = list_models_for_provider(provider)
+        if error:
+            status = 400 if 'not set' in error else 502
+            return JsonResponse({'error': error}, status=status)
         return JsonResponse({'models': models})
     
     else:

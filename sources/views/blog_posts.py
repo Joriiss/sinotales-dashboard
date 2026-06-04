@@ -18,6 +18,7 @@ from ..forms import SourceForm
 from ..utils import log_activity
 from ..rag_service import RAGService
 from ..content_processing_service import ContentProcessingService
+from ..llm_models import get_default_gemini_model, get_default_openai_model
 import re
 
 @login_required
@@ -267,7 +268,7 @@ def blog_post_generate_metadata(request, pk):
     
     if request.method == 'POST':
         provider = request.POST.get('provider', 'gemini').strip().lower()
-        model = request.POST.get('model', 'gemini-3-pro-preview').strip()
+        model = request.POST.get('model', '').strip()
         
         # Validate provider
         if provider not in ['ollama', 'openai', 'gemini']:
@@ -283,9 +284,9 @@ def blog_post_generate_metadata(request, pk):
                 except Exception:
                     model = 'gpt-oss:20b-cloud'
             elif provider == 'openai':
-                model = 'gpt-4o-mini'
+                model = get_default_openai_model()
             elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
+                model = get_default_gemini_model()
         
         try:
             # Strip HTML tags from content before sending to AI (HTML might trigger safety filters)
@@ -567,7 +568,7 @@ def blog_post_generate_metadata(request, pk):
     context = {
         'blog_post': blog_post,
         'default_provider': 'gemini',
-        'default_model': 'gemini-3-pro-preview',
+        'default_model': get_default_gemini_model(),
     }
     
     return render(request, 'sources/blog_post_generate_metadata.html', context)
@@ -592,7 +593,7 @@ def blog_post_generate(request, pk):
     
     if request.method == 'POST':
         provider = request.POST.get('provider', 'gemini').strip().lower()
-        model = request.POST.get('model', 'gemini-3-pro-preview').strip()
+        model = request.POST.get('model', '').strip()
         use_rag = request.POST.get('use_rag', 'off') == 'on'
         num_chunks = int(request.POST.get('num_chunks', 5))
         
@@ -610,9 +611,9 @@ def blog_post_generate(request, pk):
                 except Exception:
                     model = 'gpt-oss:20b-cloud'
             elif provider == 'openai':
-                model = 'gpt-4o-mini'
+                model = get_default_openai_model()
             elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
+                model = get_default_gemini_model()
         
         try:
             # Get RAG context if enabled
@@ -656,9 +657,8 @@ def blog_post_generate(request, pk):
                 max_tokens = 16000 if any(keyword in model.lower() for keyword in ['gpt-4o', 'gpt-4-turbo', 'gpt-4']) else 8000
                 generated_content = rag_service._call_openai(prompt, model, max_tokens=max_tokens)
             elif provider == 'gemini':
-                # Gemini: gemini-3-pro-preview supports up to 32k tokens
-                # Use 16k for comprehensive blog posts
-                max_tokens = 16000 if 'gemini-3-pro' in model.lower() else 8000
+                # Gemini pro models support higher output limits
+                max_tokens = 16000 if 'pro' in model.lower() else 8000
                 generated_content = rag_service._call_gemini(prompt, model, max_tokens=max_tokens)
             else:
                 messages.error(request, 'Invalid provider.')
@@ -749,7 +749,7 @@ def blog_post_generate(request, pk):
     context = {
         'post_idea': post_idea,
         'default_provider': 'gemini',
-        'default_model': 'gemini-3-pro-preview',
+        'default_model': get_default_gemini_model(),
     }
     
     return render(request, 'sources/blog_post_generate.html', context)

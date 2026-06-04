@@ -183,39 +183,13 @@ def agent_models_api(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     
-    elif provider == 'openai':
-        # OpenAI models
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
-        
-        # Manual list of OpenAI models
-        models = [
-            'gpt-5.1',
-            'gpt-5',
-            'gpt-5-mini',
-            'gpt-5-nano',
-            'gpt-4o',
-            'gpt-4o-mini',
-            'gpt-4-turbo',
-            'gpt-4',
-            'gpt-3.5-turbo',
-        ]
-        return JsonResponse({'models': models})
-    
-    elif provider == 'gemini':
-        # Gemini models
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
-        
-        # Common Gemini models
-        models = [
-            'gemini-3-pro-preview',
-            'gemini-2.5-pro',
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite'
-        ]
+    elif provider in ('openai', 'gemini'):
+        from ..llm_models import list_models_for_provider
+
+        models, error = list_models_for_provider(provider)
+        if error:
+            status = 400 if 'not set' in error else 502
+            return JsonResponse({'error': error}, status=status)
         return JsonResponse({'models': models})
     
     else:

@@ -1,365 +1,388 @@
 {
-    "nodes": [
-      {
-        "parameters": {
-          "options": {}
+  "name": "generate blog post",
+  "nodes": [
+    {
+      "parameters": {
+        "toolDescription": "an endpoint to search published posts",
+        "url": "https://dashboard.joris-rabilloud.com/api/blog-posts?token=0xeTJD4EFYVgB6bP",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            }
+          ]
         },
-        "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-        "typeVersion": 1,
-        "position": [
-          1088,
-          -240
-        ],
-        "id": "253eb906-7ddc-4447-b1e7-dfbf113a319e",
-        "name": "Google Gemini Chat Model",
-        "credentials": {
-          "googlePalmApi": {
-            "id": "s8Brmru86JzJCXXw",
-            "name": "Google Gemini(PaLM) Api account"
-          }
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1440,
+        -176
+      ],
+      "id": "fea9fcce-fb45-40f2-9d1f-965d74eb019c",
+      "name": "search published posts"
+    },
+    {
+      "parameters": {
+        "toolDescription": "endpoint that lists the latest posts that have been published",
+        "url": "https://dashboard.joris-rabilloud.com/api/blog-posts?token=0xeTJD4EFYVgB6bP",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "=30"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1600,
+        -128
+      ],
+      "id": "7c425507-12b1-4b63-ae51-266e7fbecca0",
+      "name": "get last published posts"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
         }
       },
-      {
-        "parameters": {
-          "toolDescription": "an endpoint to search published posts",
-          "url": "https://dashboard.joris-rabilloud.com/api/blog-posts?token=0xeTJD4EFYVgB6bP",
-          "sendQuery": true,
-          "queryParameters": {
-            "parameters": [
-              {
-                "name": "search",
-                "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequestTool",
-        "typeVersion": 4.3,
-        "position": [
-          1536,
-          -192
-        ],
-        "id": "fea9fcce-fb45-40f2-9d1f-965d74eb019c",
-        "name": "search published posts"
-      },
-      {
-        "parameters": {
-          "toolDescription": "endpoint that lists the latest posts that have been published",
-          "url": "https://dashboard.joris-rabilloud.com/api/blog-posts?token=0xeTJD4EFYVgB6bP",
-          "sendQuery": true,
-          "queryParameters": {
-            "parameters": [
-              {
-                "name": "limit",
-                "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequestTool",
-        "typeVersion": 4.3,
-        "position": [
-          1664,
-          -192
-        ],
-        "id": "7c425507-12b1-4b63-ae51-266e7fbecca0",
-        "name": "get last published posts"
-      },
-      {
-        "parameters": {
-          "toolDescription": "api endpoint that search for already generated post ideas ",
-          "url": "=https://dashboard.joris-rabilloud.com/api/post-ideas?token=0xeTJD4EFYVgB6bP&exclude_with_posts=true",
-          "sendQuery": true,
-          "queryParameters": {
-            "parameters": [
-              {
-                "name": "search",
-                "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequestTool",
-        "typeVersion": 4.3,
-        "position": [
-          1792,
-          -192
-        ],
-        "id": "35bfb6fb-024b-4951-b0f3-2737aa9075d9",
-        "name": "search post ideas"
-      },
-      {
-        "parameters": {
-          "assignments": {
-            "assignments": [
-              {
-                "id": "8a7d2e1e-a18c-42ce-bb0b-3158583c2f7e",
-                "name": "output",
-                "value": "={{ JSON.parse($json.output.replace(/```json\\n|```/g, \"\")) }}",
-                "type": "object"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 3.4,
-        "position": [
-          1744,
-          -464
-        ],
-        "id": "954c450f-02d6-4ab7-b553-9f892a7af0ba",
-        "name": "Edit Fields1"
-      },
-      {
-        "parameters": {
-          "rule": {
-            "interval": [
-              {
-                "triggerAtHour": 6
-              }
-            ]
-          }
-        },
-        "type": "n8n-nodes-base.scheduleTrigger",
-        "typeVersion": 1.3,
-        "position": [
-          928,
-          -464
-        ],
-        "id": "19f9ebe0-3e31-49a4-bab2-c820df8a2689",
-        "name": "Schedule Trigger1"
-      },
-      {
-        "parameters": {
-          "sendTo": "jorisvaux@gmail.com",
-          "subject": "china blog post generated",
-          "emailType": "text",
-          "message": "=target keyword chosen : {{ $('Edit Fields1').item.json.output.target_keyword }}\nreasoning : {{ $('Edit Fields1').item.json.output.target_keyword_reasoning }}\n---\nsubject selected : {{ $('Edit Fields1').item.json.output.selected_idea_title }}\nreasoning : {{ $('Edit Fields1').item.json.output.selection_reasoning }}\n---\nrelevance score : {{ $('Edit Fields1').item.json.output.relevance_score }}\ndiversity score : {{ $('Edit Fields1').item.json.output.diversity_score }}\nseo score : {{ $('Edit Fields1').item.json.output.seo_score }}\nquality score : {{ $('Edit Fields1').item.json.output.quality_score }}\noverall score : {{ $('Edit Fields1').item.json.output.overall_score }}\n---\nmost similar : {{ $('Edit Fields1').item.json.output.similarity_check.most_similar_recent_post }}\nsimilarity level : {{ $('Edit Fields1').item.json.output.similarity_check.similarity_level }}\nreason : {{ $('Edit Fields1').item.json.output.similarity_check.similarity_reason }}\n---\nsuccessfully created ? {{ $json.success }}",
-          "options": {
-            "appendAttribution": false
-          }
-        },
-        "type": "n8n-nodes-base.gmail",
-        "typeVersion": 2.1,
-        "position": [
-          2192,
-          -464
-        ],
-        "id": "da4f41c7-edb4-40cb-bab7-424fa4c114b2",
-        "name": "Send a message1",
-        "webhookId": "ac503448-8a93-4ccc-8c8f-ed897114102b",
-        "credentials": {
-          "gmailOAuth2": {
-            "id": "qZv5dGCxDxaK5WiC",
-            "name": "Gmail account"
-          }
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        928,
+        -464
+      ],
+      "id": "19f9ebe0-3e31-49a4-bab2-c820df8a2689",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=**Role:** You are an expert Content Strategy Analyst for a China travel blog. Your expertise lies in strategically selecting blog post ideas that maximize content diversity, reader value, and SEO performance.\n\n**Task:** 1. Identify a valuable topic to write about next.\n2. Search for ideas. **If your specific topic yields no results, you MUST pivot to other topics until you find valid ideas.**\n3. Select the single best idea from ACTUAL search results.\n\n**Blog Context:**\n- **Niche:** China travel blog (practical, actionable info)\n- **Target Audience:** Travelers needing logistics, food, itineraries, and tips.\n- **Content Philosophy:** E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness).\n\n**Available Tools:**\n- `get_blog_posts`: Get recently published blog posts.\n- `search_blog_posts`: Search specifically for *published* posts (to avoid duplicates).\n- `search_post_ideas`: Search for *new* post ideas (database of potential articles).\n\n**CRITICAL RULE: THE \"NO EMPTY OUTPUT\" PROTOCOL**\nYou are **FORBIDDEN** from returning an empty response or an error saying \"no ideas found\" without executing the **Fail-Safe Search**.\nIf your specific targeted searches return 0 results, you MUST search for the generic terms **\"guide\"**, **\"travel\"**, or **\"china\"**. This will return a broad list of ideas. You must then select the best available idea from that broad list.\n\n**Workflow:**\n\n### Step 1: Analyze & Identify Target\nAnalyze the recently published posts (`get_blog_posts`) to determine a strategy.\n- What is missing? (e.g., \"We have too much food content, let's do transport\").\n- **Target Output:** A primary keyword (e.g., \"Chengdu\") and a backup category (e.g., \"Transport\").\n\n### Step 2: Search for Post Ideas (Iterative Process)\n**You must perform this loop until you find ideas:**\n\n1. **Attempt 1 (Specific):** Use `search_post_ideas` with your primary keyword (e.g., \"Chengdu\").\n   - *If results found:* Proceed to Step 3.\n   \n2. **Attempt 2 (Broadening):** If Attempt 1 was empty, use `search_post_ideas` with a broader region or category (e.g., \"Sichuan\" or \"Food\").\n   - *If results found:* Proceed to Step 3.\n\n3. **Attempt 3 (The Fail-Safe):** If Attempt 2 was empty, you **MUST** use `search_post_ideas` with the term **\"guide\"** or **\"travel\"**.\n   - This ensures you get a list of *available* ideas from the database, even if they aren't your first choice topic.\n   - *If results found:* Proceed to Step 3.\n\n**Constraint:** Do not stop searching until you have at least one valid idea ID.\n\n### Step 3: Check for Duplicates\nOnce you have a potential idea from Step 2:\n- Use `search_blog_posts` with the idea's main keyword to ensure we haven't already written about it.\n- If nothing is returned, try a more generic keyword\n- If we *have* written about it, discard that idea and pick the next best one from your search results in Step 2.\n\n### Step 4: Final Selection\nFrom your validated search results, select the best idea.\n\n**Selection Criteria:**\n1. **Relevance:** Is it actionable for a traveler?\n2. **Diversity:** Is it different from the last 5 published posts?\n3. **Availability:** The `selected_idea_id` **MUST** be real and present in your search results.\n\n**Output Format (JSON ONLY):**\n{\n  \"target_keyword\": \"The keyword you eventually found results for\",\n  \"target_keyword_reasoning\": \"Why you chose this (or why you had to use the Fail-Safe)\",\n  \"selected_idea_id\": 123,\n  \"selected_idea_title\": \"Title of the selected idea\",\n  \"selection_reasoning\": \"Detailed explanation of selection.\",\n  \"relevance_score\": 9,\n  \"diversity_score\": 8,\n  \"seo_score\": 7,\n  \"quality_score\": 8,\n  \"overall_score\": 8.1,\n  \"similarity_check\": {\n    \"similar_posts_found\": [\"Title of similar post 1\"],\n    \"similarity_level\": \"low|medium|high\",\n    \"similarity_reason\": \"Explanation\"\n  }\n}\n\n**CRITICAL GUIDELINES:**\n- **NEVER** return an empty JSON. \n- **NEVER** make up an ID.\n- If your strategic topic (\"Chengdu\") has no ideas in the database, **it is better to select a random available idea (e.g., \"Beijing Tips\") than to return nothing.**\n- Always prioritize returning a valid `selected_idea_id` over strictly adhering to the initial topic strategy if the database is limited.\n\n**Now: Get recent posts, Identify a topic, and SEARCH UNTIL YOU FIND A VALID IDEA.**",
+        "options": {
+          "maxIterations": 50
         }
       },
-      {
-        "parameters": {
-          "promptType": "define",
-          "text": "=**Role:** You are an expert Content Strategy Analyst for a China travel blog. Your expertise lies in strategically selecting blog post ideas that maximize content diversity, reader value, and SEO performance.\n\n**Task:** 1. Identify a valuable topic to write about next.\n2. Search for ideas. **If your specific topic yields no results, you MUST pivot to other topics until you find valid ideas.**\n3. Select the single best idea from ACTUAL search results.\n\n**Blog Context:**\n- **Niche:** China travel blog (practical, actionable info)\n- **Target Audience:** Travelers needing logistics, food, itineraries, and tips.\n- **Content Philosophy:** E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness).\n\n**Available Tools:**\n- `get_blog_posts`: Get recently published blog posts.\n- `search_blog_posts`: Search specifically for *published* posts (to avoid duplicates).\n- `search_post_ideas`: Search for *new* post ideas (database of potential articles).\n\n**CRITICAL RULE: THE \"NO EMPTY OUTPUT\" PROTOCOL**\nYou are **FORBIDDEN** from returning an empty response or an error saying \"no ideas found\" without executing the **Fail-Safe Search**.\nIf your specific targeted searches return 0 results, you MUST search for the generic terms **\"guide\"**, **\"travel\"**, or **\"china\"**. This will return a broad list of ideas. You must then select the best available idea from that broad list.\n\n**Workflow:**\n\n### Step 1: Analyze & Identify Target\nAnalyze the recently published posts (`get_blog_posts`) to determine a strategy.\n- What is missing? (e.g., \"We have too much food content, let's do transport\").\n- **Target Output:** A primary keyword (e.g., \"Chengdu\") and a backup category (e.g., \"Transport\").\n\n### Step 2: Search for Post Ideas (Iterative Process)\n**You must perform this loop until you find ideas:**\n\n1. **Attempt 1 (Specific):** Use `search_post_ideas` with your primary keyword (e.g., \"Chengdu\").\n   - *If results found:* Proceed to Step 3.\n   \n2. **Attempt 2 (Broadening):** If Attempt 1 was empty, use `search_post_ideas` with a broader region or category (e.g., \"Sichuan\" or \"Food\").\n   - *If results found:* Proceed to Step 3.\n\n3. **Attempt 3 (The Fail-Safe):** If Attempt 2 was empty, you **MUST** use `search_post_ideas` with the term **\"guide\"** or **\"travel\"**.\n   - This ensures you get a list of *available* ideas from the database, even if they aren't your first choice topic.\n   - *If results found:* Proceed to Step 3.\n\n**Constraint:** Do not stop searching until you have at least one valid idea ID.\n\n### Step 3: Check for Duplicates\nOnce you have a potential idea from Step 2:\n- Use `search_blog_posts` with the idea's main keyword to ensure we haven't already written about it.\n- If we *have* written about it, discard that idea and pick the next best one from your search results in Step 2.\n\n### Step 4: Final Selection\nFrom your validated search results, select the best idea.\n\n**Selection Criteria:**\n1. **Relevance:** Is it actionable for a traveler?\n2. **Diversity:** Is it different from the last 5 published posts?\n3. **Availability:** The `selected_idea_id` **MUST** be real and present in your search results.\n\n**Output Format (JSON ONLY):**\n{\n  \"target_keyword\": \"The keyword you eventually found results for\",\n  \"target_keyword_reasoning\": \"Why you chose this (or why you had to use the Fail-Safe)\",\n  \"selected_idea_id\": 123,\n  \"selected_idea_title\": \"Title of the selected idea\",\n  \"selection_reasoning\": \"Detailed explanation of selection.\",\n  \"relevance_score\": 9,\n  \"diversity_score\": 8,\n  \"seo_score\": 7,\n  \"quality_score\": 8,\n  \"overall_score\": 8.1,\n  \"similarity_check\": {\n    \"similar_posts_found\": [\"Title of similar post 1\"],\n    \"similarity_level\": \"low|medium|high\",\n    \"similarity_reason\": \"Explanation\"\n  }\n}\n\n**CRITICAL GUIDELINES:**\n- **NEVER** return an empty JSON. \n- **NEVER** make up an ID.\n- If your strategic topic (\"Chengdu\") has no ideas in the database, **it is better to select a random available idea (e.g., \"Beijing Tips\") than to return nothing.**\n- Always prioritize returning a valid `selected_idea_id` over strictly adhering to the initial topic strategy if the database is limited.\n\n**Now: Get recent posts, Identify a topic, and SEARCH UNTIL YOU FIND A VALID IDEA.**",
-          "options": {}
-        },
-        "type": "@n8n/n8n-nodes-langchain.agent",
-        "typeVersion": 3,
-        "position": [
-          1280,
-          -464
-        ],
-        "id": "4176b6e1-fd13-4291-afa8-3af9cebeb1db",
-        "name": "ai agent"
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1280,
+        -464
+      ],
+      "id": "4176b6e1-fd13-4291-afa8-3af9cebeb1db",
+      "name": "ai agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $execution.id }}",
+        "contextWindowLength": 50
       },
-      {
-        "parameters": {
-          "sessionIdType": "customKey",
-          "sessionKey": "6666",
-          "contextWindowLength": 10
-        },
-        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-        "typeVersion": 1.3,
-        "position": [
-          1296,
-          -256
-        ],
-        "id": "d4bf1b39-6faf-4c92-b5c2-3f7ef0c286e7",
-        "name": "Simple Memory"
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1296,
+        -256
+      ],
+      "id": "d4bf1b39-6faf-4c92-b5c2-3f7ef0c286e7",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://dashboard.joris-rabilloud.com/api/generate-blog-post?token=0xeTJD4EFYVgB6bP",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"post_idea_id\": {{ $json.output.selected_idea_id }},\n  \"provider\": \"gemini\",\n  \"model\": \"gemini-3-pro-preview\", \n  \"use_rag\": true,\n  \"num_chunks\": 5, \n  \"metadata_provider\": \"gemini\",\n  \"metadata_model\": \"gemini-3-pro-preview\"  \n  } ",
+        "options": {}
       },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "https://dashboard.joris-rabilloud.com/api/generate-blog-post?token=0xeTJD4EFYVgB6bP",
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "={\n  \"post_idea_id\": {{ $json.output.selected_idea_id }},\n  \"provider\": \"gemini\",\n  \"model\": \"gemini-3-pro-preview\", \n  \"use_rag\": true,\n  \"num_chunks\": 5, \n  \"metadata_provider\": \"gemini\",\n  \"metadata_model\": \"gemini-3-pro-preview\"  \n  } ",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.3,
-        "position": [
-          1968,
-          -464
-        ],
-        "id": "317ce035-7f11-409a-9e26-37827cb519c5",
-        "name": "generate post"
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1968,
+        -464
+      ],
+      "id": "317ce035-7f11-409a-9e26-37827cb519c5",
+      "name": "generate post"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        928,
+        -736
+      ],
+      "id": "74eabd95-d781-462a-9162-d3fce2d8022a",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-pro-preview",
+        "options": {}
       },
-      {
-        "parameters": {},
-        "type": "n8n-nodes-base.errorTrigger",
-        "typeVersion": 1,
-        "position": [
-          928,
-          -736
-        ],
-        "id": "74eabd95-d781-462a-9162-d3fce2d8022a",
-        "name": "Error Trigger"
-      },
-      {
-        "parameters": {
-          "sendTo": "jorisvaux@gmail.com",
-          "subject": "error on china blog post generated",
-          "emailType": "text",
-          "message": "={{ $json.execution.error }}",
-          "options": {
-            "appendAttribution": false
-          }
-        },
-        "type": "n8n-nodes-base.gmail",
-        "typeVersion": 2.1,
-        "position": [
-          1152,
-          -736
-        ],
-        "id": "bbdf900a-38a5-467d-9a61-450e64393c49",
-        "name": "Send a message",
-        "webhookId": "ac503448-8a93-4ccc-8c8f-ed897114102b",
-        "credentials": {
-          "gmailOAuth2": {
-            "id": "qZv5dGCxDxaK5WiC",
-            "name": "Gmail account"
-          }
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        -256
+      ],
+      "id": "5aab343f-9da8-47d4-aa66-a957b5725e20",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "s8Brmru86JzJCXXw",
+          "name": "Google Gemini(PaLM) Api account"
         }
-      }
-    ],
-    "connections": {
-      "Google Gemini Chat Model": {
-        "ai_languageModel": [
-          [
-            {
-              "node": "ai agent",
-              "type": "ai_languageModel",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "search published posts": {
-        "ai_tool": [
-          [
-            {
-              "node": "ai agent",
-              "type": "ai_tool",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "get last published posts": {
-        "ai_tool": [
-          [
-            {
-              "node": "ai agent",
-              "type": "ai_tool",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "search post ideas": {
-        "ai_tool": [
-          [
-            {
-              "node": "ai agent",
-              "type": "ai_tool",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Edit Fields1": {
-        "main": [
-          [
-            {
-              "node": "generate post",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Schedule Trigger1": {
-        "main": [
-          [
-            {
-              "node": "ai agent",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "ai agent": {
-        "main": [
-          [
-            {
-              "node": "Edit Fields1",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Simple Memory": {
-        "ai_memory": [
-          [
-            {
-              "node": "ai agent",
-              "type": "ai_memory",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "generate post": {
-        "main": [
-          [
-            {
-              "node": "Send a message1",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Error Trigger": {
-        "main": [
-          [
-            {
-              "node": "Send a message",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
       }
     },
-    "pinData": {},
-    "meta": {
-      "templateCredsSetupCompleted": true,
-      "instanceId": "daa5e57eae815c6a220a5f5d9cbe300b47054c36a27ec27baefdb02632bde0ff"
+    {
+      "parameters": {
+        "toolDescription": "api endpoint that search for already generated post ideas ",
+        "url": "https://dashboard.joris-rabilloud.com/api/post-ideas",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "exclude_with_posts",
+              "value": "true"
+            },
+            {
+              "name": "token",
+              "value": "0xeTJD4EFYVgB6bP"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1760,
+        -176
+      ],
+      "id": "4f7e1f44-83dd-436e-9cce-6a19eb983d89",
+      "name": "search post ideas"
+    },
+    {
+      "parameters": {
+        "sendTo": "jorisvaux@gmail.com",
+        "subject": "error on post creation",
+        "message": "={{ $json.execution.error.message }}\n{{ $json.execution.error.stack }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        -736
+      ],
+      "id": "5510b880-c966-48f3-b649-b06ee2fb0ddc",
+      "name": "send error message",
+      "webhookId": "b5479204-c3bf-4a5e-a27a-c087f9af0446",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qZv5dGCxDxaK5WiC",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "jorisvaux@gmail.com",
+        "subject": "china blog post generated",
+        "emailType": "text",
+        "message": "=target keyword chosen : {{ $('parse output').item.json.output.target_keyword }}\nreasoning : {{ $('parse output').item.json.output.target_keyword_reasoning }}\n---\nsubject selected : {{ $('parse output').item.json.output.selected_idea_title }}\nreasoning : {{ $('parse output').item.json.output.selection_reasoning }}\n---\nrelevance score : {{ $('parse output').item.json.output.relevance_score }}\ndiversity score : {{ $('parse output').item.json.output.diversity_score }}\nseo score : {{ $('parse output').item.json.output.seo_score }}\nquality score : {{ $('parse output').item.json.output.quality_score }}\noverall score : {{ $('parse output').item.json.output.overall_score }}\n---\nmost similar : {{ $('parse output').item.json.output.similarity_check.most_similar_recent_post }}\nsimilarity level : {{ $('parse output').item.json.output.similarity_check.similarity_level }}\nreason : {{ $('parse output').item.json.output.similarity_check.similarity_reason }}\n---\nsuccessfully created ? {{ $json.success }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2192,
+        -464
+      ],
+      "id": "da4f41c7-edb4-40cb-bab7-424fa4c114b2",
+      "name": "success message",
+      "webhookId": "ac503448-8a93-4ccc-8c8f-ed897114102b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qZv5dGCxDxaK5WiC",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8a7d2e1e-a18c-42ce-bb0b-3158583c2f7e",
+              "name": "output",
+              "value": "={{ JSON.parse($json.output.replace(/```json\\n|```/g, \"\")) }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        -464
+      ],
+      "id": "954c450f-02d6-4ab7-b553-9f892a7af0ba",
+      "name": "parse output"
     }
-  }
+  ],
+  "pinData": {},
+  "connections": {
+    "search published posts": {
+      "ai_tool": [
+        [
+          {
+            "node": "ai agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get last published posts": {
+      "ai_tool": [
+        [
+          {
+            "node": "ai agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "ai agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai agent": {
+      "main": [
+        [
+          {
+            "node": "parse output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "ai agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate post": {
+      "main": [
+        [
+          {
+            "node": "success message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "send error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ai agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search post ideas": {
+      "ai_tool": [
+        [
+          {
+            "node": "ai agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send error message": {
+      "main": [
+        []
+      ]
+    },
+    "parse output": {
+      "main": [
+        [
+          {
+            "node": "generate post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "56ae0610-5c83-46a6-ab89-361148c60e44",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "daa5e57eae815c6a220a5f5d9cbe300b47054c36a27ec27baefdb02632bde0ff"
+  },
+  "id": "30GMIvat45xS2hwn",
+  "tags": []
+}
