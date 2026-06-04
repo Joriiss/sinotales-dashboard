@@ -1,0 +1,36 @@
+{
+    "success": true,
+    "sources": [
+        {
+            "id": 9,
+            "name": "China Highlights",
+            "sitemap": "https://www.chinahighlights.com/sitemap.xml",
+            "filter_china": false
+        },
+        {
+            "id": 7,
+            "name": "China Journey",
+            "sitemap": "https://www.thechinajourney.com/post-sitemap.xml",
+            "filter_china": false
+        },
+        {
+            "id": 66,
+            "name": "Let's Travel to China",
+            "sitemap": "https://letstraveltochina.com/post-sitemap.xml",
+            "filter_china": false
+        },
+        {
+            "id": 6,
+            "name": "Lonely Planet Blog",
+            "sitemap": "https://www.lonelyplanet.com/sitemaps/articles/sitemap.xml",
+            "filter_china": true
+        },
+        {
+            "id": 5,
+            "name": "Wild China",
+            "sitemap": "https://wildchina.com/sitemap_index.xml",
+            "filter_china": false
+        }
+    ],
+    "count": 5
+}

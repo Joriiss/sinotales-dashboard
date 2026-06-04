@@ -1,0 +1,36 @@
+{
+    "success": true,
+    "channels": [
+        {
+            "id": 64,
+            "name": "Cherie Diaries",
+            "channel_id": "UCC3ATgAsrk7pqM-kBARcJew",
+            "include_shorts": false
+        },
+        {
+            "id": 3,
+            "name": "Chine Chilla",
+            "channel_id": "UCxnCAZ7Ykp-d7_T2K7LgrdA",
+            "include_shorts": true
+        },
+        {
+            "id": 2,
+            "name": "Chinese Cooking Demystified",
+            "channel_id": "UC54SLBnD5k5U3Q6N__UjbAw",
+            "include_shorts": false
+        },
+        {
+            "id": 65,
+            "name": "Katherine's Journey to the East",
+            "channel_id": "UCrcDPAshreK6gXlDIrDgYjQ",
+            "include_shorts": false
+        },
+        {
+            "id": 1,
+            "name": "Little Chinese Everywhere",
+            "channel_id": "UC1UNB6Gy11umcbEj_hqIwhw",
+            "include_shorts": false
+        }
+    ],
+    "count": 5
+}

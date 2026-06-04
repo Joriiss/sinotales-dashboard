@@ -1,0 +1,1064 @@
+{
+  "name": "publish posts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1504,
+        1328
+      ],
+      "id": "cbe15294-aa34-4db1-94ac-d7112ce28641",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://dashboard.joris-rabilloud.com/api/blog-posts/export-wordpress?token=0xeTJD4EFYVgB6bP&oldest_unpublished=true",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1168,
+        1328
+      ],
+      "id": "b8a11933-3082-44c4-94c8-220660f2b760",
+      "name": "get earliest unpublished post"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sinotales.com/wp-json/wp/v2/posts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    \"title\": $('get earliest unpublished post').first().json.blog_posts[0].title,\n    \"slug\": $('get earliest unpublished post').first().json.blog_posts[0].slug,\n    \"content\": $('get earliest unpublished post').first().json.blog_posts[0].content,\n    \"excerpt\": $('get earliest unpublished post').first().json.blog_posts[0].acf.intro.replace(/<\\/?strong[^>]*>/g, ''),\n    \"status\": \"publish\",\n    \"tags\": $('aggregate tags').item.json.tags_ids,\n    \"categories\": JSON.parse($('choose the category').item.json.output),\n    \"featured_media\": $json.featured_id,\n    \"acf\": {\n      \"intro\": $('get earliest unpublished post').first().json.blog_posts[0].acf.intro,\n      \"main_content\": $('add images in content').first().json.updated_main_content,\n      \"conclusion\": $('get earliest unpublished post').first().json.blog_posts[0].acf.conclusion,\n      \"summary_title\": $('get earliest unpublished post').first().json.blog_posts[0].acf.summary_title,\n      \"summary_content\": $('get earliest unpublished post').first().json.blog_posts[0].acf.summary_content,\n      \"faqs_title\": $('get earliest unpublished post').first().json.blog_posts[0].acf.faqs_title,\n      \"question_1\": $('get earliest unpublished post').first().json.blog_posts[0].acf.question_1,\n      \"answer_1\": $('get earliest unpublished post').first().json.blog_posts[0].acf.answer_1,\n      \"question_2\": $('get earliest unpublished post').first().json.blog_posts[0].acf.question_2,\n      \"answer_2\": $('get earliest unpublished post').first().json.blog_posts[0].acf.answer_2,\n      \"question_3\": $('get earliest unpublished post').first().json.blog_posts[0].acf.question_3,\n      \"answer_3\": $('get earliest unpublished post').first().json.blog_posts[0].acf.answer_3,\n      \"question_4\": $('get earliest unpublished post').first().json.blog_posts[0].acf.question_4,\n      \"answer_4\": $('get earliest unpublished post').first().json.blog_posts[0].acf.answer_4\n    },\n    \"meta\": {\n      \"_yoast_wpseo_title\": $('get earliest unpublished post').first().json.blog_posts[0].meta.meta_title,\n      \"_yoast_wpseo_metadesc\": $('get earliest unpublished post').first().json.blog_posts[0].meta.meta_description\n    }\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2704,
+        336
+      ],
+      "id": "4a0b35fb-dd2f-4d4f-97cb-b27df8619794",
+      "name": "publish",
+      "alwaysOutputData": false,
+      "credentials": {
+        "wordpressApi": {
+          "id": "N56k5RTOEXyW25yW",
+          "name": "SinoTales"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=tags",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        896,
+        752
+      ],
+      "id": "7a386f96-32a2-40d6-a345-543f952ee817",
+      "name": "split the tags"
+    },
+    {
+      "parameters": {
+        "url": "https://sinotales.com/wp-json/wp/v2/tags",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.tags }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1440,
+        688
+      ],
+      "id": "64b666e6-59e3-49af-a83a-50465db937cc",
+      "name": "search existing tags",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5efe5c39-de05-4177-bc90-4dea2b1cbd84",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "={{ $('split the tags').item.json.tags }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1936,
+        752
+      ],
+      "id": "4e5c5ebf-082e-4ce1-91a6-17570c6ebbe0",
+      "name": "check if tag exists",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sinotales.com/wp-json/wp/v2/tags",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendQuery": true,
+        "specifyQuery": "=json",
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonQuery": "={ \n  \"name\": \"{{ $('loop on tags').item.json.tags }}\" \n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2288,
+        768
+      ],
+      "id": "335208ce-2585-4928-933d-275129841933",
+      "name": "create a tag",
+      "credentials": {
+        "wordpressApi": {
+          "id": "N56k5RTOEXyW25yW",
+          "name": "SinoTales"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1168,
+        752
+      ],
+      "id": "8bbd7052-3cbd-4ec0-8abc-71e6427f473f",
+      "name": "loop on tags"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "id",
+              "renameField": true,
+              "outputFieldName": "tags_ids"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        432
+      ],
+      "id": "9c33a848-861e-4ffc-aaac-d5244747cb74",
+      "name": "aggregate tags"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Post Title: {{ $('get earliest unpublished post').first().json.blog_posts[0].title }}\nPost Intro: {{ $('get earliest unpublished post').first().json.blog_posts[0].acf.intro }}",
+        "options": {
+          "systemMessage": "=You are the Taxonomy Manager for \"SinoTales\". Your job is to assign the most relevant WordPress Category IDs to a blog post.\n\n**The Taxonomy Structure (Roots):**\n1. **Destinations (ID: 13)** -> For specific places (e.g., Chengdu, Yunnan, Beijing).\n2. **Interests (ID: 68)** -> For topics (e.g., Food, Hiking, Culture, Festivals).\n3. **Ressources (ID: 67)** -> For logistics (e.g., Visas, Apps, Transport).\n\n**Your Strategy:**\nYour goal is accuracy, not quantity.\n* **Default:** Assign ONE precise category that best defines the post (usually the Destination).\n* **Exceptions (Dual Categories):** ONLY assign a second category if the post is *heavily* focused on a specific interest.\n    * *Example 1 (General):* \"Guide to Chengdu\" -> Assign **Chengdu** (Destination). (Do NOT force \"City Travel\").\n    * *Example 2 (Specific):* \"Best Spicy Hotpot Spots in Chengdu\" -> Assign **Chengdu** (Destination) AND **Food** (Interest).\n    * *Example 3 (Logistics):* \"How to get a Chinese Visa\" -> Assign **Visas** (Resource). (Do NOT force a destination).\n\n**Process:**\n1.  Identify the **Primary Category** (Where is this? OR What is the main logistical topic?).\n2.  (Optional) Identify a **Secondary Category** ONLY if the post has a strong thematic angle (Hiking, Food, Skiing).\n3.  For each identified category:\n    a. Use `search_category` to check if it exists.\n    b. If yes, get ID.\n    c. If no, generate the following 4 SEO assets:\n       - **Description:** A short 1-sentence summary for the category page text.\n       - **Archive H1 Title:** An engaging header (e.g., \"Ultimate Harbin Travel Guide\").\n       - **SEO Meta Title:** Optimized for search (e.g., \"Harbin Travel Guide & Tips - SinoTales\").\n       - **SEO Meta Description:** A compelling summary for search results (approx 150 characters).\n    d. Use `create_category` passing ALL these details (including `parent_id`, `description`, `acf_title`, `seo_title`, and `seo_desc`).\n4.  **Output:** Return a JSON Array of numeric IDs (e.g., `[15]` or `[15, 84]`)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1872,
+        336
+      ],
+      "id": "040d799d-c014-42ab-bbd3-8174fd8a47d0",
+      "name": "choose the category"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        560
+      ],
+      "id": "67029683-4b55-4f17-b67e-fcc9575096ee",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "s8Brmru86JzJCXXw",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sinotales.com/wp-json/wp/v2/categories",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "parent",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `should be the parents id`, 'string') }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', ``, 'string') }}"
+            },
+            {
+              "name": "meta[wpseo_title]",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters3_Value', ``, 'string') }}"
+            },
+            {
+              "name": "meta[wpseo_desc]",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters4_Value', ``, 'string') }}"
+            },
+            {
+              "name": "acf[title]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1936,
+        560
+      ],
+      "id": "5f46ff80-faac-4026-b456-065d3c77ed8f",
+      "name": "create_category",
+      "credentials": {
+        "wordpressApi": {
+          "id": "N56k5RTOEXyW25yW",
+          "name": "SinoTales"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://sinotales.com/wp-json/wp/v2/categories",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        2128,
+        560
+      ],
+      "id": "3f84cb3b-6140-4b0d-9104-fef8009b4046",
+      "name": "search_category"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "blog_posts[0].images",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        1312
+      ],
+      "id": "dc77c2ef-dfd3-4ed2-87d8-7bc81f782708",
+      "name": "split the images"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        256,
+        1328
+      ],
+      "id": "6dd60fdb-7e1d-4d25-aa1a-6b28a526c430",
+      "name": "download image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sinotales.com/wp-json/wp/v2/media/",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Disposition",
+              "value": "=attachment; filename={{ $json.new_filename }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1376,
+        1168
+      ],
+      "id": "53b9d047-e317-419c-9a21-73ff55c4e29e",
+      "name": "upload to wp",
+      "credentials": {
+        "wordpressApi": {
+          "id": "N56k5RTOEXyW25yW",
+          "name": "SinoTales"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sinotales.com/wp-json/wp/v2/media/{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"alt_text\": \"{{ $('extract json').item.json.seo_alt_text }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1664,
+        1376
+      ],
+      "id": "3f966e75-739f-4e2d-bc02-7ba997f83e86",
+      "name": "add alt text",
+      "credentials": {
+        "wordpressApi": {
+          "id": "N56k5RTOEXyW25yW",
+          "name": "SinoTales"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "=Analyze this image for SEO and User Experience.\n\n**Context:**\n- Post Title: \"{{ $('get earliest unpublished post').item.json.blog_posts[0].title }}\"\n- Current Alt/Placeholder: \"{{ $('loop over images').item.json.alt_text }}\"\n- Original Filename: \"{{ $json.filename }}\"\n\n**Your Task:**\n1. **Filename:** Rename the file to be SEO-friendly (lowercase, kebab-case) using keywords relevant to the visual content and the post title.\n2. **Alt Text:** Write a strictly descriptive text for accessibility/SEO (describe what is physically in the image for someone who cannot see it).\n3. **Caption:** Write an engaging caption for the human reader. This should provide context, relate the image to the Post Title, or add a short interesting fact. Do NOT just describe the image again.\n\n**OUTPUT JSON ONLY:**\n{\n  \"new_filename\": \"keyword-rich-description-of-image.jpg\",\n  \"seo_alt_text\": \"A literal description of the visual elements (e.g. 'A plate of spicy mapo tofu with red chili oil').\",\n  \"image_caption\": \"Mapo Tofu is a staple of Sichuan cuisine, known for its numbing peppercorn heat.\"\n}",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        1328
+      ],
+      "id": "b0322ee0-c361-48d0-8d64-8b35c29ad148",
+      "name": "generate image title and alt",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "s8Brmru86JzJCXXw",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get the raw text output from Gemini\nconst rawText = $input.item.json.content.parts[0].text;\n\n// 2. Clean markdown and handle common JSON-breaking characters\nconst cleanJson = rawText\n  .replace(/^```json\\s*|```$/g, '') // Remove markdown code blocks\n  .replace(/[\\u0000-\\u001F\\u007F-\\u009F]/g, \"\") // Remove hidden control characters\n  .trim();\n\ntry {\n  const parsedData = JSON.parse(cleanJson);\n  \n  // 3. Optional: If Gemini returns an array [ { ... } ], \n  // we extract the first object to keep the workflow consistent.\n  const finalData = Array.isArray(parsedData) ? parsedData[0] : parsedData;\n\n  return {\n    json: finalData\n  };\n} catch (error) {\n  return {\n    json: {\n      error: \"Failed to parse JSON\",\n      raw_output: rawText,\n      message: error.message\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        1328
+      ],
+      "id": "c1be8019-8210-4f6d-8cc2-631c2376edb0",
+      "name": "extract json"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1136,
+        1168
+      ],
+      "id": "22ab26d0-ed78-4369-b5d8-282d71d5d10f",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "97027799-5bee-45f4-a1db-524d95e63ded",
+              "name": "tags",
+              "value": "={{ $('get earliest unpublished post').first().json.blog_posts[0].tags }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        752
+      ],
+      "id": "08f8eb08-e058-47e7-9177-67f61da83928",
+      "name": "get tags data"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -176,
+        1312
+      ],
+      "id": "cbe8b37f-728e-4796-a4e1-a9d7dea7669e",
+      "name": "loop over images"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get content\nlet content = $('get earliest unpublished post').first().json.blog_posts[0].acf.main_content;\n\n// 2. Get images\nconst allImages = $('loop over images').all();\n\n// DEBUG: Let's see what we are working with\nconsole.log(`Processing ${allImages.length} images.`);\n\nfor (const item of allImages) {\n    // Access the object directly (based on your \"Format Image Data\" output)\n    // Your Set node output is: { \"original_id\": 16, \"full_url\": \"...\", ... }\n    // It is NOT nested inside \"image_info\" based on your Pin Data!\n    // It is directly in item.json.\n    const img = item.json; \n    \n    if (img && img.full_url) {\n        // Use 1536 if valid, else full url\n        const finalUrl = img.url_1536 || img.full_url;\n        const altText = img.alt_text || '';\n        const caption = img.caption || '';\n        const id = img.original_id;\n\n        // Force string for matching\n        const placeholder = `[IMG-${id}]`;\n        \n        // Build tag\n        const htmlTag = `<img src=\"${finalUrl}\" alt=\"${altText}\" class=\"st-post-image\" loading=\"lazy\" /><p class=\"st-caption\">${caption}</p>`;\n        \n        // Check if placeholder exists before replacing (good for debugging)\n        if (content.includes(placeholder)) {\n            content = content.split(placeholder).join(htmlTag);\n        } else {\n            console.log(`Placeholder ${placeholder} not found in text.`);\n        }\n    }\n}\n\nreturn {\n    json: {\n        updated_main_content: content\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        880
+      ],
+      "id": "6d39baca-51dc-499f-8be3-73ff9f9c2a69",
+      "name": "add images in content"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://dashboard.joris-rabilloud.com/api/blog-posts/{{ $('get earliest unpublished post').first().json.blog_posts[0].id }}/update-status?token=0xeTJD4EFYVgB6bP",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"published\": true,\n  \"online_url\": \"{{ $json.guid.rendered }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3024,
+        336
+      ],
+      "id": "1b442d64-b578-412a-81c6-5b2abbb19f25",
+      "name": "mark as published"
+    },
+    {
+      "parameters": {
+        "sendTo": "jorisvaux@gmail.com",
+        "subject": "new post published on SinoTales",
+        "message": "=Post created : {{ $json.blog_post.title }} <br>\nLink : {{ $('publish').item.json.guid.rendered }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3296,
+        336
+      ],
+      "id": "3c3d8fe5-22e6-438d-8fb4-c78a49d8290a",
+      "name": "Send a message",
+      "webhookId": "65f40f12-f429-4552-aa31-7991c40de4da",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qZv5dGCxDxaK5WiC",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        1824
+      ],
+      "id": "2dedc576-646a-41d8-9def-59a493a3ac57",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0c4fc3f3-f269-4a81-b772-08bbbcd15d8b",
+              "leftValue": "={{ $json.blog_posts[0].images }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -864,
+        1328
+      ],
+      "id": "6d9b6374-f52a-4bbc-81e5-6d5824251821",
+      "name": "check images exists"
+    },
+    {
+      "parameters": {
+        "sendTo": "jorisvaux@gmail.com",
+        "subject": "Error on post publication",
+        "message": "={{ $json.execution.error.message }}<br>\n{{ $json.execution.error.stack }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1280,
+        1824
+      ],
+      "id": "22a85df2-19e8-43c8-bb03-d742e62154fd",
+      "name": "error warning",
+      "webhookId": "48cb1548-6a93-412e-b2ce-188fca8c6b8a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qZv5dGCxDxaK5WiC",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "jorisvaux@gmail.com",
+        "subject": "Error on post publication",
+        "message": "=The post {{ $('get earliest unpublished post').item.json.blog_posts[0].title }} couldn't get published because the images are missing!!! :/",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -656,
+        1424
+      ],
+      "id": "8f1ed1fd-5d89-43dc-804d-a0803ce8e60a",
+      "name": "missing images warning",
+      "webhookId": "620cbb37-1340-47ef-9e59-3cb17b63e0d2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qZv5dGCxDxaK5WiC",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    \"original_id\": $('split the images').item.json.id,\n    \"wp_id\": $('upload to wp').item.json.id,\n    \"alt_text\": $json.alt_text,\n    \"caption\": $('extract json').item.json.image_caption,\n    \"full_url\": $json.source_url,\n    \"url_1536\": $json.media_details?.sizes?.['1536x1536']?.source_url,\n    \"is_featured\": $('loop over images').item.json.filename === \"featured_image\"\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1872,
+        1376
+      ],
+      "id": "9f092133-1183-49d0-bca6-ef3b94e2579f",
+      "name": "Format Image Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "822012d9-7228-4126-ad6f-61167e45cf7d",
+              "name": "featured_id",
+              "value": "={{ $('loop over images').all().find(img => img.json.is_featured === true).json.wp_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2352,
+        336
+      ],
+      "id": "5980a1e1-e327-4502-84b3-982371bfc41d",
+      "name": "set featured image id"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-01-24T08:00:46.035+01:00",
+          "Readable date": "January 24th 2026, 8:00:46 am",
+          "Readable time": "8:00:46 am",
+          "Day of week": "Saturday",
+          "Year": "2026",
+          "Month": "January",
+          "Day of month": "24",
+          "Hour": "08",
+          "Minute": "00",
+          "Second": "46",
+          "Timezone": "Europe/Paris (UTC+01:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "get earliest unpublished post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get earliest unpublished post": {
+      "main": [
+        [
+          {
+            "node": "check images exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "split the tags": {
+      "main": [
+        [
+          {
+            "node": "loop on tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search existing tags": {
+      "main": [
+        [
+          {
+            "node": "check if tag exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if tag exists": {
+      "main": [
+        [
+          {
+            "node": "loop on tags",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "create a tag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create a tag": {
+      "main": [
+        [
+          {
+            "node": "loop on tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop on tags": {
+      "main": [
+        [
+          {
+            "node": "aggregate tags",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "search existing tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate tags": {
+      "main": [
+        [
+          {
+            "node": "choose the category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "choose the category": {
+      "main": [
+        [
+          {
+            "node": "set featured image id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "choose the category",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_category": {
+      "ai_tool": [
+        [
+          {
+            "node": "choose the category",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_category": {
+      "ai_tool": [
+        [
+          {
+            "node": "choose the category",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "split the images": {
+      "main": [
+        [
+          {
+            "node": "loop over images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "download image": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "generate image title and alt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload to wp": {
+      "main": [
+        [
+          {
+            "node": "add alt text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add alt text": {
+      "main": [
+        [
+          {
+            "node": "Format Image Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate image title and alt": {
+      "main": [
+        [
+          {
+            "node": "extract json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract json": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "upload to wp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get tags data": {
+      "main": [
+        [
+          {
+            "node": "split the tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop over images": {
+      "main": [
+        [
+          {
+            "node": "add images in content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "download image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add images in content": {
+      "main": [
+        [
+          {
+            "node": "get tags data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "publish": {
+      "main": [
+        [
+          {
+            "node": "mark as published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mark as published": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "error warning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check images exists": {
+      "main": [
+        [
+          {
+            "node": "split the images",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "missing images warning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Image Data": {
+      "main": [
+        [
+          {
+            "node": "loop over images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set featured image id": {
+      "main": [
+        [
+          {
+            "node": "publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "013e819b-f07d-478d-86c7-aa1dedfbccd5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "daa5e57eae815c6a220a5f5d9cbe300b47054c36a27ec27baefdb02632bde0ff"
+  },
+  "id": "cGQqpsMLCaoVCawo",
+  "tags": []
+}

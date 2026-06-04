@@ -1,0 +1,63 @@
+{
+    "success": true,
+    "blog_posts": [
+        {
+            "title": "Chengdu's Ancient Teahouses: A Guide to Local Brews & Cultural Immersion",
+            "created_at": "2026-04-24T04:01:57.458930+00:00"
+        },
+        {
+            "title": "Cycling Xiamen's Island Ring Road: A Scenic Route Guide",
+            "created_at": "2026-04-23T04:01:51.657575+00:00"
+        },
+        {
+            "title": "Beijing Copper Pot Hot Pot: A Guide to Authentic Mutton Shabu-Shabu",
+            "created_at": "2026-04-22T04:02:00.902785+00:00"
+        },
+        {
+            "title": "Guangzhou Wholesale Markets: A Buyer's Guide for Tourists",
+            "created_at": "2026-04-21T04:01:54.904683+00:00"
+        },
+        {
+            "title": "A Perfect 1-Day Suzhou Itinerary: Classical Gardens & Pingjiang Road",
+            "created_at": "2026-04-20T04:01:49.926953+00:00"
+        },
+        {
+            "title": "Zhangjiajie Glass Bridge vs. Tianmen Mountain: Which Skywalk is Best?",
+            "created_at": "2026-04-19T04:01:42.945991+00:00"
+        },
+        {
+            "title": "Pu'er Tea Pilgrimage: Exploring Yunnan's Ancient Tea Mountains",
+            "created_at": "2026-04-18T04:01:40.019733+00:00"
+        },
+        {
+            "title": "Don't Tap the Table! A Foreigner's Guide to Chinese Teahouse Etiquette",
+            "created_at": "2026-04-16T04:01:58.020077+00:00"
+        },
+        {
+            "title": "Dongbei Comfort Food: A Traveler’s Guide to Northeast China’s Cuisine",
+            "created_at": "2026-04-15T04:01:50.589521+00:00"
+        },
+        {
+            "title": "Beyond QR Codes: A Guide to Cash, Cards, and Banks in China for Foreigners",
+            "created_at": "2026-04-14T04:01:54.177227+00:00"
+        },
+        {
+            "title": "Leshan and Mount Emei in 3 Days: Temples, Trails and Hot Springs",
+            "created_at": "2026-04-12T04:01:50.723228+00:00"
+        },
+        {
+            "title": "China by Rail with Kids: A Family Guide to High-Speed Train Travel",
+            "created_at": "2026-04-11T04:01:46.520849+00:00"
+        },
+        {
+            "title": "Data & Connectivity: eSIM vs. Physical SIM Cards for China in 2026",
+            "created_at": "2026-04-10T04:01:54.550866+00:00"
+        }
+    ],
+    "count": 13,
+    "filter_applied": {
+        "published": "false",
+        "limit": null,
+        "search": null
+    }
+}
