@@ -55,17 +55,8 @@ class Command(BaseCommand):
         
         # Get default model if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    from sources.models import Settings
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
+            from sources.llm_models import get_default_model_for_provider
+            model = get_default_model_for_provider(provider)
         
         # Find blog posts with FAQs but no FAQ title
         queryset = BlogPost.objects.filter(

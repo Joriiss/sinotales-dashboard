@@ -160,7 +160,7 @@
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3-pro-preview",
+        "modelName": "models/gemini-2.5-pro",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",

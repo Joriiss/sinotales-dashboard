@@ -106,7 +106,7 @@
         "url": "https://dashboard.joris-rabilloud.com/api/generate-blog-post?token=0xeTJD4EFYVgB6bP",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"post_idea_id\": {{ $json.output.selected_idea_id }},\n  \"provider\": \"gemini\",\n  \"model\": \"gemini-3.1-pro-preview\", \n  \"use_rag\": true,\n  \"num_chunks\": 10, \n  \"metadata_provider\": \"gemini\",\n  \"metadata_model\": \"gemini-3-pro-preview\"  \n  } ",
+        "jsonBody": "={\n  \"post_idea_id\": {{ $json.output.selected_idea_id }},\n  \"provider\": \"gemini\",\n  \"model\": \"gemini-2.5-pro\", \n  \"use_rag\": true,\n  \"num_chunks\": 10, \n  \"metadata_provider\": \"gemini\",\n  \"metadata_model\": \"gemini-2.5-pro\"  \n  } ",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -131,7 +131,7 @@
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3-flash-preview",
+        "modelName": "models/gemini-2.5-flash",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",

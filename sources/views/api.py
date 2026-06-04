@@ -1941,7 +1941,7 @@ def generate_blog_post_api(request):
     Request body (JSON):
     - post_idea_id (required): ID of the post idea to generate from
     - provider (optional): AI provider for content generation ('ollama', 'openai', 'gemini'). Default: 'gemini'
-    - model (optional): Model name for content generation. Default: 'gemini-3-pro-preview'
+    - model (optional): Model name for content generation. Default: provider default (e.g. gemini-2.5-pro)
     - use_rag (optional): Whether to use RAG context. Default: false
     - num_chunks (optional): Number of RAG chunks to use. Default: 5
     - metadata_provider (optional): AI provider for metadata generation. Default: same as provider
@@ -1982,14 +1982,16 @@ def generate_blog_post_api(request):
             }, status=404)
         
         # Optional parameters for content generation
+        from ..llm_models import get_default_model_for_provider
+
         provider = data.get('provider', 'gemini').strip().lower()
-        model = data.get('model', 'gemini-3-pro-preview').strip()
+        model = (data.get('model') or '').strip()
         use_rag = data.get('use_rag', False)
         num_chunks = int(data.get('num_chunks', 5))
         
         # Optional parameters for metadata generation (default to same as content generation)
         metadata_provider = data.get('metadata_provider', provider).strip().lower()
-        metadata_model = data.get('metadata_model', model).strip()
+        metadata_model = (data.get('metadata_model') or '').strip()
         enable_internal_links = data.get('enable_internal_links', True)
         internal_links_limit = int(data.get('internal_links_limit', 5))
         internal_links_limit = max(1, min(internal_links_limit, 10))
@@ -2010,19 +2012,8 @@ def generate_blog_post_api(request):
                 'error': f'Invalid metadata_provider: {metadata_provider}. Must be one of: ollama, openai, gemini'
             }, status=400)
         
-        # Get default models if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
-        
+            model = get_default_model_for_provider(provider)
         if not metadata_model:
             metadata_model = model
         
@@ -2030,8 +2021,10 @@ def generate_blog_post_api(request):
         import os
         from django.conf import settings as django_settings
         
+        from ..prompt_paths import resolve_metadata_prompt_path
+
         prompt_file_path = os.path.join(django_settings.BASE_DIR, 'prompt-post-generation.md')
-        metadata_prompt_path = os.path.join(django_settings.BASE_DIR, 'prompt-metadata-generator')
+        metadata_prompt_path = resolve_metadata_prompt_path()
         
         try:
             with open(prompt_file_path, 'r', encoding='utf-8') as f:
@@ -2042,14 +2035,13 @@ def generate_blog_post_api(request):
                 'error': 'Prompt template file not found: prompt-post-generation.md'
             }, status=500)
         
-        try:
-            with open(metadata_prompt_path, 'r', encoding='utf-8') as f:
-                metadata_prompt_template = f.read()
-        except FileNotFoundError:
+        if not metadata_prompt_path:
             return JsonResponse({
                 'success': False,
-                'error': 'Metadata prompt template file not found: prompt-metadata-generator'
+                'error': 'Metadata prompt template file not found: prompt-metadata-generator.md'
             }, status=500)
+        with open(metadata_prompt_path, 'r', encoding='utf-8') as f:
+            metadata_prompt_template = f.read()
         
         # Step 1: Generate blog post content
         rag_service = RAGService()

@@ -18,7 +18,7 @@ from ..forms import SourceForm
 from ..utils import log_activity
 from ..rag_service import RAGService
 from ..content_processing_service import ContentProcessingService
-from ..llm_models import get_default_gemini_model, get_default_openai_model
+from ..llm_models import get_default_model_for_provider
 import re
 
 @login_required
@@ -254,17 +254,17 @@ def blog_post_generate_metadata(request, pk):
         messages.error(request, 'Blog post has no content. Please generate content first.')
         return redirect('sources:blog_post_detail', pk=blog_post.pk)
     
-    # Load the prompt template
-    import os
-    from django.conf import settings as django_settings
-    
-    prompt_file_path = os.path.join(django_settings.BASE_DIR, 'prompt-metadata-generator')
-    try:
-        with open(prompt_file_path, 'r', encoding='utf-8') as f:
-            prompt_template = f.read()
-    except FileNotFoundError:
-        messages.error(request, 'Prompt template file not found. Please ensure prompt-metadata-generator exists.')
+    from ..prompt_paths import resolve_metadata_prompt_path
+
+    prompt_file_path = resolve_metadata_prompt_path()
+    if not prompt_file_path:
+        messages.error(
+            request,
+            'Prompt template file not found. Add prompt-metadata-generator.md to the project root.',
+        )
         return redirect('sources:blog_post_detail', pk=blog_post.pk)
+    with open(prompt_file_path, 'r', encoding='utf-8') as f:
+        prompt_template = f.read()
     
     if request.method == 'POST':
         provider = request.POST.get('provider', 'gemini').strip().lower()
@@ -277,16 +277,7 @@ def blog_post_generate_metadata(request, pk):
         
         # Get default model if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = get_default_openai_model()
-            elif provider == 'gemini':
-                model = get_default_gemini_model()
+            model = get_default_model_for_provider(provider)
         
         try:
             # Strip HTML tags from content before sending to AI (HTML might trigger safety filters)
@@ -568,7 +559,7 @@ def blog_post_generate_metadata(request, pk):
     context = {
         'blog_post': blog_post,
         'default_provider': 'gemini',
-        'default_model': get_default_gemini_model(),
+        'default_model': get_default_model_for_provider('gemini'),
     }
     
     return render(request, 'sources/blog_post_generate_metadata.html', context)
@@ -604,16 +595,7 @@ def blog_post_generate(request, pk):
         
         # Get default model if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = get_default_openai_model()
-            elif provider == 'gemini':
-                model = get_default_gemini_model()
+            model = get_default_model_for_provider(provider)
         
         try:
             # Get RAG context if enabled
@@ -749,7 +731,7 @@ def blog_post_generate(request, pk):
     context = {
         'post_idea': post_idea,
         'default_provider': 'gemini',
-        'default_model': get_default_gemini_model(),
+        'default_model': get_default_model_for_provider('gemini'),
     }
     
     return render(request, 'sources/blog_post_generate.html', context)
@@ -1474,193 +1456,6 @@ def post_idea_generate_api(request):
             'success': False,
             'error': error_message
         }, status=500)
-
-
-def agent_models_api(request):
-    """API endpoint to fetch available models for a given provider"""
-    provider = request.GET.get('provider', 'ollama').strip().lower()
-    
-    if provider == 'ollama':
-        try:
-            import requests
-        except ImportError:
-            return JsonResponse({'error': 'requests library required'}, status=500)
-        
-        ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-        url = f"{ollama_url}/api/tags"
-        
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Extract model names
-            models = []
-            if 'models' in data:
-                for model_info in data['models']:
-                    model_name = model_info.get('name', '')
-                    if model_name:
-                        models.append(model_name)
-            
-            # Sort models (prefer Chinese models first, then smaller models)
-            chinese_models = [m for m in models if any(keyword in m.lower() for keyword in ['qwen', 'chinese', 'zh', 'cn'])]
-            other_models = [m for m in models if m not in chinese_models]
-            
-            # Within each group, prefer smaller models (3b, 4b) first
-            def sort_key(model_name):
-                name_lower = model_name.lower()
-                # Smaller models first
-                if ':3b' in name_lower or '3b' in name_lower:
-                    return (0, name_lower)
-                elif ':4b' in name_lower or '4b' in name_lower:
-                    return (1, name_lower)
-                elif ':7b' in name_lower or '7b' in name_lower:
-                    return (2, name_lower)
-                elif ':8b' in name_lower or '8b' in name_lower:
-                    return (3, name_lower)
-                else:
-                    return (4, name_lower)
-            
-            chinese_models.sort(key=sort_key)
-            other_models.sort(key=sort_key)
-            sorted_models = chinese_models + other_models
-            
-            return JsonResponse({'models': sorted_models})
-        except requests.exceptions.ConnectionError:
-            return JsonResponse({'error': 'Could not connect to Ollama. Make sure Ollama is running.'}, status=503)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    
-    elif provider == 'openai':
-        # OpenAI models
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
-        
-        # Manual list of OpenAI models
-        models = [
-            'gpt-5.1',
-            'gpt-5',
-            'gpt-5-mini',
-            'gpt-5-nano',
-            'gpt-4o',
-            'gpt-4o-mini',
-            'gpt-4-turbo',
-            'gpt-4',
-            'gpt-3.5-turbo',
-        ]
-        return JsonResponse({'models': models})
-    
-    elif provider == 'gemini':
-        # Gemini models
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
-        
-        # Common Gemini models
-        models = [
-            'gemini-3-pro-preview',
-            'gemini-2.5-pro',
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite'
-        ]
-        return JsonResponse({'models': models})
-    
-    else:
-        return JsonResponse({'error': 'Invalid provider'}, status=400)
-
-
-@login_required
-def post_idea_models_api(request):
-    """API endpoint to fetch available models for a given provider"""
-    provider = request.GET.get('provider', 'ollama').strip().lower()
-    
-    if provider == 'ollama':
-        # Use existing agent_models_api logic
-        try:
-            import requests
-        except ImportError:
-            return JsonResponse({'error': 'requests library required'}, status=500)
-        
-        ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
-        url = f"{ollama_url}/api/tags"
-        
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            
-            models = []
-            if 'models' in data:
-                for model_info in data['models']:
-                    model_name = model_info.get('name', '')
-                    if model_name:
-                        models.append(model_name)
-            
-            # Sort models
-            chinese_models = [m for m in models if any(keyword in m.lower() for keyword in ['qwen', 'chinese', 'zh', 'cn'])]
-            other_models = [m for m in models if m not in chinese_models]
-            
-            def sort_key(model_name):
-                name_lower = model_name.lower()
-                if ':3b' in name_lower or '3b' in name_lower:
-                    return (0, name_lower)
-                elif ':4b' in name_lower or '4b' in name_lower:
-                    return (1, name_lower)
-                elif ':7b' in name_lower or '7b' in name_lower:
-                    return (2, name_lower)
-                elif ':8b' in name_lower or '8b' in name_lower:
-                    return (3, name_lower)
-                else:
-                    return (4, name_lower)
-            
-            chinese_models.sort(key=sort_key)
-            other_models.sort(key=sort_key)
-            sorted_models = chinese_models + other_models
-            
-            return JsonResponse({'models': sorted_models})
-        except requests.exceptions.ConnectionError:
-            return JsonResponse({'error': 'Could not connect to Ollama. Make sure Ollama is running.'}, status=503)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    
-    elif provider == 'openai':
-        # OpenAI models
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
-        
-        # Manual list of OpenAI models
-        models = [
-            'gpt-5.1',
-            'gpt-5',
-            'gpt-5-mini',
-            'gpt-5-nano',
-            'gpt-4o',
-            'gpt-4o-mini',
-            'gpt-4-turbo',
-            'gpt-4',
-            'gpt-3.5-turbo',
-        ]
-        return JsonResponse({'models': models})
-    
-    elif provider == 'gemini':
-        # Gemini models
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
-        
-        # Common Gemini models
-        models = [
-            'gemini-3-pro-preview',
-            'gemini-2.5-pro',
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite'
-        ]
-        return JsonResponse({'models': models})
-    
-    else:
-        return JsonResponse({'error': 'Invalid provider'}, status=400)
 
 
 def _validate_api_token(request):

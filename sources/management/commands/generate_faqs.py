@@ -59,17 +59,8 @@ class Command(BaseCommand):
         
         # Get default model if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    from sources.models import Settings
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
+            from sources.llm_models import get_default_model_for_provider
+            model = get_default_model_for_provider(provider)
         
         # Find blog posts with content but no FAQs
         queryset = BlogPost.objects.filter(
@@ -91,16 +82,16 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('DRY RUN MODE - No changes will be saved'))
         self.stdout.write(f'Using provider: {provider}, model: {model}\n')
         
-        # Load the metadata prompt template
-        prompt_file_path = os.path.join(settings.BASE_DIR, 'prompt-metadata-generator')
-        try:
-            with open(prompt_file_path, 'r', encoding='utf-8') as f:
-                metadata_prompt_template = f.read()
-        except FileNotFoundError:
+        from sources.prompt_paths import resolve_metadata_prompt_path
+
+        prompt_file_path = resolve_metadata_prompt_path()
+        if not prompt_file_path:
             self.stdout.write(
-                self.style.ERROR(f'Prompt template file not found: {prompt_file_path}')
+                self.style.ERROR('Prompt template file not found: prompt-metadata-generator.md')
             )
             return
+        with open(prompt_file_path, 'r', encoding='utf-8') as f:
+            metadata_prompt_template = f.read()
         
         # Initialize RAG service
         try:

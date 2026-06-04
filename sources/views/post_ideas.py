@@ -18,7 +18,7 @@ from ..models import PostIdea, Content, Tag, BlogPost
 from ..utils import log_activity, is_idea_too_similar_with_embeddings
 from ..rag_service import RAGService
 from ..embedding_service import EmbeddingService
-from ..llm_models import list_models_for_provider
+from ..llm_models import list_models_for_provider, get_default_model_for_provider
 from pgvector.django import CosineDistance
 
 @login_required
@@ -89,16 +89,7 @@ def post_idea_generate(request):
         
         # Get model - use selected model or fall back to defaults
         if not selected_model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    selected_model = app_settings.default_tagging_model
-                except Exception:
-                    selected_model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                selected_model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                selected_model = 'gemini-1.5-pro'
+            selected_model = get_default_model_for_provider(provider)
         
         # Build context for prompt
         context_parts = []

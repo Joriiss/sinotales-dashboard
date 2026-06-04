@@ -127,6 +127,22 @@ def get_default_gemini_model() -> str:
     return GEMINI_DEFAULT_FALLBACK
 
 
+def get_default_model_for_provider(provider: str) -> str:
+    """Default model when none is specified for a provider."""
+    provider = provider.strip().lower()
+    if provider == 'ollama':
+        try:
+            from .models import Settings
+            return Settings.get_settings().default_tagging_model
+        except Exception:
+            return 'gpt-oss:20b-cloud'
+    if provider == 'openai':
+        return get_default_openai_model()
+    if provider == 'gemini':
+        return get_default_gemini_model()
+    raise ValueError(f'Unsupported provider: {provider}')
+
+
 def get_default_openai_model() -> str:
     api_key = getattr(settings, 'OPENAI_API_KEY', None)
     if api_key:

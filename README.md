@@ -1014,11 +1014,11 @@ Generates a complete blog post from a post idea, including content and metadata.
 {
   "post_idea_id": 123,
   "provider": "gemini",
-  "model": "gemini-3-pro-preview",
+  "model": "gemini-2.5-pro",
   "use_rag": true,
   "num_chunks": 5,
   "metadata_provider": "gemini",
-  "metadata_model": "gemini-3-pro-preview",
+  "metadata_model": "gemini-2.5-pro",
   "enable_internal_links": true,
   "internal_links_limit": 5,
   "internal_links_mode": "ai"
@@ -1030,7 +1030,7 @@ Generates a complete blog post from a post idea, including content and metadata.
 
 **Optional Fields**:
 - `provider`: AI provider for content generation (`ollama`, `openai`, `gemini`). Default: `gemini`
-- `model`: Model name for content generation. Default: `gemini-3-pro-preview`
+- `model`: Model name for content generation. Default: provider default (e.g. `gemini-2.5-pro` when omitted)
 - `use_rag`: Whether to use RAG context. Default: `false`
 - `num_chunks`: Number of RAG chunks to use. Default: `5`
 - `metadata_provider`: AI provider for metadata generation. Default: same as `provider`
@@ -1058,9 +1058,9 @@ Generates a complete blog post from a post idea, including content and metadata.
   },
   "generation_info": {
     "content_provider": "gemini",
-    "content_model": "gemini-3-pro-preview",
+    "content_model": "gemini-2.5-pro",
     "metadata_provider": "gemini",
-    "metadata_model": "gemini-3-pro-preview",
+    "metadata_model": "gemini-2.5-pro",
     "used_rag": true,
     "internal_linking": {
       "enabled": true,

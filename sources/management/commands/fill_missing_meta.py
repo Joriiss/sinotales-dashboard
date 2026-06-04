@@ -107,16 +107,8 @@ class Command(BaseCommand):
         delay = options['delay']
 
         if not model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
+            from sources.llm_models import get_default_model_for_provider
+            model = get_default_model_for_provider(provider)
 
         # Posts that have content and are missing meta_title and/or meta_description
         queryset = BlogPost.objects.filter(
@@ -139,13 +131,14 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('DRY RUN - no changes will be saved'))
         self.stdout.write(f'Provider: {provider}, model: {model}\n')
 
-        prompt_path = os.path.join(django_settings.BASE_DIR, 'prompt-metadata-generator')
-        try:
-            with open(prompt_path, 'r', encoding='utf-8') as f:
-                prompt_template = f.read()
-        except FileNotFoundError:
-            self.stdout.write(self.style.ERROR('Prompt file not found: prompt-metadata-generator'))
+        from sources.prompt_paths import resolve_metadata_prompt_path
+
+        prompt_path = resolve_metadata_prompt_path()
+        if not prompt_path:
+            self.stdout.write(self.style.ERROR('Prompt file not found: prompt-metadata-generator.md'))
             return
+        with open(prompt_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
 
         try:
             rag_service = RAGService()

@@ -85,7 +85,7 @@ The dashboard is a Django application documented in [`README.md`](README.md). It
 ### Blog posts
 
 - **From UI:** Open a post idea → **Generate Blog Post** (prompt from `prompt-post-generation.md`, dynamic year, optional Nomad eSIM shortcode instructions).
-- **Metadata:** **Generate Metadata** uses `prompt-metadata-generator` to fill SEO fields, slug, tags, featured image alt text, FAQ title, and four FAQ Q&As.
+- **Metadata:** **Generate Metadata** uses `prompt-metadata-generator.md` to fill SEO fields, slug, tags, featured image alt text, FAQ title, and four FAQ Q&As.
 - **Images:** Parsed from HTML into `BlogPostImage`; you can **upload** images and manage them per post. Export can replace `<img>` with `[IMG-id]` for WordPress placement.
 - **API:** `POST /api/generate-blog-post` with `post_idea_id`, provider/model, RAG options, and metadata provider/model — creates the `BlogPost` and runs metadata generation in one call.
 
@@ -227,7 +227,7 @@ The theme renders these in order: hero/title from the post, then intro, summary 
 |----------|------|
 | Dashboard README | [`README.md`](README.md) |
 | Post generation prompt | [`prompt-post-generation.md`](prompt-post-generation.md) |
-| Metadata + FAQ prompt | [`prompt-metadata-generator`](prompt-metadata-generator) |
+| Metadata + FAQ prompt | [`prompt-metadata-generator.md`](prompt-metadata-generator.md) |
 | Section parsing + ACF shaping | [`sources/views/utils.py`](sources/views/utils.py), [`sources/views/api.py`](sources/views/api.py) |
 | ACF export | [`wordpress/Export ACF Sinotales.json`](wordpress/Export%20ACF%20Sinotales.json) |
 | Example live layout | [`wordpress/screencapture-sinotales-destinations-xinjiang-china-travel-tips-xinjiang-road-trip-2026-2026-03-29-09_01_44.png`](wordpress/screencapture-sinotales-destinations-xinjiang-china-travel-tips-xinjiang-road-trip-2026-2026-03-29-09_01_44.png) |

@@ -23,6 +23,12 @@ from .content_processing_service import ContentProcessingService
 from .embedding_service import EmbeddingService
 from pgvector.django import CosineDistance
 from datetime import datetime
+from .llm_models import (
+    get_default_gemini_model,
+    get_default_openai_model,
+    get_default_model_for_provider,
+    list_models_for_provider,
+)
 
 
 class CustomLoginView(LoginView):
@@ -2430,9 +2436,9 @@ def post_idea_generate(request):
                 except Exception:
                     selected_model = 'gpt-oss:20b-cloud'
             elif provider == 'openai':
-                selected_model = 'gpt-4o-mini'
+                selected_model = get_default_openai_model()
             elif provider == 'gemini':
-                selected_model = 'gemini-1.5-pro'
+                selected_model = get_default_gemini_model()
         
         # Build context for prompt
         context_parts = []
@@ -2863,21 +2869,21 @@ def blog_post_generate_metadata(request, pk):
         messages.error(request, 'Blog post has no content. Please generate content first.')
         return redirect('sources:blog_post_detail', pk=blog_post.pk)
     
-    # Load the prompt template
-    import os
-    from django.conf import settings as django_settings
-    
-    prompt_file_path = os.path.join(django_settings.BASE_DIR, 'prompt-metadata-generator')
-    try:
-        with open(prompt_file_path, 'r', encoding='utf-8') as f:
-            prompt_template = f.read()
-    except FileNotFoundError:
-        messages.error(request, 'Prompt template file not found. Please ensure prompt-metadata-generator exists.')
+    from .prompt_paths import resolve_metadata_prompt_path
+
+    prompt_file_path = resolve_metadata_prompt_path()
+    if not prompt_file_path:
+        messages.error(
+            request,
+            'Prompt template file not found. Add prompt-metadata-generator.md to the project root.',
+        )
         return redirect('sources:blog_post_detail', pk=blog_post.pk)
+    with open(prompt_file_path, 'r', encoding='utf-8') as f:
+        prompt_template = f.read()
     
     if request.method == 'POST':
         provider = request.POST.get('provider', 'gemini').strip().lower()
-        model = request.POST.get('model', 'gemini-3-pro-preview').strip()
+        model = request.POST.get('model', '').strip()
         
         # Validate provider
         if provider not in ['ollama', 'openai', 'gemini']:
@@ -2886,16 +2892,7 @@ def blog_post_generate_metadata(request, pk):
         
         # Get default model if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
+            model = get_default_model_for_provider(provider)
         
         try:
             # Strip HTML tags from content before sending to AI (HTML might trigger safety filters)
@@ -3172,7 +3169,7 @@ def blog_post_generate_metadata(request, pk):
     context = {
         'blog_post': blog_post,
         'default_provider': 'gemini',
-        'default_model': 'gemini-3-pro-preview',
+        'default_model': get_default_gemini_model(),
     }
     
     return render(request, 'sources/blog_post_generate_metadata.html', context)
@@ -3197,7 +3194,7 @@ def blog_post_generate(request, pk):
     
     if request.method == 'POST':
         provider = request.POST.get('provider', 'gemini').strip().lower()
-        model = request.POST.get('model', 'gemini-3-pro-preview').strip()
+        model = request.POST.get('model', '').strip()
         use_rag = request.POST.get('use_rag', 'off') == 'on'
         num_chunks = int(request.POST.get('num_chunks', 5))
         
@@ -3206,18 +3203,8 @@ def blog_post_generate(request, pk):
             messages.error(request, 'Invalid provider selected.')
             return redirect('sources:post_idea_list')
         
-        # Get default model if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
+            model = get_default_model_for_provider(provider)
         
         try:
             # Get RAG context if enabled
@@ -3262,7 +3249,7 @@ def blog_post_generate(request, pk):
             elif provider == 'gemini':
                 # Gemini: gemini-3-pro-preview supports up to 32k tokens
                 # Use 16k for comprehensive blog posts
-                max_tokens = 16000 if 'gemini-3-pro' in model.lower() else 8000
+                max_tokens = 16000 if 'pro' in model.lower() else 8000
                 generated_content = rag_service._call_gemini(prompt, model, max_tokens=max_tokens)
             else:
                 messages.error(request, 'Invalid provider.')
@@ -3353,7 +3340,7 @@ def blog_post_generate(request, pk):
     context = {
         'post_idea': post_idea,
         'default_provider': 'gemini',
-        'default_model': 'gemini-3-pro-preview',
+        'default_model': get_default_gemini_model(),
     }
     
     return render(request, 'sources/blog_post_generate.html', context)
@@ -4135,39 +4122,11 @@ def agent_models_api(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     
-    elif provider == 'openai':
-        # OpenAI models
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
-        
-        # Manual list of OpenAI models
-        models = [
-            'gpt-5.1',
-            'gpt-5',
-            'gpt-5-mini',
-            'gpt-5-nano',
-            'gpt-4o',
-            'gpt-4o-mini',
-            'gpt-4-turbo',
-            'gpt-4',
-            'gpt-3.5-turbo',
-        ]
-        return JsonResponse({'models': models})
-    
-    elif provider == 'gemini':
-        # Gemini models
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
-        
-        # Common Gemini models
-        models = [
-            'gemini-3-pro-preview',
-            'gemini-2.5-pro',
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite'
-        ]
+    elif provider in ('openai', 'gemini'):
+        models, error = list_models_for_provider(provider)
+        if error:
+            status = 400 if 'not set' in error else 502
+            return JsonResponse({'error': error}, status=status)
         return JsonResponse({'models': models})
     
     else:
@@ -4228,39 +4187,11 @@ def post_idea_models_api(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     
-    elif provider == 'openai':
-        # OpenAI models
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'OPENAI_API_KEY is not set in settings'}, status=400)
-        
-        # Manual list of OpenAI models
-        models = [
-            'gpt-5.1',
-            'gpt-5',
-            'gpt-5-mini',
-            'gpt-5-nano',
-            'gpt-4o',
-            'gpt-4o-mini',
-            'gpt-4-turbo',
-            'gpt-4',
-            'gpt-3.5-turbo',
-        ]
-        return JsonResponse({'models': models})
-    
-    elif provider == 'gemini':
-        # Gemini models
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            return JsonResponse({'error': 'GEMINI_API_KEY is not set in settings'}, status=400)
-        
-        # Common Gemini models
-        models = [
-            'gemini-3-pro-preview',
-            'gemini-2.5-pro',
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite'
-        ]
+    elif provider in ('openai', 'gemini'):
+        models, error = list_models_for_provider(provider)
+        if error:
+            status = 400 if 'not set' in error else 502
+            return JsonResponse({'error': error}, status=status)
         return JsonResponse({'models': models})
     
     else:
@@ -6271,7 +6202,7 @@ def generate_blog_post_api(request):
     Request body (JSON):
     - post_idea_id (required): ID of the post idea to generate from
     - provider (optional): AI provider for content generation ('ollama', 'openai', 'gemini'). Default: 'gemini'
-    - model (optional): Model name for content generation. Default: 'gemini-3-pro-preview'
+    - model (optional): Model name for content generation. Default: provider default (e.g. gemini-2.5-pro)
     - use_rag (optional): Whether to use RAG context. Default: false
     - num_chunks (optional): Number of RAG chunks to use. Default: 5
     - metadata_provider (optional): AI provider for metadata generation. Default: same as provider
@@ -6310,13 +6241,13 @@ def generate_blog_post_api(request):
         
         # Optional parameters for content generation
         provider = data.get('provider', 'gemini').strip().lower()
-        model = data.get('model', 'gemini-3-pro-preview').strip()
+        model = (data.get('model') or '').strip()
         use_rag = data.get('use_rag', False)
         num_chunks = int(data.get('num_chunks', 5))
         
         # Optional parameters for metadata generation (default to same as content generation)
         metadata_provider = data.get('metadata_provider', provider).strip().lower()
-        metadata_model = data.get('metadata_model', model).strip()
+        metadata_model = (data.get('metadata_model') or '').strip()
         
         # Validate providers
         if provider not in ['ollama', 'openai', 'gemini']:
@@ -6331,19 +6262,8 @@ def generate_blog_post_api(request):
                 'error': f'Invalid metadata_provider: {metadata_provider}. Must be one of: ollama, openai, gemini'
             }, status=400)
         
-        # Get default models if not provided
         if not model:
-            if provider == 'ollama':
-                try:
-                    app_settings = Settings.get_settings()
-                    model = app_settings.default_tagging_model
-                except Exception:
-                    model = 'gpt-oss:20b-cloud'
-            elif provider == 'openai':
-                model = 'gpt-4o-mini'
-            elif provider == 'gemini':
-                model = 'gemini-3-pro-preview'
-        
+            model = get_default_model_for_provider(provider)
         if not metadata_model:
             metadata_model = model
         
@@ -6351,8 +6271,10 @@ def generate_blog_post_api(request):
         import os
         from django.conf import settings as django_settings
         
+        from .prompt_paths import resolve_metadata_prompt_path
+
         prompt_file_path = os.path.join(django_settings.BASE_DIR, 'prompt-post-generation.md')
-        metadata_prompt_path = os.path.join(django_settings.BASE_DIR, 'prompt-metadata-generator')
+        metadata_prompt_path = resolve_metadata_prompt_path()
         
         try:
             with open(prompt_file_path, 'r', encoding='utf-8') as f:
@@ -6363,14 +6285,13 @@ def generate_blog_post_api(request):
                 'error': 'Prompt template file not found: prompt-post-generation.md'
             }, status=500)
         
-        try:
-            with open(metadata_prompt_path, 'r', encoding='utf-8') as f:
-                metadata_prompt_template = f.read()
-        except FileNotFoundError:
+        if not metadata_prompt_path:
             return JsonResponse({
                 'success': False,
-                'error': 'Metadata prompt template file not found: prompt-metadata-generator'
+                'error': 'Metadata prompt template file not found: prompt-metadata-generator.md'
             }, status=500)
+        with open(metadata_prompt_path, 'r', encoding='utf-8') as f:
+            metadata_prompt_template = f.read()
         
         # Step 1: Generate blog post content
         rag_service = RAGService()

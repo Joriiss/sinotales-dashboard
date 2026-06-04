@@ -50,7 +50,8 @@ class TaggingService:
         if self.provider == 'ollama':
             return 'gpt-oss:20b-cloud'  # Default model for tagging
         elif self.provider == 'openai':
-            return 'gpt-3.5-turbo'
+            from .llm_models import get_default_openai_model
+            return get_default_openai_model()
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
     
