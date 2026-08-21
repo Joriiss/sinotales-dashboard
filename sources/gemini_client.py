@@ -194,7 +194,7 @@ def _parts_text(candidate: dict) -> str:
     return ''.join(chunks).strip()
 
 
-def diagnose_egress(api_key: Optional[str] = None, model: str = 'gemini-2.0-flash') -> dict:
+def diagnose_egress(api_key: Optional[str] = None, model: str = 'gemini-3.6-flash') -> dict:
     """
     Small connectivity probe used by the management command.
     Does not print the API key.

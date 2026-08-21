@@ -9,7 +9,7 @@ from django.conf import settings
 GEMINI_MODELS_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 OPENAI_MODELS_URL = 'https://api.openai.com/v1/models'
 
-GEMINI_DEFAULT_FALLBACK = 'gemini-2.5-pro'
+GEMINI_DEFAULT_FALLBACK = 'gemini-3.6-flash'
 OPENAI_DEFAULT_FALLBACK = 'gpt-4o-mini'
 
 
@@ -65,16 +65,22 @@ def _sort_gemini_models(models: list[str]) -> list[str]:
     def sort_key(name: str) -> tuple:
         n = name.lower()
         priority = 5
-        if '2.5-pro' in n:
+        if '3.6-pro' in n:
             priority = 0
+        elif '3.6-flash' in n and 'lite' not in n:
+            priority = 0
+        elif '3-pro' in n or '3.0-pro' in n:
+            priority = 1
+        elif '2.5-pro' in n:
+            priority = 1
         elif '2.5-flash-lite' in n:
+            priority = 3
+        elif '2.5-flash' in n or '3.6-flash-lite' in n:
             priority = 2
-        elif '2.5-flash' in n:
-            priority = 1
         elif 'pro' in n:
-            priority = 1
-        elif 'flash' in n:
             priority = 2
+        elif 'flash' in n:
+            priority = 3
         if 'preview' in n or 'experimental' in n or 'exp' in n:
             priority += 4
         return (priority, n)

@@ -13,8 +13,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--model',
-            default='gemini-2.0-flash',
-            help='Model to use for a tiny generateContent probe (default: gemini-2.0-flash)',
+            default='gemini-3.6-flash',
+            help='Model to use for a tiny generateContent probe (default: gemini-3.6-flash)',
         )
 
     def handle(self, *args, **options):
