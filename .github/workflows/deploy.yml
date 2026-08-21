@@ -22,9 +22,12 @@ jobs:
           port: 59821
           script: |
             cd /srv/china_blog_dashboard
-            git reset --hard HEAD
-            git clean -fd
-            git pull origin main
+            # Keep deploy resilient when GitHub SSH :22 is blocked
+            git remote set-url origin https://github.com/Joriiss/sinotales-dashboard.git || true
+            sudo chown -R "$USER":"$USER" /srv/china_blog_dashboard || true
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd -e venv -e .env -e media -e staticfiles -e logs
             source venv/bin/activate
             pip install -r requirements.txt
             python manage.py migrate --noinput
