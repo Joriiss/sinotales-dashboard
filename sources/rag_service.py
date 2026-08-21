@@ -577,104 +577,26 @@ class RAGService:
             raise Exception(f"OpenAI API error: {error_str}")
     
     def _call_gemini(self, prompt: str, model: str, max_tokens: int = 2000) -> str:
-        """Call Gemini API
+        """Call Gemini API via REST (IPv4-forced / optional proxy).
+        
+        Uses sources.gemini_client instead of google.generativeai so VPS egress
+        can prefer IPv4 or a GEMINI_HTTP_PROXY (avoids location blocks).
         
         Args:
             prompt: The prompt to send
             model: The model name
             max_tokens: Maximum tokens to generate (default: 2000)
         """
+        from .gemini_client import generate_content
+
         try:
-            import google.generativeai as genai
-        except ImportError:
-            raise ImportError("google-generativeai library required. Install with: pip install google-generativeai")
-        
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY is not set in settings. Please configure it to use Gemini.")
-        
-        genai.configure(api_key=api_key)
-        
-        # Configure safety settings to be more permissive for content analysis
-        # This helps avoid false positives when analyzing travel blog content
-        try:
-            from google.generativeai.types import HarmCategory, HarmBlockThreshold
-            safety_settings = {
-                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            }
-        except (ImportError, AttributeError):
-            # Fallback to string-based settings if enum import fails
-            safety_settings = {
-                "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
-                "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
-                "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
-                "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_ONLY_HIGH",
-            }
-        
-        genai_model = genai.GenerativeModel(model, safety_settings=safety_settings)
-        
-        try:
-            response = genai_model.generate_content(
-                prompt,
-                generation_config={
-                    "temperature": 0.7,
-                    "max_output_tokens": max_tokens,
-                }
-            )
-            
-            # Check for blocked responses or empty content
-            if response.candidates and len(response.candidates) > 0:
-                candidate = response.candidates[0]
-                finish_reason = candidate.finish_reason
-                
-                # Handle different finish reasons
-                # finish_reason can be an integer (1=STOP, 2=MAX_TOKENS, 3=SAFETY, etc.) or string
-                finish_reason_str = str(finish_reason).upper() if finish_reason else ""
-                finish_reason_int = int(finish_reason) if isinstance(finish_reason, (int, str)) and str(finish_reason).isdigit() else None
-                
-                # Check for MAX_TOKENS (finish_reason 2 or "MAX_TOKENS")
-                if finish_reason_int == 2 or "MAX_TOKENS" in finish_reason_str:
-                    raise Exception(f"Gemini API response hit the token limit (MAX_TOKENS). The max_output_tokens ({max_tokens}) is too low. Try increasing the token limit or using a different provider.")
-                
-                # Check for SAFETY blocks (finish_reason 3 or "SAFETY")
-                if finish_reason_int == 3 or "SAFETY" in finish_reason_str:
-                    reason_text = "SAFETY (blocked by content safety filters)"
-                    # Try to get safety ratings if available
-                    safety_info = ""
-                    if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
-                        ratings = [f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings if r.probability.name != 'NEGLIGIBLE']
-                        if ratings:
-                            safety_info = f" Safety ratings: {', '.join(ratings)}."
-                    raise Exception(f"Gemini API response was blocked ({reason_text}).{safety_info} Try adjusting the prompt or using a different provider.")
-                
-                # Check for RECITATION (finish_reason 4 or "RECITATION")
-                if finish_reason_int == 4 or "RECITATION" in finish_reason_str:
-                    raise Exception("Gemini API response was blocked (RECITATION - blocked due to potential recitation). Try adjusting the prompt or using a different provider.")
-                
-                # Check for OTHER reasons
-                if finish_reason_int and finish_reason_int > 4:
-                    raise Exception(f"Gemini API response was blocked (finish_reason: {finish_reason}). Try adjusting the prompt or using a different provider.")
-            
-            # Check if response has text
-            if not response.text:
-                # Check if it's because of MAX_TOKENS
-                if response.candidates and len(response.candidates) > 0:
-                    candidate = response.candidates[0]
-                    finish_reason = str(candidate.finish_reason).upper() if candidate.finish_reason else ""
-                    if "MAX_TOKENS" in finish_reason or (isinstance(candidate.finish_reason, int) and candidate.finish_reason == 2):
-                        raise Exception(f"Gemini API returned an empty response because it hit the token limit (max_output_tokens: {max_tokens}). The limit is too low. Try increasing it or using a different provider.")
-                raise Exception("Gemini API returned an empty response. The content may have been filtered or the model couldn't generate a response.")
-            
-            return response.text.strip()
+            return generate_content(prompt, model, max_tokens=max_tokens)
         except Exception as e:
             error_str = str(e)
-            # If it's already our custom error, re-raise it
-            if "blocked" in error_str.lower() or "empty response" in error_str.lower():
+            # Already prefixed / structured by gemini_client
+            if error_str.startswith('Gemini API') or 'blocked' in error_str.lower() or 'empty response' in error_str.lower():
                 raise
-            raise Exception(f"Gemini API error: {error_str}")
+            raise Exception(f'Gemini API error: {error_str}') from e
     
     def generate_response(
         self,

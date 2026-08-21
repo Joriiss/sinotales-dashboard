@@ -13,9 +13,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 # Apply before Django boots so Gemini/HTTP clients prefer IPv4 (see config.prefer_ipv4).
 _prefer_ipv4 = os.environ.get('PREFER_IPV4', '1').strip().lower()
-if _prefer_ipv4 in ('1', 'true', 'yes', 'on'):
+if _prefer_ipv4 in ('1', 'true', 'yes', 'on', 'only', 'ipv4only', 'ipv4-only'):
     from config.prefer_ipv4 import prefer_ipv4_dns
-    prefer_ipv4_dns()
+    prefer_ipv4_dns(ipv4_only=_prefer_ipv4 in ('only', 'ipv4only', 'ipv4-only'))
 
 from django.core.wsgi import get_wsgi_application
 

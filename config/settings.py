@@ -25,11 +25,12 @@ except ImportError:
     pass
 
 # Prefer IPv4 for outbound DNS (Gemini location blocks on some VPS IPv6 paths).
-# Same idea as n8n NODE_OPTIONS=--dns-result-order=ipv4first. Set PREFER_IPV4=0 to disable.
+# Same idea as n8n NODE_OPTIONS=--dns-result-order=ipv4first.
+# PREFER_IPV4=0 disables; PREFER_IPV4=only forces IPv4-only resolution.
 _prefer_ipv4 = os.environ.get('PREFER_IPV4', '1').strip().lower()
-if _prefer_ipv4 in ('1', 'true', 'yes', 'on'):
+if _prefer_ipv4 in ('1', 'true', 'yes', 'on', 'only', 'ipv4only', 'ipv4-only'):
     from .prefer_ipv4 import prefer_ipv4_dns
-    prefer_ipv4_dns()
+    prefer_ipv4_dns(ipv4_only=_prefer_ipv4 in ('only', 'ipv4only', 'ipv4-only'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -188,6 +189,19 @@ OPENAI_EMBEDDING_DIMENSIONS = int(os.environ.get('OPENAI_EMBEDDING_DIMENSIONS', 
 
 # Gemini API settings
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', None)
+# Optional HTTP(S) proxy for Gemini REST calls when the VPS IP is geo-blocked.
+# Example: http://user:pass@proxy.example.com:8080
+GEMINI_HTTP_PROXY = os.environ.get('GEMINI_HTTP_PROXY') or os.environ.get('HTTPS_PROXY') or None
+HTTPS_PROXY = os.environ.get('HTTPS_PROXY') or None
+# Force IPv4 for Gemini REST (urllib3). Set GEMINI_FORCE_IPV4=0 to disable.
+GEMINI_FORCE_IPV4 = os.environ.get('GEMINI_FORCE_IPV4', '1')
+
+# Also expose proxy to libraries that read env vars (google.generativeai SDK paths).
+if GEMINI_HTTP_PROXY:
+    os.environ.setdefault('HTTPS_PROXY', GEMINI_HTTP_PROXY)
+    os.environ.setdefault('https_proxy', GEMINI_HTTP_PROXY)
+    os.environ.setdefault('HTTP_PROXY', GEMINI_HTTP_PROXY)
+    os.environ.setdefault('http_proxy', GEMINI_HTTP_PROXY)
 
 # Web search API settings (for RAG agent)
 TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', None)

@@ -15,13 +15,15 @@ _applied = False
 _original_getaddrinfo = socket.getaddrinfo
 
 
-def prefer_ipv4_dns() -> None:
-    """Monkey-patch socket.getaddrinfo so AF_INET results come first."""
+def prefer_ipv4_dns(*, ipv4_only: bool = False) -> None:
+    """Monkey-patch socket.getaddrinfo so AF_INET results come first (or only)."""
     global _applied
     if _applied:
         return
 
     def getaddrinfo_ipv4_first(host, port, family=0, type=0, proto=0, flags=0):
+        if ipv4_only and family == 0:
+            return _original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
         infos = _original_getaddrinfo(host, port, family, type, proto, flags)
         if family == 0 and len(infos) > 1:
             infos = sorted(infos, key=lambda info: 0 if info[0] == socket.AF_INET else 1)
