@@ -24,6 +24,13 @@ except ImportError:
     # python-dotenv not installed, skip loading .env file
     pass
 
+# Prefer IPv4 for outbound DNS (Gemini location blocks on some VPS IPv6 paths).
+# Same idea as n8n NODE_OPTIONS=--dns-result-order=ipv4first. Set PREFER_IPV4=0 to disable.
+_prefer_ipv4 = os.environ.get('PREFER_IPV4', '1').strip().lower()
+if _prefer_ipv4 in ('1', 'true', 'yes', 'on'):
+    from .prefer_ipv4 import prefer_ipv4_dns
+    prefer_ipv4_dns()
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
