@@ -156,7 +156,7 @@ def source_edit(request, pk):
             connection.close()
             
             try:
-                from .youtube_service import get_channel_videos
+                from ..youtube_service import get_channel_videos
                 from django.db import transaction
                 from django.utils import timezone
                 
@@ -198,7 +198,7 @@ def source_edit(request, pk):
                 print(f"  [BACKGROUND] {len(existing_video_ids)} videos already exist in database", flush=True)
                 
                 # Import filtering function
-                from .youtube_service import is_video_relevant_to_china
+                from ..youtube_service import is_video_relevant_to_china
                 
                 # Create Content entries for each video
                 created_count = 0

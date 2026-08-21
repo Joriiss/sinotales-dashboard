@@ -1634,7 +1634,7 @@ def create_video_content_api(request):
         
         # Apply China filter if enabled for this source
         if source.filter_videos:
-            from .youtube_service import is_video_relevant_to_china_with_details
+            from ..youtube_service import is_video_relevant_to_china_with_details
             
             # Normalize tags - handle both list and comma-separated string
             if isinstance(tags, str):
